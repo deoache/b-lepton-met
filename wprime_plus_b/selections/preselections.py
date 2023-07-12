@@ -1,6 +1,7 @@
 import json
-import awkward as ak
 import numpy as np
+import awkward as ak
+import importlib.resources
 
 def select_good_electrons(events, channel, lepton_flavor):
     if channel == "2b1l":
@@ -66,8 +67,8 @@ def select_good_taus(events):
 
 def select_good_bjets(jets, year="2017", working_point="M"):
     # open and load btagDeepFlavB working point
-    with open("wprime_plus_b/data/btagWPs.json", "r") as handle:
-        btagDeepFlavB = json.load(handle)["deepJet"][year][working_point]
+    with importlib.resources.open_text("wprime_plus_b.data", "btagWPs.json") as file:
+        btagDeepFlavB = json.load(file)["deepJet"][year][working_point]
         
     good_bjets = (
         (jets.pt >= 20)
