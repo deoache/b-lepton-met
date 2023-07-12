@@ -3,6 +3,7 @@ import copy
 import pickle
 import numpy as np
 import awkward as ak
+import importlib.resources
 from coffea import processor
 from wprime_plus_b.processors import utils
 from coffea.analysis_tools import Weights, PackedSelection
@@ -17,7 +18,6 @@ from wprime_plus_b.selections.preselections import (
     select_good_taus,
     select_good_bjets,
 )
-
 
 
 class TtbarAnalysis(processor.ProcessorABC):
@@ -138,9 +138,9 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections = PackedSelection()
 
             # add luminosity calibration mask (only to data)
-            # open and load lumi masks
-            with open("wprime_plus_b/data/lumi_masks.pkl", "rb") as handle:
-                self._lumi_mask = pickle.load(handle)
+            with importlib.resources.path("wprime_plus_b.data", "lumi_masks.pkl") as path:
+                with open(path, "rb") as handle:
+                    self._lumi_mask = pickle.load(handle)
             if not self.is_mc:
                 lumi_mask = self._lumi_mask[self._year](
                     events.run, events.luminosityBlock
@@ -150,8 +150,9 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("lumi", lumi_mask)
 
             # add lepton triggers masks
-            with open("wprime_plus_b/data/triggers.json", "r") as handle:
-                self._triggers = json.load(handle)[self._year]
+            with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+                with open(path, "r") as handle:
+                    self._triggers = json.load(handle)[self._year]
             trigger = {}
             for ch in ["ele", "mu"]:
                 trigger[ch] = np.zeros(nevents, dtype="bool")
@@ -163,8 +164,9 @@ class TtbarAnalysis(processor.ProcessorABC):
 
             # add MET filters mask
             # open and load met filters
-            with open("wprime_plus_b/data/metfilters.json", "rb") as handle:
-                self._metfilters = json.load(handle)[self._year]
+            with importlib.resources.path("wprime_plus_b.data", "metfilters.json") as path:
+                with open(path, "r") as handle:
+                    self._metfilters = json.load(handle)[self._year]
             metfilters = np.ones(nevents, dtype="bool")
             metfilterkey = "mc" if self.is_mc else "data"
             for mf in self._metfilters[metfilterkey]:
@@ -302,7 +304,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_selection = self.selections.all(region)
 
                 # if there are no events left after selection cuts continue to the next .root file
-                if ak.sum(region_selection) == 0:
+                nevents_after = ak.sum(region_selection)
+                if nevents_after == 0:
                     continue
 
                 # select region objects
@@ -475,13 +478,12 @@ class TtbarAnalysis(processor.ProcessorABC):
             "histograms": hist_dict[f"{self._channel}_{self._lepton_flavor}"],
             "metadata": {
                 "events_before": nevents,
-                "events_after": ak.sum(region_selection),
-                "filenames": f"{events.metadata['filename']}\n",
+                "events_after": nevents_after,
             },
         }
         # if dataset is montecarlo add sumw to output
         if self.is_mc:
-            output.update({"sumw": ak.sum(events.genWeight)})
+            output["metadata"].update({"sumw": ak.sum(events.genWeight)})
         return output
 
     def postprocess(self, accumulator):
