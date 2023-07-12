@@ -14,7 +14,7 @@ from distributed.diagnostics.plugin import UploadDirectory
 #from wprime_plus_b.processors.ttbar_cr1_processor import TTbarCR1Processor
 #from wprime_plus_b.processors.ttbar_cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
-#from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
+#from wprime_plus_b.processors.ztoll_processor_v2 import ZToLLProcessor
 from wprime_plus_b.processors.ttbar_processor_v2 import TtbarAnalysis
 #from wprime_plus_b.processors.cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
@@ -30,6 +30,7 @@ def main(args):
         if args.nfiles != -1:
             val = val[: args.nfiles]
         fileset[sample] = [f"root://{args.redirector}/" + file for file in val]
+
     # define processors
     processors = {
         #"signal": SignalRegionProcessor,
@@ -40,8 +41,7 @@ def main(args):
         #"ttbar_cr1": TTbarCR1Processor,
         #"ttbar_cr2": TTbarCR2Processor,
         #"candle": CandleProcessor,
-        #"trigger": TriggerEfficiencyProcessor,
-        
+        #"trigger": TriggerEfficiencyProcessor,   
     }
     processor_kwargs = {
         "year": args.year,
@@ -49,9 +49,11 @@ def main(args):
         "channel": args.channel,
         "lepton_flavor": args.lepton_flavor,
     }
+    if args.processor in ["ztoll", "btag_eff"]:
+        del processor_kwargs["channel"]
     if args.processor == "btag_eff":
         del processor_kwargs["lepton_flavor"]
-        del processor_kwargs["channel"]
+
     # define executors
     executors = {
         "iterative": processor.iterative_executor,
@@ -65,8 +67,10 @@ def main(args):
         executor_args.update({"workers": args.workers})
     if args.executor == "dask":
         client = Client(args.client)
+        print(f"client: {args.client}")
         executor_args.update({"client": client})
         # upload local directory to dask workers
+        print(f"trying to upload {Path.cwd()} directory")
         try:
             client.register_worker_plugin(
                 UploadDirectory(f"{Path.cwd()}", restart=True, update_path=True),
@@ -86,35 +90,71 @@ def main(args):
     )
     exec_time = format_timespan(time.monotonic() - t0)
     print(f"\nexecution took {exec_time}")
-    # save output
+    
+    # get metadata
+    metadata = {"walltime": exec_time}
+    metadata.update({'events_before': float(out["metadata"]['events_before'])})
+    metadata.update({'events_after': float(out["metadata"]['events_after'])})
+    if "sumw" in out["metadata"]:
+        metadata.update({'sumw': float(out["metadata"]['sumw'])})
+    metadata.update({"fileset": fileset[sample]})
+    
+    # save args to metadata
+    args_dict = vars(args).copy()
+    del args_dict["fileset"]
+    if args.processor in ["ztoll", "btag_eff"]:
+        del args_dict["channel"]
+    if args.processor == "btag_eff":
+        del args_dict["lepton_flavor"]
+    metadata.update(args_dict)
+    
+    # drop metadata from output
+    del out["metadata"]
+    
+    # define output and metadata paths
     date = datetime.datetime.today().strftime("%Y-%m-%d")
-    output_path = Path(
+    ttbar_output_path = Path(
         args.output_location
         + "/"
         + args.tag
         + "/"
         + date
         + "/"
-        + args.channel
+        + args.channel 
         + "/"
         + args.year
         + "/"
         + args.lepton_flavor
     )
-    if not output_path.exists():
-        output_path.mkdir(parents=True)
-    with open(f"{str(output_path)}/{sample}.pkl", "wb") as handle:
+    ztoll_output_path = Path(
+        args.output_location
+        + "/"
+        + args.tag
+        + "/"
+        + date
+        + "/"
+        + args.lepton_flavor
+        + "/"
+        + args.year
+    )
+    output_path = {
+        "ttbar": ttbar_output_path,
+        "ztoll": ztoll_output_path
+    }
+    # save output
+    if not output_path[args.processor].exists():
+        output_path[args.processor].mkdir(parents=True)
+    with open(f"{str(output_path[args.processor])}/{sample}.pkl", "wb") as handle:
         pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
-    # save metrics
-    metrics = {"walltime": exec_time}
-    metrics.update(vars(args))
-    metrics_path = Path(f"{str(output_path)}/metrics")
-    if not metrics_path.exists():
-        metrics_path.mkdir(parents=True)
-    with open(f"{str(output_path)}/metrics/{sample}_metrics.json", "w") as f:
-        f.write(json.dumps(metrics))
+    # save metadata
+    metadata_path = Path(f"{str(output_path[args.processor])}/metadata")
+    if not metadata_path.exists():
+        metadata_path.mkdir(parents=True)
+    with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
+        f.write(json.dumps(metadata))
 
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(

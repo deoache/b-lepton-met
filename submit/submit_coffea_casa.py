@@ -36,7 +36,7 @@ def run_coffea_casa(args):
             redirector to find CMS datasets. 'xcache' at coffea-casa. 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus.
     """
     # dask client at coffea-casa
-    client = "tls://tomas-2eatehortua-2egarces-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786"
+    client = "tls://daniel-2eocampo-2ehenao-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786"
 
     # divide filesets in args.nsplit json files
     filesets = get_filesets(args.fileset, args.sample, args.year, args.nsplit)
