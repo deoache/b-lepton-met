@@ -48,11 +48,13 @@ def main(args):
         "yearmod": args.yearmod,
         "channel": args.channel,
         "lepton_flavor": args.lepton_flavor,
+        "output_type": args.output_type,
     }
     if args.processor in ["ztoll", "btag_eff"]:
         del processor_kwargs["channel"]
     if args.processor == "btag_eff":
         del processor_kwargs["lepton_flavor"]
+        del processor_kwargs["output_type"]
 
     # define executors
     executors = {
@@ -246,6 +248,13 @@ if __name__ == "__main__":
         type=int,
         default=50000,
         help="number of chunks to process",
+    )
+    parser.add_argument(
+        "--output_type",
+        dest="output_type",
+        type=str,
+        default="hist",
+        help="type of output {hist, array}",
     )
     args = parser.parse_args()
     main(args)

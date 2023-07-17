@@ -36,6 +36,8 @@ class TtbarAnalysis(processor.ProcessorABC):
         year modifier {"", "APV"}
     btag_wp:
         working point of the deepJet tagger
+    output_type:
+        {hist, array}
     """
 
     def __init__(
@@ -45,15 +47,15 @@ class TtbarAnalysis(processor.ProcessorABC):
         year: str = "2017",
         yearmod: str = "",
         btag_wp: str = "M",
-        syst: str = "nominal",
+        output_type = "hist"
     ):
         self._year = year
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
         self._channel = channel
         self.btag_wp = btag_wp
-        self.syst = syst
-
+        self.output_type = output_type
+        
         # define regions of the analysis
         channels = ["2b1l", "1b1e1mu"]
         lepton_flavors = ["ele", "mu"]
@@ -72,7 +74,10 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "lepton_met_kin": utils.histograms.lepton_met_hist,
                 "lepton_met_bjet_kin": utils.histograms.lepton_met_bjet_hist,
             }
-        # define dictionary to store analysis variables
+        # initialize dictionary of arrays for control regions
+        self.array_dict = {}
+        
+        # initialize dictionary to store analysis features
         self.features = {}
 
     def add_feature(self, name: str, var: ak.Array) -> None:
@@ -91,6 +96,7 @@ class TtbarAnalysis(processor.ProcessorABC):
 
         # create copies of histogram objects
         hist_dict = copy.deepcopy(self.hist_dict)
+        array_dict = copy.deepcopy(self.array_dict)
 
         syst_variations = ["nominal"]
         for syst_var in syst_variations:
@@ -281,7 +287,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                 },
             }
-
             self.selections.add(
                 "2b1l_ele", self.selections.all(*region_selection["2b1l"]["ele"])
             )
@@ -348,7 +353,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     (region_leptons.pt + leading_bjets.pt + region_met.pt) ** 2
                     - (region_leptons + leading_bjets + region_met).pt ** 2
                 )
-
                 self.add_feature("lepton_pt", region_leptons.pt)
                 self.add_feature("lepton_eta", region_leptons.eta)
                 self.add_feature("lepton_phi", region_leptons.phi)
@@ -455,35 +459,47 @@ class TtbarAnalysis(processor.ProcessorABC):
                             muon_corrector.add_triggeriso_weight()
                             
                 # get total weight from the weights container
-                region_weights = weights_container.weight()
+                region_weights = weights_container.weight()          
                 
                 # -----------------------------
                 # fill histograms
                 # -----------------------------
-                syst_var_name = f"{syst_var}"
-                for kin in hist_dict[region]:
-                    fill_args = {
-                        feature: utils.analysis_utils.normalize(self.features[feature])
-                        for feature in hist_dict[region][kin].axes.name[:-1]
-                        if "dataset" not in feature
+                if self.output_type == "hist":
+                    syst_var_name = f"{syst_var}"
+                    for kin in hist_dict[region]:
+                        fill_args = {
+                            feature: utils.analysis_utils.normalize(self.features[feature])
+                            for feature in hist_dict[region][kin].axes.name[:-1]
+                            if "dataset" not in feature
+                        }
+                        hist_dict[region][kin].fill(
+                            **fill_args,
+                            dataset=dataset,
+                            variation=syst_var_name,
+                            weight=region_weights,
+                        )
+                elif self.output_type == "array":
+                    self.add_feature("weights", region_weights)
+                    # select variables and put them in column accumulators
+                    array_dict = {
+                        feature_name: processor.column_accumulator(utils.analysis_utils.normalize(feature_array))
+                        for feature_name, feature_array in self.features.items()
                     }
-                    hist_dict[region][kin].fill(
-                        **fill_args,
-                        dataset=dataset,
-                        variation=syst_var_name,
-                        weight=region_weights,
-                    )
-        # define output
-        output = {
-            "histograms": hist_dict[f"{self._channel}_{self._lepton_flavor}"],
-            "metadata": {
-                "events_before": nevents,
-                "events_after": nevents_after,
-            },
-        }
-        # if dataset is montecarlo add sumw to output
+                    
+        # define output: save arrays or histograms
+        output = {}
+        if self.output_type == "hist":
+            output["histograms"] =  hist_dict[f"{self._channel}_{self._lepton_flavor}"]
+        elif self.output_type == "array":
+            output["arrays"] = array_dict
+        
+        # add metadata to output
+        output["metadata"] = {"events_before": nevents, "events_after": nevents_after}
+        
+        # if dataset is montecarlo add sumw to output's metadata
         if self.is_mc:
-            output["metadata"].update({"sumw": ak.sum(events.genWeight)})
+            output["metadata"]["sumw"] = ak.sum(events.genWeight)
+        
         return output
 
     def postprocess(self, accumulator):

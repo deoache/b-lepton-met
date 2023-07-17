@@ -134,4 +134,11 @@ if __name__ == "__main__":
         default=50000,
         help="number of chunks to process",
     )
+    parser.add_argument(
+        "--output_type",
+        dest="output_type",
+        type=str,
+        default="hist",
+        help="type of output {hist, array}",
+    )
     main(parser.parse_args())
