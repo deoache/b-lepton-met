@@ -36,7 +36,7 @@ def run_coffea_casa(args):
             redirector to find CMS datasets. 'xcache' at coffea-casa. 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus.
     """
     # dask client at coffea-casa
-    client = "tls://daniel-2eocampo-2ehenao-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786"
+    client = "tls://localhost:8786"
 
     # divide filesets in args.nsplit json files
     filesets = get_filesets(args.fileset, args.sample, args.year, args.nsplit)
@@ -46,7 +46,7 @@ def run_coffea_casa(args):
         for sample, fileset in filesets.items():
             print(f"Processing {sample}")
             os.system(
-                f"python3 run.py --processor {args.processor} --executor {args.executor} --output_type {args.output_type} --channel {args.channel} --lepton_flavor {args.lepton_flavor} --fileset {fileset} --year {args.year} --nfiles {args.nfiles} --tag {args.tag} --redirector {args.redirector} --client {client}"
+                f"python3 run.py --processor {args.processor} --executor {args.executor} --output_type {args.output_type} --syst {args.syst} --channel {args.channel} --lepton_flavor {args.lepton_flavor} --fileset {fileset} --year {args.year} --nfiles {args.nfiles} --tag {args.tag} --redirector {args.redirector} --client {client}"
             )
     else:
         for sample, fileset in filesets.items():
@@ -55,6 +55,6 @@ def run_coffea_casa(args):
                 if f"_{n}" in sample:
                     print(f"Processing {sample}")
                     os.system(
-                        f"python3 run.py --processor {args.processor} --executor {args.executor} --output_type {args.output_type} --channel {args.channel} --lepton_flavor {args.lepton_flavor} --fileset {fileset} --year {args.year} --nfiles {args.nfiles} --tag {args.tag} --redirector {args.redirector} --client {client}"
+                        f"python3 run.py --processor {args.processor} --executor {args.executor} --output_type {args.output_type} --syst {args.syst} --channel {args.channel} --lepton_flavor {args.lepton_flavor} --fileset {fileset} --year {args.year} --nfiles {args.nfiles} --tag {args.tag} --redirector {args.redirector} --client {client}"
                     )
                     

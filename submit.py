@@ -141,4 +141,11 @@ if __name__ == "__main__":
         default="hist",
         help="type of output {hist, array}",
     )
+    parser.add_argument(
+        "--syst",
+        dest="syst",
+        type=str,
+        default="nominal",
+        help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
+    )
     main(parser.parse_args())

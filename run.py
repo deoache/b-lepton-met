@@ -15,7 +15,9 @@ from distributed.diagnostics.plugin import UploadDirectory
 #from wprime_plus_b.processors.ttbar_cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 #from wprime_plus_b.processors.ztoll_processor_v2 import ZToLLProcessor
-from wprime_plus_b.processors.ttbar_processor_v2 import TtbarAnalysis
+#from wprime_plus_b.processors.ttbar_analysis_processor_deltaphi import TtbarAnalysis
+from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
+#from wprime_plus_b.processors.qcd_analysis_processor import QcdAnalysis
 #from wprime_plus_b.processors.cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
 #from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
@@ -35,6 +37,7 @@ def main(args):
     processors = {
         #"signal": SignalRegionProcessor,
         "ttbar": TtbarAnalysis,
+        #"qcd": QcdAnalysis,
         #"ttbar_cr2": TTbarCR2Processor,
         #"ztoll": ZToLLProcessor,
         #"btag_eff": BTagEfficiencyProcessor,
@@ -48,13 +51,15 @@ def main(args):
         "yearmod": args.yearmod,
         "channel": args.channel,
         "lepton_flavor": args.lepton_flavor,
-        "output_type": args.output_type,
+        "syst": args.syst
+        #"output_type": args.output_type,
     }
-    if args.processor in ["ztoll", "btag_eff"]:
+    if args.processor in ["ztoll", "btag_eff", "qcd"]:
         del processor_kwargs["channel"]
+        del processor_kwargs["syst"]
     if args.processor == "btag_eff":
         del processor_kwargs["lepton_flavor"]
-        del processor_kwargs["output_type"]
+        del processor_kwargs["syst"]
 
     # define executors
     executors = {
@@ -81,6 +86,7 @@ def main(args):
             print(f"Uploaded {Path.cwd()} succesfully")
         except OSError:
             print("Failed to upload the directory")
+            
     # run processor
     t0 = time.monotonic()
     out = processor.run_uproot_job(
@@ -91,7 +97,6 @@ def main(args):
         executor_args=executor_args,
     )
     exec_time = format_timespan(time.monotonic() - t0)
-    print(f"\nexecution took {exec_time}")
     
     # get metadata
     metadata = {"walltime": exec_time}
@@ -115,12 +120,18 @@ def main(args):
     
     # define output and metadata paths
     date = datetime.datetime.today().strftime("%Y-%m-%d")
-    ttbar_output_path = Path(
+    base_path = Path(
         args.output_location
         + "/"
         + args.tag
         + "/"
+        + args.processor
+        + "/"
         + date
+        + "/"
+    )
+    ttbar_output_path = Path(
+        str(base_path)
         + "/"
         + args.channel 
         + "/"
@@ -128,20 +139,17 @@ def main(args):
         + "/"
         + args.lepton_flavor
     )
-    ztoll_output_path = Path(
-        args.output_location
-        + "/"
-        + args.tag
-        + "/"
-        + date
-        + "/"
-        + args.lepton_flavor
+    other_output_path = Path(
+        str(base_path)
         + "/"
         + args.year
+        + "/"
+        + args.lepton_flavor
     )
     output_path = {
         "ttbar": ttbar_output_path,
-        "ztoll": ztoll_output_path
+        "ztoll": other_output_path,
+        "qcd": other_output_path,
     }
     # save output
     if not output_path[args.processor].exists():
@@ -255,6 +263,13 @@ if __name__ == "__main__":
         type=str,
         default="hist",
         help="type of output {hist, array}",
+    )
+    parser.add_argument(
+        "--syst",
+        dest="syst",
+        type=str,
+        default="nominal",
+        help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
     )
     args = parser.parse_args()
     main(args)
