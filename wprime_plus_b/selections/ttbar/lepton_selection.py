@@ -63,9 +63,9 @@ def select_good_muons(events: NanoEventsArray) -> ak.highlevel.Array:
         & (np.abs(events.Muon.eta) < 2.4)
         & (events.Muon.tightId)
         & (
-            events.Muon.pfRelIso04_all < 0.25
+            events.Muon.pfRelIso04_all < 0.15
             if hasattr(events.Muon, "pfRelIso04_all")
-            else events.Muon.pfRelIso03_all < 0.25
+            else events.Muon.pfRelIso03_all < 0.15
         )
     )
 
