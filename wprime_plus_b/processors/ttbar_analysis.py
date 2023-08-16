@@ -49,13 +49,15 @@ class TtbarAnalysis(processor.ProcessorABC):
         yearmod: str = "",
         btag_wp: str = "M",
         syst: str = "nominal",
+        output_type="hist",
     ):
         self._year = year
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
         self._channel = channel
-        self.btag_wp = btag_wp
+        self._btag_wp = btag_wp
         self._syst = syst
+        self._output_type = output_type
 
         # define region of the analysis
         self._region = f"{self._channel}_{self._lepton_flavor}"
@@ -73,6 +75,9 @@ class TtbarAnalysis(processor.ProcessorABC):
         # define dictionary to store analysis variables
         self.features = {}
 
+        # initialize dictionary of arrays
+        self.array_dict = {}
+
     def add_feature(self, name: str, var: ak.Array) -> None:
         """add a variable array to the out dictionary"""
         self.features = {**self.features, name: var}
@@ -89,6 +94,9 @@ class TtbarAnalysis(processor.ProcessorABC):
 
         # create copies of histogram objects
         hist_dict = copy.deepcopy(self.hist_dict)
+
+        # create copy of array dictionary
+        array_dict = copy.deepcopy(self.array_dict)
 
         # define systematic variations
         syst_variations = ["nominal"]
@@ -167,7 +175,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             # select good bjets
             good_bjets = (
                 select_good_bjets(
-                    jets=corrected_jets, year=self._year, working_point=self.btag_wp
+                    jets=corrected_jets, year=self._year, working_point=self._btag_wp
                 )
                 & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
                 & (delta_r_mask(corrected_jets, muons, threshold=0.4))
@@ -488,82 +496,95 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # ------------------
                 # histogram filling
                 # ------------------
-                # break up the histogram filling for event-wise variations and object-wise variations
+                if self._output_type == "hist":
+                    # break up the histogram filling for event-wise variations and object-wise variations
+                    # apply event-wise variations only for nominal
+                    if self.is_mc and syst_var == "nominal":
+                        # get event weight systematic variations for MC samples
+                        event_weights = [
+                            weight
+                            for weight in weights_container.weightStatistics
+                            if "genweight" not in weight
+                        ]
+                        event_weight_syst_variations_up = [
+                            f"{event_weight}Up"
+                            for event_weight in event_weights
+                            if event_weight
+                            not in [
+                                "leading_electron_trigger",
+                                "subleading_electron_trigger",
+                            ]
+                        ]
+                        event_weight_syst_variations_down = [
+                            f"{event_weight}Down"
+                            for event_weight in event_weights
+                            if event_weight
+                            not in [
+                                "leading_electron_trigger",
+                                "subleading_electron_trigger",
+                            ]
+                        ]
+                        event_weight_syst = ["nominal"]
+                        event_weight_syst.extend(event_weight_syst_variations_up)
+                        event_weight_syst.extend(event_weight_syst_variations_down)
+                        for variation in event_weight_syst:
+                            # get weight
+                            if variation == "nominal":
+                                syst_weight = weights_container.weight()
+                            else:
+                                syst_weight = weights_container.weight(variation)
 
-                # apply event-wise variations only for nominal
-                if self.is_mc and syst_var == "nominal":
-                    # get event weight systematic variations for MC samples
-                    event_weights = [
-                        weight
-                        for weight in weights_container.weightStatistics
-                        if "genweight" not in weight
-                    ]
-                    event_weight_syst_variations_up = [
-                        f"{event_weight}Up"
-                        for event_weight in event_weights
-                        if event_weight
-                        not in [
-                            "leading_electron_trigger",
-                            "subleading_electron_trigger",
-                        ]
-                    ]
-                    event_weight_syst_variations_down = [
-                        f"{event_weight}Down"
-                        for event_weight in event_weights
-                        if event_weight
-                        not in [
-                            "leading_electron_trigger",
-                            "subleading_electron_trigger",
-                        ]
-                    ]
-                    event_weight_syst = ["nominal"]
-                    event_weight_syst.extend(event_weight_syst_variations_up)
-                    event_weight_syst.extend(event_weight_syst_variations_down)
-                    for variation in event_weight_syst:
-                        # get weight
-                        if variation == "nominal":
-                            syst_weight = weights_container.weight()
-                        else:
-                            syst_weight = weights_container.weight(variation)
-                        for kin in hist_dict[self._region]:
-                            # get filling arguments
-                            fill_args = {
-                                feature: normalize(self.features[feature])
-                                for feature in hist_dict[self._region][kin].axes.name[
-                                    :-1
-                                ]
-                                if "dataset" not in feature
-                            }
-                            # fill histograms
-                            hist_dict[self._region][kin].fill(
-                                **fill_args,
-                                dataset=dataset,
-                                variation=variation,
-                                weight=syst_weight,
-                            )
-                # object-wise variations
-                syst_weight = weights_container.weight()
-                for kin in hist_dict[self._region]:
-                    # get filling arguments
-                    fill_args = {
-                        feature: normalize(self.features[feature])
-                        for feature in hist_dict[self._region][kin].axes.name[:-1]
-                        if "dataset" not in feature
+                            for kin in hist_dict[self._region]:
+                                # get filling arguments
+                                fill_args = {
+                                    feature: normalize(self.features[feature])
+                                    for feature in hist_dict[self._region][
+                                        kin
+                                    ].axes.name[:-1]
+                                    if "dataset" not in feature
+                                }
+                                # fill histograms
+                                hist_dict[self._region][kin].fill(
+                                    **fill_args,
+                                    dataset=dataset,
+                                    variation=variation,
+                                    weight=syst_weight,
+                                )
+                    # object-wise variations
+                    syst_weight = weights_container.weight()
+                    for kin in hist_dict[self._region]:
+                        # get filling arguments
+                        fill_args = {
+                            feature: normalize(self.features[feature])
+                            for feature in hist_dict[self._region][kin].axes.name[:-1]
+                            if "dataset" not in feature
+                        }
+                        # fill histograms
+                        hist_dict[self._region][kin].fill(
+                            **fill_args,
+                            dataset=dataset,
+                            variation=syst_var,
+                            weight=syst_weight,
+                        )
+                elif self._output_type == "array":
+                    self.add_feature("weights", weights_container.weight())
+                    # select variables and put them in column accumulators
+                    array_dict = {
+                        feature_name: processor.column_accumulator(
+                            normalize(feature_array)
+                        )
+                        for feature_name, feature_array in self.features.items()
                     }
-                    # fill histograms
-                    hist_dict[self._region][kin].fill(
-                        **fill_args,
-                        dataset=dataset,
-                        variation=syst_var,
-                        weight=syst_weight,
-                    )
         # define output dictionary accumulator
-        output = {
-            "histograms": hist_dict[f"{self._channel}_{self._lepton_flavor}"],
-            "metadata": {
-                "events_before": nevents,
-                "events_after": nevents_after,
-            },
+        output = {}
+        if self._output_type == "hist":
+            output["histograms"] = hist_dict[f"{self._channel}_{self._lepton_flavor}"]
+        elif self._output_type == "array":
+            output["arrays"] = array_dict
+        # save metadata
+        output["metadata"] = {
+            "events_before": nevents,
+            "events_after": nevents_after,
         }
         # save sumw for MC samples
         if self.is_mc:

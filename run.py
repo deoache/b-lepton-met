@@ -51,15 +51,15 @@ def main(args):
         "yearmod": args.yearmod,
         "channel": args.channel,
         "lepton_flavor": args.lepton_flavor,
-        "syst": args.syst
-        #"output_type": args.output_type,
+        "syst": args.syst,
+        "output_type": args.output_type,
     }
     if args.processor in ["ztoll", "btag_eff", "qcd"]:
         del processor_kwargs["channel"]
         del processor_kwargs["syst"]
+        del processor_kwargs["output_type"]
     if args.processor == "btag_eff":
         del processor_kwargs["lepton_flavor"]
-        del processor_kwargs["syst"]
 
     # define executors
     executors = {
