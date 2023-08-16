@@ -36,6 +36,8 @@ class BTagCorrector:
             Number of jets to use
         weights:
             Weights container from coffea.analysis_tools
+        variation:
+            if 'nominal' (default) add 'nominal', 'up' and 'down' variations to weights container. else, add only 'nominal' weights.
         full_run:
             False (default) if only one year is analized,
             True if the fullRunII data is analyzed.
@@ -44,37 +46,6 @@ class BTagCorrector:
             systematics are used instead of the 'up/down' ones,
             which are supposed to be correlated/decorrelated
             between the different data years
-
-    Example:
-    --------
-        # load events array
-        events = NanoEventsFactory.from_root('nanoaod_file.root', schemaclass=NanoAODSchema).events()
-
-        # define your jet selection
-        bjets = events.Jet[(
-            (events.Jet.pt >= 20)
-            & (events.Jet.jetId == 6)
-            & (events.Jet.puId == 7)
-            & (events.Jet.btagDeepFlavB > 0.3)
-            & (np.abs(events.Jet.eta) < 2.4)
-        )]
-
-        # create an instance of the Weights container
-        weights = Weights(len(events), storeIndividual=True)
-
-        # create an instance of BTagCorrector
-        btag_corrector = BTagCorrector(
-            jets=bjets,
-            njets=2,
-            weights=weights,
-            sf_type="comb",
-            worging_point="M",
-            tagger="deepJet",
-            year="2017",
-        )
-        # add bc and light btagging weights to weights container
-        btag_corrector.add_btag_weights(flavor="bc")
-        btag_corrector.add_btag_weights(flavor="light")
     """
 
     def __init__(
@@ -87,6 +58,7 @@ class BTagCorrector:
         tagger: str = "deepJet",
         year: str = "2017",
         year_mod: str = "",
+        variation: str = "nominal",
         full_run: bool = False,
     ) -> None:
         self._sf = sf_type
@@ -96,14 +68,12 @@ class BTagCorrector:
         self._wp = worging_point
         self._weights = weights
         self._full_run = full_run
-
+        self._variation = variation
+        
         # define correction set
         self._cset = correctionlib.CorrectionSet.from_file(
             get_pog_json(json_name="btag", year=year + year_mod)
         )
-        # systematics
-        self._syst_up = "up_correlated" if full_run else "up"
-        self._syst_down = "down_correlated" if full_run else "down"
 
         # bc and light jets
         # hadron flavor definition: 5=b, 4=c, 0=udsg
@@ -144,23 +114,36 @@ class BTagCorrector:
         # mask with events that pass the btag working point
         passbtag = self.passbtag_mask(flavor=flavor)
 
-        # scale factors
+        # nominal scale factors
         jets_sf = self.get_scale_factors(flavor=flavor, syst="central")
-        jets_sf_up = self.get_scale_factors(flavor=flavor, syst=self._syst_up)
-        jets_sf_down = self.get_scale_factors(flavor=flavor, syst=self._syst_down)
 
-        # get weights
+        # nominal weights
         jets_weight = self.get_btag_weight(eff, jets_sf, passbtag)
-        jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
-        jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
+        
+        if self._variation == "nominal":
+            # systematics
+            syst_up = "up_correlated" if self._full_run else "up"
+            syst_down = "down_correlated" if self._full_run else "down"
+            
+            # up and down scale factors
+            jets_sf_up = self.get_scale_factors(flavor=flavor, syst=syst_up)
+            jets_sf_down = self.get_scale_factors(flavor=flavor, syst=syst_down)
+            
+            jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
+            jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
 
-        # add weights to Weights container
-        self._weights.add(
-            name=f"{flavor}_{self._njets}_jets",
-            weight=jets_weight,
-            weightUp=jets_weight_up,
-            weightDown=jets_weight_down,
-        )
+            # add weights to Weights container
+            self._weights.add(
+                name=f"{flavor}_{self._njets}_jets",
+                weight=jets_weight,
+                weightUp=jets_weight_up,
+                weightDown=jets_weight_down,
+            )
+        else:
+            self._weights.add(
+                name=f"{flavor}_{self._njets}_jets",
+                weight=jets_weight,
+            )
 
     def efficiency(self, flavor: str, fill_value=1) -> ak.Array:
         """compute the btagging efficiency for 'njets' jets"""

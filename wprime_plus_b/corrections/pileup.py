@@ -6,7 +6,7 @@ from wprime_plus_b.corrections.utils import get_pog_json
 
 
 def add_pileup_weight(
-    weights: Type[Weights], year: str, year_mod: str, n_true_interactions: ak.Array
+    weights: Type[Weights], year: str, year_mod: str, n_true_interactions: ak.Array, variation: str = "nominal"
 ) -> None:
     """
     add pileup scale factor
@@ -21,6 +21,9 @@ def add_pileup_weight(
             dataset year {'2016', '2017', '2018'}
         year_mod:
             year modifier {"", "APV"}
+        variation:
+            if 'nominal' (default) add 'nominal', 'up' and 'down' 
+            variations to weights container. else, add only 'nominal' weights.
     """
     # define correction set
     cset = correctionlib.CorrectionSet.from_file(
@@ -37,13 +40,18 @@ def add_pileup_weight(
     values["nominal"] = cset[year_to_corr[year]].evaluate(
         n_true_interactions, "nominal"
     )
-    values["up"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "up")
-    values["down"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "down")
-
-    # add pileup scale factors to weights container
-    weights.add(
-        name="pileup",
-        weight=values["nominal"],
-        weightUp=values["up"],
-        weightDown=values["down"],
-    )
+    if variation == "nominal":
+        values["up"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "up")
+        values["down"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "down")
+        # add pileup scale factors to weights container
+        weights.add(
+            name="pileup",
+            weight=values["nominal"],
+            weightUp=values["up"],
+            weightDown=values["down"],
+        )
+    else:
+        weights.add(
+            name="pileup",
+            weight=values["nominal"],
+        )

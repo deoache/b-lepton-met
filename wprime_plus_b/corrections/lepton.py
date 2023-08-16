@@ -34,6 +34,9 @@ class ElectronCorrector:
         Year modifier {'', 'APV'}
     tag:
         label to include in the weight name
+    variation:
+        if 'nominal' (default) add 'nominal', 'up' and 'down' 
+        variations to weights container. else, add only 'nominal' weights.
     """
 
     def __init__(
@@ -43,7 +46,10 @@ class ElectronCorrector:
         year: str = "2017",
         year_mod: str = "",
         tag: str = "electron",
+        variation: str = "nominal"
     ) -> None:
+        self.variation = variation
+        
         # electron array
         self.electrons = electrons
 
@@ -89,19 +95,25 @@ class ElectronCorrector:
         values["nominal"] = self.cset["UL-Electron-ID-SF"].evaluate(
             year, "sf", working_point, electron_eta, electron_pt
         )
-        values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sfup", working_point, electron_eta, electron_pt
-        )
-        values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sfdown", working_point, electron_eta, electron_pt
-        )
-        # add scale factors to weights container
-        self.weights.add(
-            name=f"{self.tag}_id",
-            weight=values["nominal"],
-            weightUp=values["up"],
-            weightDown=values["down"],
-        )
+        if self.variation == "nominal":
+            values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
+                year, "sfup", working_point, electron_eta, electron_pt
+            )
+            values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
+                year, "sfdown", working_point, electron_eta, electron_pt
+            )
+            # add scale factors to weights container
+            self.weights.add(
+                name=f"{self.tag}_id",
+                weight=values["nominal"],
+                weightUp=values["up"],
+                weightDown=values["down"],
+            )
+        else:
+            self.weights.add(
+                name=f"{self.tag}_id",
+                weight=values["nominal"],
+            )
 
     def add_reco_weight(self) -> None:
         """add electron reconstruction scale factors to weights container"""
@@ -121,19 +133,25 @@ class ElectronCorrector:
         values["nominal"] = self.cset["UL-Electron-ID-SF"].evaluate(
             year, "sf", "RecoAbove20", electron_eta, electron_pt
         )
-        values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sfup", "RecoAbove20", electron_eta, electron_pt
-        )
-        values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sfdown", "RecoAbove20", electron_eta, electron_pt
-        )
-        # add scale factors to weights container
-        self.weights.add(
-            name=f"{self.tag}_reco",
-            weight=values["nominal"],
-            weightUp=values["up"],
-            weightDown=values["down"],
-        )
+        if self.variation == "nominal":
+            values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
+                year, "sfup", "RecoAbove20", electron_eta, electron_pt
+            )
+            values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
+                year, "sfdown", "RecoAbove20", electron_eta, electron_pt
+            )
+            # add scale factors to weights container
+            self.weights.add(
+                name=f"{self.tag}_reco",
+                weight=values["nominal"],
+                weightUp=values["up"],
+                weightDown=values["down"],
+            )
+        else:
+            self.weights.add(
+                name=f"{self.tag}_reco",
+                weight=values["nominal"],
+            )
 
     def add_trigger_weight(self) -> None:
         """add electron trigger scale factors to weights container"""
@@ -200,7 +218,9 @@ class MuonCorrector:
         year: str = "2017",
         year_mod: str = "",
         tag: str = "muon",
+        variation: str = "nominal"
     ) -> None:
+        self.variation = variation
         # muon array
         self.muons = muons
 
@@ -261,19 +281,25 @@ class MuonCorrector:
         values["nominal"] = self.cset[sfs_keys[self.year]].evaluate(
             self.pog_year, muon_eta, muon_pt, "sf"
         )
-        values["up"] = self.cset[sfs_keys[self.year]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "systup"
-        )
-        values["down"] = self.cset[sfs_keys[self.year]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "systdown"
-        )
-        # add scale factors to weights container
-        self.weights.add(
-            name=f"{self.tag}_triggeriso",
-            weight=values["nominal"],
-            weightUp=values["up"],
-            weightDown=values["down"],
-        )
+        if self.variation == "nominal":
+            values["up"] = self.cset[sfs_keys[self.year]].evaluate(
+                self.pog_year, muon_eta, muon_pt, "systup"
+            )
+            values["down"] = self.cset[sfs_keys[self.year]].evaluate(
+                self.pog_year, muon_eta, muon_pt, "systdown"
+            )
+            # add scale factors to weights container
+            self.weights.add(
+                name=f"{self.tag}_triggeriso",
+                weight=values["nominal"],
+                weightUp=values["up"],
+                weightDown=values["down"],
+            )
+        else:
+            self.weights.add(
+                name=f"{self.tag}_triggeriso",
+                weight=values["nominal"],
+            )
 
     def add_weight(self, sf_type: str, working_point: str = "tight") -> None:
         """
@@ -306,16 +332,22 @@ class MuonCorrector:
         values["nominal"] = self.cset[sfs_keys[sf_type]].evaluate(
             self.pog_year, muon_eta, muon_pt, "sf"
         )
-        values["up"] = self.cset[sfs_keys[sf_type]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "systup"
-        )
-        values["down"] = self.cset[sfs_keys[sf_type]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "systdown"
-        )
-        # add scale factors to weights container
-        self.weights.add(
-            name=f"{self.tag}_{sf_type}",
-            weight=values["nominal"],
-            weightUp=values["up"],
-            weightDown=values["down"],
-        )
+        if self.variation == "nominal":
+            values["up"] = self.cset[sfs_keys[sf_type]].evaluate(
+                self.pog_year, muon_eta, muon_pt, "systup"
+            )
+            values["down"] = self.cset[sfs_keys[sf_type]].evaluate(
+                self.pog_year, muon_eta, muon_pt, "systdown"
+            )
+            # add scale factors to weights container
+            self.weights.add(
+                name=f"{self.tag}_{sf_type}",
+                weight=values["nominal"],
+                weightUp=values["up"],
+                weightDown=values["down"],
+            )
+        else:
+            self.weights.add(
+                name=f"{self.tag}_{sf_type}",
+                weight=values["nominal"],
+            )
