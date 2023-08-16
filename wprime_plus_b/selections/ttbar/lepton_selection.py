@@ -25,9 +25,9 @@ def select_good_electrons(
         An Awkward Array mask containing the selected "good" electrons that satisfy the specified criteria.
     """
     if channel != "1b1e1mu":
-        good_electron_pt = 55 if lepton_flavor == "ele" else 30
-    else:
         good_electron_pt = 55 if lepton_flavor == "mu" else 30
+    else:
+        good_electron_pt = 55 if lepton_flavor == "ele" else 30
     return (
         (events.Electron.pt >= good_electron_pt)
         & (np.abs(events.Electron.eta) < 2.4)
