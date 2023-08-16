@@ -110,12 +110,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(jet_jec_syst_variations)
                 syst_variations.extend(jet_jer_syst_variations)
                 syst_variations.extend(met_obj_syst_variations)
-                
+
         for syst_var in syst_variations:
             # ------------------
             # event preselection
             # ------------------
-            
+
             # ------------------
             # leptons
             # -------------------
@@ -163,7 +163,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     met = met.MET_UnclusteredEnergy.down
             else:
                 corrected_jets, met = events.Jet, events.MET
-                
+
             # select good bjets
             good_bjets = (
                 select_good_bjets(
@@ -484,12 +484,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                             electron_corrector.add_trigger_weight()
                         else:
                             muon_corrector.add_triggeriso_weight()
-                            
+
                 # ------------------
                 # histogram filling
                 # ------------------
                 # break up the histogram filling for event-wise variations and object-wise variations
-                
+
                 # apply event-wise variations only for nominal
                 if self.is_mc and syst_var == "nominal":
                     # get event weight systematic variations for MC samples
@@ -499,15 +499,26 @@ class TtbarAnalysis(processor.ProcessorABC):
                         if "genweight" not in weight
                     ]
                     event_weight_syst_variations_up = [
-                        f"{event_weight}Up" for event_weight in event_weights
+                        f"{event_weight}Up"
+                        for event_weight in event_weights
+                        if event_weight
+                        not in [
+                            "leading_electron_trigger",
+                            "subleading_electron_trigger",
+                        ]
                     ]
                     event_weight_syst_variations_down = [
-                        f"{event_weight}Down" for event_weight in event_weights
+                        f"{event_weight}Down"
+                        for event_weight in event_weights
+                        if event_weight
+                        not in [
+                            "leading_electron_trigger",
+                            "subleading_electron_trigger",
+                        ]
                     ]
                     event_weight_syst = ["nominal"]
                     event_weight_syst.extend(event_weight_syst_variations_up)
                     event_weight_syst.extend(event_weight_syst_variations_down)
-
                     for variation in event_weight_syst:
                         # get weight
                         if variation == "nominal":
