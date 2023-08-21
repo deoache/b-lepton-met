@@ -24,7 +24,7 @@ def select_good_electrons(
     --------
         An Awkward Array mask containing the selected "good" electrons that satisfy the specified criteria.
     """
-    if channel != "1b1e1mu":
+    if channel == "1b1e1mu":
         good_electron_pt = 55 if lepton_flavor == "mu" else 30
     else:
         good_electron_pt = 55 if lepton_flavor == "ele" else 30
@@ -63,9 +63,9 @@ def select_good_muons(events: NanoEventsArray) -> ak.highlevel.Array:
         & (np.abs(events.Muon.eta) < 2.4)
         & (events.Muon.tightId)
         & (
-            events.Muon.pfRelIso04_all < 0.15
+            events.Muon.pfRelIso04_all < 0.25
             if hasattr(events.Muon, "pfRelIso04_all")
-            else events.Muon.pfRelIso03_all < 0.15
+            else events.Muon.pfRelIso03_all < 0.25
         )
     )
 
