@@ -6,7 +6,7 @@ from coffea.jetmet_tools import JECStack, CorrectedJetsFactory, CorrectedMETFact
 
 # https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC#Recommended_for_MC
 # JEC: https://github.com/cms-jet/JECDatabase/tree/master/textFiles
-# JER:  https://github.com/cms-jet/JRDatabase/tree/master/tarballs
+# JER: https://github.com/cms-jet/JRDatabase/tree/master/tarballs
 jec_name_map = {
     "JetPt": "pt",
     "JetMass": "mass",
@@ -36,23 +36,62 @@ def jet_factory_factory(files):
 
 def get_mc_factories():
     jet_factory = {
+        "2016APV": jet_factory_factory(
+            files=[
+                # JEC
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L1FastJet_AK4PFchs.jec.txt",
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L2L3Residual_AK4PFchs.jec.txt",
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L2Relative_AK4PFchs.jec.txt",
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L3Absolute_AK4PFchs.jec.txt",
+                "JEC/MC/2016APV/RegroupedV2_Summer19UL16APV_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                # JER
+                "JER/MC/2016APV/Summer20UL16APV_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
+                "JER/MC/2016APV/Summer20UL16APV_JRV3_MC_SF_AK4PFchs.jersf.txt",
+            ]
+        ),
+        "2016": jet_factory_factory(
+            files=[
+                # JEC
+                "JEC/MC/2016/Summer19UL16_V7_MC_L1FastJet_AK4PFchs.jec.txt",
+                "JEC/MC/2016/Summer19UL16_V7_MC_L2L3Residual_AK4PFchs.jec.txt",
+                "JEC/MC/2016/Summer19UL16_V7_MC_L2Relative_AK4PFchs.jec.txt",
+                "JEC/MC/2016/Summer19UL16_V7_MC_L3Absolute_AK4PFchs.jec.txt",
+                "JEC/MC/2016/RegroupedV2_Summer19UL16_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                # JER
+                "JER/MC/2016/Summer20UL16_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
+                "JER/MC/2016/Summer20UL16_JRV3_MC_SF_AK4PFchs.jersf.txt",
+            ]
+        ),
         "2017": jet_factory_factory(
             files=[
                 # JEC
-                "JEC/MC/Summer19UL17_V5_MC_L1FastJet_AK4PFchs.jec.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_L1FastJet_AK4PFchs.jec.txt",
                 # "JEC/MC/Summer19UL17_V5_MC_L1RC_AK4PFchs.jec.txt",
-                "JEC/MC/Summer19UL17_V5_MC_L2L3Residual_AK4PFchs.jec.txt",
-                "JEC/MC/Summer19UL17_V5_MC_L2Relative_AK4PFchs.jec.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_L2L3Residual_AK4PFchs.jec.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_L2Relative_AK4PFchs.jec.txt",
                 # "JEC/MC/Summer19UL17_V5_MC_L2Residual_AK4PFchs.jec.txt",
-                "JEC/MC/Summer19UL17_V5_MC_L3Absolute_AK4PFchs.jec.txt",
-                "JEC/MC/RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_L3Absolute_AK4PFchs.jec.txt",
+                "JEC/MC/2017/RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
                 # JER
                 # "JER/MC/Summer19UL17_JRV3_MC_EtaResolution_AK4PFchs.jr.txt",
                 # "JER/MC/Summer19UL17_JRV3_MC_PhiResolution_AK4PFchs.jr.txt",
-                "JER/MC/Summer19UL17_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
-                "JER/MC/Summer19UL17_JRV3_MC_SF_AK4PFchs.jersf.txt",
+                "JER/MC/2017/Summer19UL17_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
+                "JER/MC/2017/Summer19UL17_JRV3_MC_SF_AK4PFchs.jersf.txt",
             ]
-        )
+        ),
+        "2018": jet_factory_factory(
+            files=[
+                # JEC
+                "JEC/MC/2018/Summer19UL18_V5_MC_L1FastJet_AK4PFchs.jec.txt",
+                "JEC/MC/2018/Summer19UL18_V5_MC_L2L3Residual_AK4PFchs.jec.txt",
+                "JEC/MC/2018/Summer19UL18_V5_MC_L2Relative_AK4PFchs.jec.txt",
+                "JEC/MC/2018/Summer19UL18_V5_MC_L3Absolute_AK4PFchs.jec.txt",
+                "JEC/MC/2018/RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                # JER
+                "JER/MC/2018/Summer19UL18_JRV2_MC_PtResolution_AK4PFchs.jr.txt",
+                "JER/MC/2018/Summer19UL18_JRV2_MC_SF_AK4PFchs.jersf.txt",
+            ]
+        ),
     }
     met_factory = CorrectedMETFactory(jec_name_map)
 
