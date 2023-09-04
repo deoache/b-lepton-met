@@ -70,13 +70,13 @@ class ElectronCorrector:
 
         self.tag = tag
 
-    def add_id_weight(self, working_point: str = "wp80noiso") -> None:
+    def add_id_weight(self, id_working_point: str) -> None:
         """
         add electron identification scale factors to weights container
 
         Parameters:
         -----------
-            working_point:
+            id_working_point:
                 Working point {'Loose', 'Medium', 'Tight', 'wp80iso', 'wp80noiso', 'wp90iso', 'wp90noiso'}
         """
         # electron pseudorapidity range: (-inf, inf)
@@ -93,14 +93,14 @@ class ElectronCorrector:
         # get scale factors
         values = {}
         values["nominal"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sf", working_point, electron_eta, electron_pt
+            year, "sf", id_working_point, electron_eta, electron_pt
         )
         if self.variation == "nominal":
             values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfup", working_point, electron_eta, electron_pt
+                year, "sfup", id_working_point, electron_eta, electron_pt
             )
             values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfdown", working_point, electron_eta, electron_pt
+                year, "sfdown", id_working_point, electron_eta, electron_pt
             )
             # add scale factors to weights container
             self.weights.add(
@@ -209,6 +209,12 @@ class MuonCorrector:
         Year modifier {'', 'APV'}
     tag:
         label to include in the weight name
+    variation:
+        syst variation
+    id_wp:
+        ID working point {'loose', 'medium', 'tight'}
+    iso_wp:
+        Iso working point {'loose', 'medium', 'tight'}
     """
 
     def __init__(
@@ -218,9 +224,13 @@ class MuonCorrector:
         year: str = "2017",
         year_mod: str = "",
         tag: str = "muon",
-        variation: str = "nominal"
+        variation: str = "nominal",
+        id_wp: str = "tight",
+        iso_wp: str = "tight",
     ) -> None:
         self.variation = variation
+        self.id_wp = id_wp
+        self.iso_wp = iso_wp
         # muon array
         self.muons = muons
 
@@ -242,30 +252,23 @@ class MuonCorrector:
 
         self.tag = tag
 
-    def add_id_weight(self, working_point: str = "tight") -> None:
+    def add_id_weight(self) -> None:
         """
         add muon ID scale factors to weights container
-        Parameters:
-        -----------
-            working_point:
-                Working point {'medium', 'tight'}
         """
-        self.add_weight(sf_type="id", working_point=working_point)
+        self.add_weight(sf_type="id")
 
-    def add_iso_weight(self, working_point: str = "tight") -> None:
+    def add_iso_weight(self) -> None:
         """
         add muon Iso (LooseRelIso with mediumID) scale factors to weights container
-        Parameters:
-        -----------
-            working_point:
-                Working point {'medium', 'tight'}
         """
-        self.add_weight(sf_type="iso", working_point=working_point)
+        self.add_weight(sf_type="iso")
 
     def add_triggeriso_weight(self) -> None:
+        assert self.id_wp == "tight" and self.iso_wp == "tight", "there's only available muon trigger SF for 'tight' ID and Iso"
         """add muon Trigger Iso (IsoMu24 or IsoMu27) scale factors"""
         # muon absolute pseudorapidity range: [0, 2.4)
-        muon_eta = np.clip(self.muon_eta.copy(), 0.0, 2.399)
+        muon_eta = np.clip(np.abs(self.muon_eta).copy(), 0.0, 2.399)
 
         # muon pt range: [29, 200)
         muon_pt = np.clip(self.muon_pt.copy(), 29.0, 199.999)
@@ -301,7 +304,7 @@ class MuonCorrector:
                 weight=values["nominal"],
             )
 
-    def add_weight(self, sf_type: str, working_point: str = "tight") -> None:
+    def add_weight(self, sf_type: str) -> None:
         """
         add muon ID (TightID) or Iso (LooseRelIso with mediumID) scale factors
 
@@ -309,23 +312,38 @@ class MuonCorrector:
         -----------
             sf_type:
                 Type of scale factor {'id', 'iso'}
-            working_point:
-                Working point {'medium', 'tight'}
         """
+        if self.iso_wp == "tight":
+            assert self.id_wp != "loose", "there's no available SFs"
+            
         # muon absolute pseudorapidity range: [0, 2.4)
-        muon_eta = np.clip(self.muon_eta.copy(), 0.0, 2.399)
+        muon_eta = np.clip(np.abs(self.muon_eta).copy(), 0.0, 2.399)
 
         # muon pt range: [15, 120)
         muon_pt = np.clip(self.muon_pt.copy(), 15.0, 119.999)
 
         # 'id' and 'iso' scale factors keys
+        id_corrections = {
+            "loose": "NUM_LooseID_DEN_TrackerMuons",
+            "medium": "NUM_MediumID_DEN_TrackerMuons",
+            "tight": "NUM_TightID_DEN_TrackerMuons"
+        }
+        if self.iso_wp == "loose":
+            if self.id_wp == "loose":
+                iso_correction = "NUM_LooseRelIso_DEN_LooseID"
+            elif self.id_wp == "medium":
+                iso_correction = "NUM_LooseRelIso_DEN_MediumID"
+            elif self.id_wp == "tight": 
+                iso_correction = "NUM_LooseRelIso_DEN_TightIDandIPCut"
+        if self.iso_wp == "tight":
+            if self.id_wp == "medium":
+                iso_correction = "NUM_TightRelIso_DEN_MediumID"
+            elif self.id_wp == "tight": 
+                iso_correction = "NUM_TightRelIso_DEN_TightIDandIPCut"
+            
         sfs_keys = {
-            "id": "NUM_TightID_DEN_TrackerMuons"
-            if working_point == "tight"
-            else "NUM_MediumPromptID_DEN_TrackerMuons",
-            "iso": "NUM_LooseRelIso_DEN_TightIDandIPCut"
-            if working_point == "tight"
-            else "NUM_LooseRelIso_DEN_MediumID",
+            "id": id_corrections[self.id_wp],
+            "iso": iso_correction
         }
         # get scale factors
         values = {}
