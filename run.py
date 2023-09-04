@@ -16,11 +16,14 @@ from distributed.diagnostics.plugin import UploadDirectory
 #from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 #from wprime_plus_b.processors.ztoll_processor_v2 import ZToLLProcessor
 #from wprime_plus_b.processors.ttbar_analysis_processor_deltaphi import TtbarAnalysis
+#from wprime_plus_b.processors.ttbar_analysis_sftest import TtbarAnalysis
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 #from wprime_plus_b.processors.qcd_analysis_processor import QcdAnalysis
 #from wprime_plus_b.processors.cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
 #from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
+from wprime_plus_b.selections.ttbar.config import electron_selection, muon_selection, jet_selection
+
 
 def main(args):
     np.seterr(divide="ignore", invalid="ignore")
@@ -32,7 +35,7 @@ def main(args):
         if args.nfiles != -1:
             val = val[: args.nfiles]
         fileset[sample] = [f"root://{args.redirector}/" + file for file in val]
-
+        
     # define processors
     processors = {
         #"signal": SignalRegionProcessor,
@@ -102,9 +105,12 @@ def main(args):
     metadata = {"walltime": exec_time}
     metadata.update({'events_before': float(out["metadata"]['events_before'])})
     metadata.update({'events_after': float(out["metadata"]['events_after'])})
+    metadata.update({"fileset": fileset[sample]})
+    metadata.update({"electron_selection": electron_selection[args.channel][args.lepton_flavor]})
+    metadata.update({"muon_selection": muon_selection[args.channel][args.lepton_flavor]})
+    metadata.update({"jet_selection": jet_selection[args.channel][args.lepton_flavor]})
     if "sumw" in out["metadata"]:
         metadata.update({'sumw': float(out["metadata"]['sumw'])})
-    metadata.update({"fileset": fileset[sample]})
     
     # save args to metadata
     args_dict = vars(args).copy()
