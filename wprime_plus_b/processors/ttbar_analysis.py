@@ -14,6 +14,11 @@ from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
+from wprime_plus_b.selections.ttbar.config import (
+    electron_selection,
+    muon_selection,
+    jet_selection,
+)
 from wprime_plus_b.selections.ttbar.lepton_selection import (
     select_good_electrons,
     select_good_muons,
@@ -39,6 +44,8 @@ class TtbarAnalysis(processor.ProcessorABC):
         working point of the deepJet tagger
     syst:
         systematics to apply
+    output_type:
+
     """
 
     def __init__(
@@ -47,15 +54,13 @@ class TtbarAnalysis(processor.ProcessorABC):
         lepton_flavor: str = "ele",
         year: str = "2017",
         yearmod: str = "",
-        btag_wp: str = "M",
         syst: str = "nominal",
-        output_type="hist",
+        output_type: str = "hist",
     ):
         self._year = year
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
         self._channel = channel
-        self._btag_wp = btag_wp
         self._syst = syst
         self._output_type = output_type
 
@@ -129,12 +134,33 @@ class TtbarAnalysis(processor.ProcessorABC):
             # -------------------
             # select good electrons
             good_electrons = select_good_electrons(
-                events, channel=self._channel, lepton_flavor=self._lepton_flavor
+                events=events,
+                electron_pt_threshold=electron_selection[self._channel][
+                    self._lepton_flavor
+                ]["electron_pt_threshold"],
+                electron_id_wp=electron_selection[self._channel][self._lepton_flavor][
+                    "electron_id_wp"
+                ],
+                electron_iso_wp=electron_selection[self._channel][self._lepton_flavor][
+                    "electron_iso_wp"
+                ],
             )
             electrons = events.Electron[good_electrons]
 
             # select good muons
-            good_muons = select_good_muons(events) & (
+            good_muons = select_good_muons(
+                events=events,
+                muon_pt_threshold=muon_selection[self._channel][self._lepton_flavor][
+                    "muon_pt_threshold"
+                ],
+                muon_id_wp=muon_selection[self._channel][self._lepton_flavor][
+                    "muon_id_wp"
+                ],
+                muon_iso_wp=muon_selection[self._channel][self._lepton_flavor][
+                    "muon_iso_wp"
+                ],
+            )
+            good_muons = (good_muons) & (
                 delta_r_mask(events.Muon, electrons, threshold=0.4)
             )
             muons = events.Muon[good_muons]
@@ -173,10 +199,22 @@ class TtbarAnalysis(processor.ProcessorABC):
                 corrected_jets, met = events.Jet, events.MET
 
             # select good bjets
+            good_bjets = select_good_bjets(
+                events=events,
+                year=self._year,
+                btag_working_point=jet_selection[self._channel][self._lepton_flavor][
+                    "btag_working_point"
+                ],
+                jet_pt_threshold=jet_selection[self._channel][self._lepton_flavor][
+                    "jet_pt_threshold"
+                ],
+                jet_id=jet_selection[self._channel][self._lepton_flavor]["jet_id"],
+                jet_pileup_id=jet_selection[self._channel][self._lepton_flavor][
+                    "jet_pileup_id"
+                ],
+            )
             good_bjets = (
-                select_good_bjets(
-                    jets=corrected_jets, year=self._year, working_point=self._btag_wp
-                )
+                good_bjets
                 & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
                 & (delta_r_mask(corrected_jets, muons, threshold=0.4))
             )
@@ -334,7 +372,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             region_selection = self.selections.all(self._region)
 
-            # if there are no events left after selection cuts continue to the next .root file
+            # check that there are events left after selection
             nevents_after = ak.sum(region_selection)
             if nevents_after > 0:
                 # select region objects
@@ -430,13 +468,14 @@ class TtbarAnalysis(processor.ProcessorABC):
                         variation=syst_var,
                     )
                     # b-tagging corrector
-                    njets = 1 if self._channel != "2b1l" else 2
                     btag_corrector = BTagCorrector(
                         jets=region_bjets,
-                        njets=njets,
+                        njets=2 if self._channel == "2b1l" else 1,
                         weights=weights_container,
                         sf_type="comb",
-                        worging_point="M",
+                        worging_point=jet_selection[self._channel][self._lepton_flavor][
+                            "btag_working_point"
+                        ],
                         tagger="deepJet",
                         year=self._year,
                         year_mod=self._yearmod,
@@ -445,8 +484,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     )
                     # add b-tagging weights
                     btag_corrector.add_btag_weights(flavor="bc")
-                    # if self._channel != "1b1e1mu":
-                    #    btag_corrector.add_btag_weights(flavor="light")
 
                     # electron corrector
                     if (self._channel == "1b1e1mu") or (self._lepton_flavor == "ele"):
@@ -460,9 +497,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                         )
                         # add electron ID weights
                         electron_corrector.add_id_weight(
-                            working_point="wp80noiso"
-                            if self._lepton_flavor == "ele"
-                            else "wp90noiso",
+                            id_working_point=electron_selection[self._channel][
+                                self._lepton_flavor
+                            ]["electron_id_wp"]
                         )
                         # add electron reco weights
                         electron_corrector.add_reco_weight()
@@ -475,21 +512,27 @@ class TtbarAnalysis(processor.ProcessorABC):
                             year_mod=self._yearmod,
                             tag="leading_muon",
                             variation=syst_var,
+                            id_wp=muon_selection[self._channel][self._lepton_flavor][
+                                "muon_id_wp"
+                            ],
+                            iso_wp=muon_selection[self._channel][self._lepton_flavor][
+                                "muon_iso_wp"
+                            ],
                         )
                         # add muon ID weights
-                        muon_corrector.add_id_weight(working_point="tight")
+                        muon_corrector.add_id_weight()
 
                         # add muon iso weights
-                        muon_corrector.add_iso_weight(working_point="tight")
+                        muon_corrector.add_iso_weight()
                     # add trigger weights
                     if self._channel == "1b1e1mu":
                         if self._lepton_flavor == "ele":
                             muon_corrector.add_triggeriso_weight()
                         else:
-                            electron_corrector.add_trigger_weight()
+                            pass  # electron_corrector.add_trigger_weight()
                     else:
                         if self._lepton_flavor == "ele":
-                            electron_corrector.add_trigger_weight()
+                            pass  # electron_corrector.add_trigger_weight()
                         else:
                             muon_corrector.add_triggeriso_weight()
 
@@ -507,26 +550,15 @@ class TtbarAnalysis(processor.ProcessorABC):
                             if "genweight" not in weight
                         ]
                         event_weight_syst_variations_up = [
-                            f"{event_weight}Up"
-                            for event_weight in event_weights
-                            if event_weight
-                            not in [
-                                "leading_electron_trigger",
-                                "subleading_electron_trigger",
-                            ]
+                            f"{event_weight}Up" for event_weight in event_weights
                         ]
                         event_weight_syst_variations_down = [
-                            f"{event_weight}Down"
-                            for event_weight in event_weights
-                            if event_weight
-                            not in [
-                                "leading_electron_trigger",
-                                "subleading_electron_trigger",
-                            ]
+                            f"{event_weight}Down" for event_weight in event_weights
                         ]
                         event_weight_syst = ["nominal"]
                         event_weight_syst.extend(event_weight_syst_variations_up)
                         event_weight_syst.extend(event_weight_syst_variations_down)
+
                         for variation in event_weight_syst:
                             # get weight
                             if variation == "nominal":
@@ -568,6 +600,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         )
                 elif self._output_type == "array":
                     self.add_feature("weights", weights_container.weight())
+                    self.add_feature("genweights", weights_container.partial_weight("genweight"))
                     # select variables and put them in column accumulators
                     array_dict = {
                         feature_name: processor.column_accumulator(
