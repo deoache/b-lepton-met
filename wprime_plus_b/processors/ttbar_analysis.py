@@ -200,7 +200,7 @@ class TtbarAnalysis(processor.ProcessorABC):
 
             # select good bjets
             good_bjets = select_good_bjets(
-                events=events,
+                jets=corrected_jets,
                 year=self._year,
                 btag_working_point=jet_selection[self._channel][self._lepton_flavor][
                     "btag_working_point"

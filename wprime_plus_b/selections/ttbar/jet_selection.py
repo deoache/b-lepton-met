@@ -6,7 +6,7 @@ from coffea.nanoevents.methods.base import NanoEventsArray
 
 
 def select_good_bjets(
-    events: NanoEventsArray,
+    jets,
     year: str = "2017",
     btag_working_point: str = "M",
     jet_pt_threshold: int = 20,
@@ -54,23 +54,23 @@ def select_good_bjets(
 
     # break up selection for low and high pT jets
     low_pt_jets_mask = (
-        (events.Jet.pt > jet_pt_threshold)
-        & (events.Jet.pt < 50)
-        & (np.abs(events.Jet.eta) < 2.4)
-        & (events.Jet.jetId == jet_id)
-        & (events.Jet.puId == jet_pileup_id)
-        & (events.Jet.btagDeepFlavB > btag_threshold)
+        (jets.pt > jet_pt_threshold)
+        & (jets.pt < 50)
+        & (np.abs(jets.eta) < 2.4)
+        & (jets.jetId == jet_id)
+        & (jets.puId == jet_pileup_id)
+        & (jets.btagDeepFlavB > btag_threshold)
     )
 
     high_pt_jets_mask = (
-        (events.Jet.pt >= 50)
-        & (np.abs(events.Jet.eta) < 2.4)
-        & (events.Jet.jetId == jet_id)
-        & (events.Jet.btagDeepFlavB > btag_threshold)
+        (jets.pt >= 50)
+        & (np.abs(jets.eta) < 2.4)
+        & (jets.jetId == jet_id)
+        & (jets.btagDeepFlavB > btag_threshold)
     )
 
     return ak.where(
-        (events.Jet.pt > jet_pt_threshold) & (events.Jet.pt < 50),
+        (jets.pt > jet_pt_threshold) & (jets.pt < 50),
         low_pt_jets_mask,
         high_pt_jets_mask,
     )
