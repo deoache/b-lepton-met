@@ -2,7 +2,6 @@ import json
 import numpy as np
 import awkward as ak
 import importlib.resources
-from coffea.nanoevents.methods.base import NanoEventsArray
 
 
 def select_good_bjets(
