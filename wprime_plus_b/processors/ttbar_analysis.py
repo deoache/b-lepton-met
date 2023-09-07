@@ -15,9 +15,9 @@ from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
 from wprime_plus_b.selections.ttbar.config import (
-    electron_selection,
-    muon_selection,
-    jet_selection,
+    ttbar_electron_selection,
+    ttbar_muon_selection,
+    ttbar_jet_selection,
 )
 from wprime_plus_b.selections.ttbar.lepton_selection import (
     select_good_electrons,
@@ -135,13 +135,13 @@ class TtbarAnalysis(processor.ProcessorABC):
             # select good electrons
             good_electrons = select_good_electrons(
                 events=events,
-                electron_pt_threshold=electron_selection[self._channel][
+                electron_pt_threshold=ttbar_electron_selection[self._channel][
                     self._lepton_flavor
                 ]["electron_pt_threshold"],
-                electron_id_wp=electron_selection[self._channel][self._lepton_flavor][
+                electron_id_wp=ttbar_electron_selection[self._channel][self._lepton_flavor][
                     "electron_id_wp"
                 ],
-                electron_iso_wp=electron_selection[self._channel][self._lepton_flavor][
+                electron_iso_wp=ttbar_electron_selection[self._channel][self._lepton_flavor][
                     "electron_iso_wp"
                 ],
             )
@@ -150,13 +150,13 @@ class TtbarAnalysis(processor.ProcessorABC):
             # select good muons
             good_muons = select_good_muons(
                 events=events,
-                muon_pt_threshold=muon_selection[self._channel][self._lepton_flavor][
+                muon_pt_threshold=ttbar_muon_selection[self._channel][self._lepton_flavor][
                     "muon_pt_threshold"
                 ],
-                muon_id_wp=muon_selection[self._channel][self._lepton_flavor][
+                muon_id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
                     "muon_id_wp"
                 ],
-                muon_iso_wp=muon_selection[self._channel][self._lepton_flavor][
+                muon_iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
                     "muon_iso_wp"
                 ],
             )
@@ -202,14 +202,14 @@ class TtbarAnalysis(processor.ProcessorABC):
             good_bjets = select_good_bjets(
                 jets=corrected_jets,
                 year=self._year,
-                btag_working_point=jet_selection[self._channel][self._lepton_flavor][
+                btag_working_point=ttbar_jet_selection[self._channel][self._lepton_flavor][
                     "btag_working_point"
                 ],
-                jet_pt_threshold=jet_selection[self._channel][self._lepton_flavor][
+                jet_pt_threshold=ttbar_jet_selection[self._channel][self._lepton_flavor][
                     "jet_pt_threshold"
                 ],
-                jet_id=jet_selection[self._channel][self._lepton_flavor]["jet_id"],
-                jet_pileup_id=jet_selection[self._channel][self._lepton_flavor][
+                jet_id=ttbar_jet_selection[self._channel][self._lepton_flavor]["jet_id"],
+                jet_pileup_id=ttbar_jet_selection[self._channel][self._lepton_flavor][
                     "jet_pileup_id"
                 ],
             )
@@ -473,7 +473,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         njets=2 if self._channel == "2b1l" else 1,
                         weights=weights_container,
                         sf_type="comb",
-                        worging_point=jet_selection[self._channel][self._lepton_flavor][
+                        worging_point=ttbar_jet_selection[self._channel][self._lepton_flavor][
                             "btag_working_point"
                         ],
                         tagger="deepJet",
@@ -497,7 +497,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         )
                         # add electron ID weights
                         electron_corrector.add_id_weight(
-                            id_working_point=electron_selection[self._channel][
+                            id_working_point=ttbar_electron_selection[self._channel][
                                 self._lepton_flavor
                             ]["electron_id_wp"]
                         )
@@ -512,10 +512,10 @@ class TtbarAnalysis(processor.ProcessorABC):
                             year_mod=self._yearmod,
                             tag="leading_muon",
                             variation=syst_var,
-                            id_wp=muon_selection[self._channel][self._lepton_flavor][
+                            id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
                                 "muon_id_wp"
                             ],
-                            iso_wp=muon_selection[self._channel][self._lepton_flavor][
+                            iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
                                 "muon_iso_wp"
                             ],
                         )

@@ -1,4 +1,4 @@
-electron_selection = {
+ttbar_electron_selection = {
     "1b1e1mu": {
         "ele": {
             "electron_pt_threshold": 30,
@@ -37,7 +37,7 @@ electron_selection = {
     },
 }
 
-muon_selection = {
+ttbar_muon_selection = {
     "1b1e1mu": {
         "ele": {
             "muon_pt_threshold": 35,
@@ -76,7 +76,7 @@ muon_selection = {
     },
 }
 
-jet_selection = {
+ttbar_jet_selection = {
     "1b1e1mu": {
         "ele": {
             "jet_pt_threshold": 20,

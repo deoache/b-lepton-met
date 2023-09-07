@@ -18,11 +18,13 @@ from distributed.diagnostics.plugin import UploadDirectory
 #from wprime_plus_b.processors.ttbar_analysis_processor_deltaphi import TtbarAnalysis
 #from wprime_plus_b.processors.ttbar_analysis_sftest import TtbarAnalysis
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
+from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
 #from wprime_plus_b.processors.qcd_analysis_processor import QcdAnalysis
 #from wprime_plus_b.processors.cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
 #from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
-from wprime_plus_b.selections.ttbar.config import electron_selection, muon_selection, jet_selection
+from wprime_plus_b.selections.ttbar.config import ttbar_electron_selection, ttbar_muon_selection, ttbar_jet_selection
+from wprime_plus_b.selections.ztoll.config import ztoll_electron_selection, ztoll_muon_selection, ztoll_jet_selection
 
 
 def main(args):
@@ -40,9 +42,9 @@ def main(args):
     processors = {
         #"signal": SignalRegionProcessor,
         "ttbar": TtbarAnalysis,
+        "ztoll": ZToLLProcessor,
         #"qcd": QcdAnalysis,
         #"ttbar_cr2": TTbarCR2Processor,
-        #"ztoll": ZToLLProcessor,
         #"btag_eff": BTagEfficiencyProcessor,
         #"ttbar_cr1": TTbarCR1Processor,
         #"ttbar_cr2": TTbarCR2Processor,
@@ -60,7 +62,6 @@ def main(args):
     if args.processor in ["ztoll", "btag_eff", "qcd"]:
         del processor_kwargs["channel"]
         del processor_kwargs["syst"]
-        del processor_kwargs["output_type"]
     if args.processor == "btag_eff":
         del processor_kwargs["lepton_flavor"]
 
@@ -106,11 +107,25 @@ def main(args):
     metadata.update({'events_before': float(out["metadata"]['events_before'])})
     metadata.update({'events_after': float(out["metadata"]['events_after'])})
     metadata.update({"fileset": fileset[sample]})
-    metadata.update({"electron_selection": electron_selection[args.channel][args.lepton_flavor]})
-    metadata.update({"muon_selection": muon_selection[args.channel][args.lepton_flavor]})
-    metadata.update({"jet_selection": jet_selection[args.channel][args.lepton_flavor]})
     if "sumw" in out["metadata"]:
         metadata.update({'sumw': float(out["metadata"]['sumw'])})
+    
+    # save selectios to metadata
+    selections = {
+        "ttbar": {
+            "electron_selection": ttbar_electron_selection[args.channel][args.lepton_flavor],
+            "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
+            "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
+        },
+        "ztoll": {
+            "electron_selection": ztoll_electron_selection,
+            "muon_selection": ztoll_muon_selection,
+            "jet_selection": ztoll_jet_selection,
+        }
+    }
+    metadata.update({"electron_selection": selections[args.processor]["electron_selection"]})
+    metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
+    metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
     
     # save args to metadata
     args_dict = vars(args).copy()
