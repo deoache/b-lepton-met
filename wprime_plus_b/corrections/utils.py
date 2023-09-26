@@ -22,6 +22,7 @@ POG_JSONS = {
     "pileup": ["LUM", "puWeights.json.gz"],
     "btag": ["BTV", "btagging.json.gz"],
     "met": ["JME", "met.json.gz"],
+    "pujetid": ["JME", "jmar.json.gz"]
 }
 
 pog_years = {
