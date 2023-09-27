@@ -12,6 +12,7 @@ from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.pileup import add_pileup_weight
+from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
 from wprime_plus_b.selections.ttbar.config import (
@@ -297,8 +298,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "2b1l": {
                     "ele": [
                         "lumi",
-                        "metfilters",
                         "trigger_ele",
+                        "metfilters",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -307,8 +308,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                     "mu": [
                         "lumi",
-                        "metfilters",
                         "trigger_mu",
+                        "metfilters",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -319,8 +320,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "1b1e1mu": {
                     "ele": [
                         "lumi",
-                        "metfilters",
                         "trigger_mu",
+                        "metfilters",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -329,8 +330,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                     "mu": [
                         "lumi",
-                        "metfilters",
                         "trigger_ele",
+                        "metfilters",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -341,8 +342,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "1b1l": {
                     "ele": [
                         "lumi",
-                        "metfilters",
                         "trigger_ele",
+                        "metfilters",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -351,8 +352,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                     "mu": [
                         "lumi",
-                        "metfilters",
                         "trigger_mu",
+                        "metfilters",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -467,6 +468,16 @@ class TtbarAnalysis(processor.ProcessorABC):
                         year_mod=self._yearmod,
                         variation=syst_var,
                     )
+                    # add pujetid weights
+                    add_pujetid_weight(
+                        jets=region_bjets,
+                        weights=weights_container,
+                        year=self._year,
+                        year_mod=self._yearmod,
+                        working_point="T",
+                        variation=syst_var,
+                    )
+                    print(weights_container.partial_weight(include=["pujetid"]))
                     # b-tagging corrector
                     btag_corrector = BTagCorrector(
                         jets=region_bjets,
@@ -599,8 +610,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                             weight=syst_weight,
                         )
                 elif self._output_type == "array":
+                    # uncoment next two lines to save individual weights
+                    #for weight in weights_container.weightStatistics:
+                    #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
                     self.add_feature("weights", weights_container.weight())
-                    self.add_feature("genweights", weights_container.partial_weight("genweight"))
+            
                     # select variables and put them in column accumulators
                     array_dict = {
                         feature_name: processor.column_accumulator(
