@@ -167,7 +167,7 @@ class ZToLLProcessor(processor.ProcessorABC):
         # check that dilepton system is neutral
         self.selections.add("neutral", leading_lepton.charge * subleading_lepton.charge < 0)
         # check that dilepton invariant mass is between 60 and 120 GeV
-        self.selections.add("mass_range", (60 < dilepton_mass) & (dilepton_mass < 120))
+        self.selections.add("mass_range", (70 < dilepton_mass) & (dilepton_mass < 110))
         # veto bjets
         self.selections.add("bjet_veto", ak.num(bjets) == 0)
         # veto taus
@@ -177,8 +177,8 @@ class ZToLLProcessor(processor.ProcessorABC):
         regions = {
             "ele": [
                 "lumi",
-                "metfilters",
                 "trigger_ele",
+                "metfilters",
                 "tau_veto",
                 "bjet_veto",
                 "two_leptons",
@@ -187,8 +187,8 @@ class ZToLLProcessor(processor.ProcessorABC):
             ],
             "mu": [
                 "lumi",
-                "metfilters",
                 "trigger_mu",
+                "metfilters",
                 "tau_veto",
                 "bjet_veto",
                 "two_leptons",
@@ -216,16 +216,6 @@ class ZToLLProcessor(processor.ProcessorABC):
             # add dilepton invariant mass to out
             region_dilepton_mass = (region_leading_lepton + region_subleading_lepton).mass
             self.add_feature("dilepton_mass", region_dilepton_mass)
-            
-            # features for corrections
-            if self._output_type == "array":
-                self.add_feature("L1PreFiringWeight", events.L1PreFiringWeight.Nom[region_selection])
-                self.add_feature("leading_lepton_pt", region_leading_lepton.pt)
-                self.add_feature("subleading_lepton_pt", region_subleading_lepton.pt)
-                self.add_feature("leading_lepton_eta", region_leading_lepton.eta)
-                self.add_feature("subleading_lepton_eta", region_subleading_lepton.eta)
-                if self.is_mc:
-                    self.add_feature("npu", events.Pileup.nPU[region_selection])
         
             # -------------
             # event weights

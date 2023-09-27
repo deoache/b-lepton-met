@@ -36,9 +36,7 @@ def select_good_electrons(
     electron_pt_mask = events.Electron.pt >= electron_pt_threshold
 
     # electron pseudorapidity mask
-    electron_eta_mask = (np.abs(events.Electron.eta) < 2.4) & (
-        (np.abs(events.Electron.eta) < 1.44) | (np.abs(events.Electron.eta) > 1.57)
-    )
+    electron_eta_mask = np.abs(events.Electron.eta) < 2.1
 
     # electron ID and Iso mask
     id_wps = {
@@ -102,7 +100,7 @@ def select_good_muons(
     muon_pt_mask = events.Muon.pt >= muon_pt_threshold
 
     # electron pseudorapidity mask
-    muon_eta_mask = np.abs(events.Muon.eta) < 2.4
+    muon_eta_mask = np.abs(events.Muon.eta) < 2.1
 
     # muon ID mask https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
     id_wps = {
