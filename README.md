@@ -10,12 +10,12 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
 
 - [Processors](#Processors)
     * [Trigger efficiency erocessor](#Trigger-efficiency-processor)
-    * [First tt control region processor](#First-tt-control-region-processor)
-    * [Second tt control region processor](#Second-tt-control-region-processor)
+    * [$t\bar{t}$ processor](#tt-processor)
+- [Corrections and scale factors](#Corrections-and-scale-factors)
 - [How to run](#How-to-run)
     * [Submitting jobs at Coffea-Casa](#Submitting-jobs-at-Coffea-Casa)
     * [Submitting condor jobs at lxplus](#Submitting-condor-jobs-at-lxplus)
-- [Scale factors](#Scale-factors)
+
 - [Setting up coffea environments](#Setting-up-coffea-environments)
 - [Data fileset](#Data-fileset)
     * [Re-making the input dataset files with DAS](#Re-making-the-input-dataset-files-with-DAS)
@@ -110,11 +110,11 @@ The reference and main triggers, alongside the selection criteria applied to est
 | $N(e) = 1$                       |
 
 
-### [First tt control region](processors/ttbar_cr1_processor.py) 
+### [$t\bar{t}$ processor](processors/ttbar_analysis.py) 
 
-Processor use to estimate backgrounds in a $t\bar{t}$ control region. 
+Processor use to estimate backgrounds in two $t\bar{t}$ control regions (`2b1l` and `1b1e1mu`) and signal region (`1b1l`), in both $e$ and $\mu$ lepton channels.
 
-The processor applies the following pre-selection cuts for the electron (ele) and muon (mu) channels:
+**`2b1l` region**: The processor applies the following pre-selection cuts for the electron (ele) and muon (mu) channels:
 
 | $$\textbf{Object}$$    | $$\textbf{Variable}$$          | $$\textbf{Cut}$$                                                    | 
 | ---------------------  | ------------------------------ | ------------------------------------------------------------------- |
@@ -179,10 +179,9 @@ expected to be run with the `SingleElectron` dataset.
 | $\Delta R (\mu, bjet_0) \gt 0.4$ |
 
 expected to be run with the `SingleMuon` dataset.
+ 
 
-### [Second tt control region](processors/ttbar_cr2_processor.py) 
-
-Processor use to estimate backgrounds in a $t\bar{t}$ control region. 
+**`1b1e1mu` region:** Processor use to estimate backgrounds in a $t\bar{t}$ control region. 
 
 The processor applies the following pre-selection cuts for the electron (ele) and muon (mu) channels:
 
@@ -250,6 +249,48 @@ expected to be run with the `SingleMuon` dataset.
 | $\Delta R (e, bjet_0) \gt 0.4$ |
 
 expected to be run with the `SingleElectron` dataset.
+
+## Corrections and scale factors
+
+We implemented particle-level corrections and event-level scale factors
+
+### Particle-level corrections 
+
+**JEC/JER corrections**: The basic idea behind the JEC corrections at CMS is the following: *"The detector response to particles is not linear and therefore it is not straightforward to translate the measured jet energy to the true particle or parton energy. The jet corrections are a set of tools that allows the proper mapping of the measured jet energy deposition to the particle-level jet energy"* (see https://twiki.cern.ch/twiki/bin/view/CMS/IntroToJEC).
+
+We follow the recomendations by the Jet Energy Resolution and Corrections (JERC) group (see https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECDataMC#Recommended_for_MC). In order to apply these corrections to the MC (in data, the corrections are already applied) we use the `jetmet_tools` from Coffea (https://coffeateam.github.io/coffea/modules/coffea.jetmet_tools.html). With these tools, we construct the [Jet and MET factories](wprime_plus_b/data/scripts/build_jec.py) which contain the JEC/JER corrections that are eventually loaded in the function [`jet_corrections`](wprime_plus_b/corrections/jec.py), which is the function we use in the processors to apply the corrections to the jet and MET objects.
+
+**Note**: Since we modify the kinematic properties of jets, we must recalculate the MET. That's the work of the MET factory: it takes the corrected jets as an argument, and use them to recalculate the MET.
+
+**Note:** These corrections must be applied before performing any kind of selection.
+
+**MET phi modulation:** The distribution of true MET is independent of $\phi$ because of the rotational symmetry of the collisions around the beam axis. However, we observe that the reconstructed MET does depend on $\phi$. The MET $\phi$ distribution has roughly a sinusoidal curve with the period of $2\pi$. The possible causes of the modulation include anisotropic detector responses, inactive calorimeter cells, the detector misalignment, the displacement of the beam spot. The amplitude of the modulation increases roughly linearly with the number of the pile-up interactions.
+
+We implement this correction [here](wprime_plus_b/corrections/met.py). This correction reduces the MET $\phi$ modulation. It is also a mitigation for the pile-up effects. 
+
+(taken from https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMetAnalysis#7_7_6_MET_Corrections)
+
+### Event-level scale factors (SF)
+
+We use the common json format for scale factors (SF), hence the requirement to install [correctionlib](https://github.com/cms-nanoAOD/correctionlib). The SF themselves can be found in the central [POG repository](https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration), synced once a day with CVMFS: `/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration`. A summary of their content can be found [here](https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/). The SF implemented are:
+
+* [Pileup SF](wprime_plus_b/corrections/pileup.py)
+* [Electron ID, Reconstruction and Trigger* SF](wprime_plus_b/corrections/lepton.py) (see the `ElectronCorrector` class)
+* [Muon ID, Iso and TriggerIso ](wprime_plus_b/corrections/lepton.py) (see the `MuonCorrector` class)
+* [PileupJetId SF](wprime_plus_b/corrections/pujetid.py)
+* L1PreFiring SF: These are read from the NanoAOD events as `events.L1PreFiringWeight.Nom/Up/Dn`.
+
+*The use of these scale factors are not by default approved from EGM. We are using the scale factors derived by Siqi Yuan https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgHLTScaleFactorMeasurements
+
+* B-tagging: b-tagging weights are computed as (see https://twiki.cern.ch/twiki/bin/viewauth/CMS/BTagSFMethods):
+
+  $$w = \prod_{i=\text{tagged}} \frac{SF_{i} \cdot \varepsilon_i}{\varepsilon_i} \prod_{j=\text{not tagged}} \frac{1 - SF_{j} \cdot \varepsilon_j}{1-\varepsilon_j} $$
+  
+  where $\varepsilon_i$ is the MC b-tagging efficiency and $\text{SF}$ are the b-tagging scale factors. $\text{SF}_i$ and $\varepsilon_i$ are functions of the jet flavor, jet $p_T$, and jet $\eta$. It's important to notice that the two products are 1. over jets tagged at the respective working point, and 2. over jets not tagged at the respective working point. **This is not to be confused with the flavor of the jets**.
+  
+  We can see, then, that the calculation of these weights require the knowledge of the MC b-tagging efficiencies, which depend on the event kinematics. It's important to emphasize that **the BTV POG only provides the scale factors and it is the analyst responsibility to compute the MC b-tagging efficiencies for each jet flavor in their signal and background MC samples before applying the scale factors**. The calculation of the MC b-tagging efficiencies is describe [here](https://github.com/deoache/wprime_plus_b/blob/refactor/corrections/binder/btag_eff.ipynb).
+
+  The computation of the b-tagging weights can be found [here](wprime_plus_b/corrections/btag.py)
 
 ## How to run
 
@@ -356,22 +397,8 @@ If you set `--eos` to `True`, the logs and outputs will be copied to your EOS ar
 * Currently, the processors are only functional for the year 2017. 
 
 
-## Scale factors
 
-We use the common json format for scale factors (SF), hence the requirement to install [correctionlib](https://github.com/cms-nanoAOD/correctionlib). The SF themselves can be found in the central [POG repository](https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration), synced once a day with CVMFS: `/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration`. A summary of their content can be found [here](https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/). The SF implemented are (See [corrections](processors/corrections.py)):
-
-* Pileup
-* btagging
-* Electron ID
-* Electron Reconstruction
-* Electron Trigger*
-* Muon ID
-* Muon Iso
-* Muon Trigger (Iso)
-* MET 
-
-*The use of these scale factors are not by default approved from EGM. We are using the scale factors derived by Siqi Yuan https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgHLTScaleFactorMeasurements
-
+ 
 
 ## Setting up coffea environments
 
