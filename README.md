@@ -9,8 +9,8 @@
 Python package for analyzing W' + b in the electron and muon channels. The analysis uses a columnar framework to process input tree-based [NanoAOD](https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD) files using the [coffea](https://coffeateam.github.io/coffea/) and [scikit-hep](https://scikit-hep.org) Python libraries.
 
 - [Processors](#Processors)
-    * [Trigger efficiency erocessor](#Trigger-efficiency-processor)
-    * [$t\bar{t}$ processor](#tt-processor)
+    * [Trigger efficiency processor](#Trigger-efficiency-processor)
+    * [tt processor](#tt-processor)
 - [Corrections and scale factors](#Corrections-and-scale-factors)
 - [How to run](#How-to-run)
     * [Submitting jobs at Coffea-Casa](#Submitting-jobs-at-Coffea-Casa)
@@ -110,7 +110,7 @@ The reference and main triggers, alongside the selection criteria applied to est
 | $N(e) = 1$                       |
 
 
-### [$t\bar{t}$ processor](processors/ttbar_analysis.py) 
+### [tt processor](processors/ttbar_analysis.py) 
 
 Processor use to estimate backgrounds in two $t\bar{t}$ control regions (`2b1l` and `1b1e1mu`) and signal region (`1b1l`), in both $e$ and $\mu$ lepton channels.
 
@@ -302,29 +302,45 @@ python3 submit.py --help
 The output should look something like this:
 
 ```
-usage: submit.py [-h] [--facility FACILITY] [--redirector REDIRECTOR] [--processor PROCESSOR] [--executor EXECUTOR] [--workers WORKERS] [--year YEAR] [--yearmod YEARMOD] [--channel CHANNEL]
+usage: submit.py [-h] [--facility FACILITY] [--redirector REDIRECTOR] [--processor PROCESSOR] [--executor EXECUTOR]
+                 [--workers WORKERS] [--year YEAR] [--yearmod YEARMOD] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR]
                  [--fileset FILESET] [--sample SAMPLE] [--nfiles NFILES] [--nsplit NSPLIT] [--tag TAG] [--eos EOS]
+                 [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE] [--syst SYST]
 
 optional arguments:
   -h, --help            show this help message and exit
   --facility FACILITY   facility to run jobs {'coffea-casa', 'lxplus'} (default coffea-casa)
   --redirector REDIRECTOR
-                        redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)
+                        redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-
+                        cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)
   --processor PROCESSOR
-                        processor to be used {trigger, ttbar_cr1, ttbar_cr2, candle, btag_eff} (default ttbar_cr1)
+                        processor to be used {trigger, ttbar, candle, btag_eff} (default ttbar)
   --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
   --workers WORKERS     number of workers to use with futures executor (default 4)
   --year YEAR           year of the data {2016, 2017, 2018} (default 2017)
   --yearmod YEARMOD     year modifier {'', 'APV'} (default '')
-  --channel CHANNEL     lepton channel to be processed {'mu', 'ele'} (default mu)
-  --fileset FILESET     name of a json file at `wprime_plus_b/fileset` (default `wprime_plus_b/fileset/fileset_{year}_UL_NANO.json`)
+  --channel CHANNEL     channel to be processed {'2b1l', '1b1e1mu'}
+  --lepton_flavor LEPTON_FLAVOR
+                        lepton flavor to be processed {'mu', 'ele'}
+  --fileset FILESET     name of a json file at `wprime_plus_b/fileset` (default
+                        `wprime_plus_b/fileset/fileset_{year}_UL_NANO.json`)
   --sample SAMPLE       sample key to be processed {'all', 'mc' or <sample_name>} (default all)
   --nfiles NFILES       number of .root files to be processed by sample. To run all files use -1 (default 1)
   --nsplit NSPLIT       number of subsets to divide the fileset into (default 1)
   --tag TAG             tag of the submitted jobs (default test)
   --eos EOS             wheter to copy or not output files to EOS (default False)
+  --nsample NSAMPLE     nsample
+  --chunksize CHUNKSIZE
+                        number of chunks to process
+  --output_type OUTPUT_TYPE
+                        type of output {hist, array}
+  --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
 ```
 By running this script, a desired processor is executed at some facility, defined by the `--facility` flag. [Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is faster and more convenient, however still somewhat experimental so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
+
+The processor to be run is selected using the `--processor` flag. 
+
+In the $t\bar{t}$ case, you can choose channel and lepton flavor by means of the `--channel` and `--lepton_flavor` flags. The output type of the processor (histograms or arrays) is defined with the `output_type` flag.
 
 You can select the executor to run the processor using the `--executor` flag. Three executors are available: `iterative`, `futures`, and `dask`. The `iterative` executor uses a single worker, while the `futures` executor uses the number of workers specified by the `--workers` flag. The `dask` executor uses Dask functionalities to scale up the analysis (only available at coffea-casa).
 
@@ -358,22 +374,24 @@ With `--fileset` you can define the name of a .json fileset at `wprime_plus_b/fi
   * `SingleElectron`
   * `SingleMuon`
 
+If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
+
 To lighten the workload of jobs, the fileset can be divided into sub-filesets by means of the `--nsplit` flag. You can also define the number of `.root` files to use by sample using the `--nfiles` option. Set `--nfiles -1` to use all `.root` files. The `--tag` flag is used to defined a label for the submitted jobs.
 
 When you attempt to open a CMS file, your application must query a redirector (defined by the `--redirector` flag) to find the file. Which redirector you use depends on your region and facility. At coffea-casa, use `--redirector xcache`. At lxplus, if you are working in the US, it is best to use `cmsxrootd.fnal.gov`, while in Europe and Asia, it is best to use `xrootd-cms.infn.it`. There is also a "global redirector" at `cms-xrd-global.cern.ch` which will query all locations.
 
 ### Submitting jobs at Coffea-Casa
 
-Let's assume we are using coffea-casa and we want to execute the `ttbar_cr1` processor for the electron channel using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
+Let's assume we are using coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
 
 ```bash
-python3 submit.py --processor ttbar_cr1 --executor iterative --channel ele --sample TTTo2L2Nu --nfiles 1 --tag test
+python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist --tag test
 ```
 
 To scale up the analysis using Dask, first you need to define your Dask client inside the `submit/submit_coffea_casa.py` script (line 37), and then type:
 
 ```bash
-python3 submit.py --processor ttbar_cr1 --executor dask --channel ele --sample TTTo2L2Nu --nfiles -1 --nsplit 5 --tag test
+python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5 --tag test
 ```
 The results will be stored in the `/outfiles` folder
 
@@ -385,7 +403,7 @@ voms-proxy-init --voms cms
 ```
 To execute a processor using all samples of a particular year type:
 ```bash
-python3 submit.py --processor ttbar_cr1 --facility lxplus --redirector cmsxrootd.fnal.gov --channel ele --sample all --year 2017 --nfiles -1 --nsplit 5 --tag test --eos True
+python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --facility lxplus --redirector cmsxrootd.fnal.gov --sample all --year 2017 --nfiles -1 --nsplit 5 --tag test --eos True
 ```
 The script will create the condor and executable files (using the `submit.sub` and `submit.sh` templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). After submitting the jobs, you can watch their status typing
 ```bash
