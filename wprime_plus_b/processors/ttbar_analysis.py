@@ -89,6 +89,9 @@ class TtbarAnalysis(processor.ProcessorABC):
         self.features = {**self.features, name: var}
 
     def process(self, events):
+        # dictionary to store output data and metadata
+        output = {}
+
         # get dataset name
         dataset = events.metadata["dataset"]
 
@@ -139,21 +142,21 @@ class TtbarAnalysis(processor.ProcessorABC):
                 electron_pt_threshold=ttbar_electron_selection[self._channel][
                     self._lepton_flavor
                 ]["electron_pt_threshold"],
-                electron_id_wp=ttbar_electron_selection[self._channel][self._lepton_flavor][
-                    "electron_id_wp"
-                ],
-                electron_iso_wp=ttbar_electron_selection[self._channel][self._lepton_flavor][
-                    "electron_iso_wp"
-                ],
+                electron_id_wp=ttbar_electron_selection[self._channel][
+                    self._lepton_flavor
+                ]["electron_id_wp"],
+                electron_iso_wp=ttbar_electron_selection[self._channel][
+                    self._lepton_flavor
+                ]["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
 
             # select good muons
             good_muons = select_good_muons(
                 events=events,
-                muon_pt_threshold=ttbar_muon_selection[self._channel][self._lepton_flavor][
-                    "muon_pt_threshold"
-                ],
+                muon_pt_threshold=ttbar_muon_selection[self._channel][
+                    self._lepton_flavor
+                ]["muon_pt_threshold"],
                 muon_id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
                     "muon_id_wp"
                 ],
@@ -203,13 +206,15 @@ class TtbarAnalysis(processor.ProcessorABC):
             good_bjets = select_good_bjets(
                 jets=corrected_jets,
                 year=self._year,
-                btag_working_point=ttbar_jet_selection[self._channel][self._lepton_flavor][
-                    "btag_working_point"
+                btag_working_point=ttbar_jet_selection[self._channel][
+                    self._lepton_flavor
+                ]["btag_working_point"],
+                jet_pt_threshold=ttbar_jet_selection[self._channel][
+                    self._lepton_flavor
+                ]["jet_pt_threshold"],
+                jet_id=ttbar_jet_selection[self._channel][self._lepton_flavor][
+                    "jet_id"
                 ],
-                jet_pt_threshold=ttbar_jet_selection[self._channel][self._lepton_flavor][
-                    "jet_pt_threshold"
-                ],
-                jet_id=ttbar_jet_selection[self._channel][self._lepton_flavor]["jet_id"],
                 jet_pileup_id=ttbar_jet_selection[self._channel][self._lepton_flavor][
                     "jet_pileup_id"
                 ],
@@ -362,6 +367,17 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                 },
             }
+            # --------------
+            # cutflow
+            # --------------
+            cut_names = region_selection[self._channel][self._lepton_flavor]
+            output["metadata"] = {"cutflow": {}}
+            selections = []
+            for cut_name in cut_names:
+                selections.append(cut_name)
+                current_selection = self.selections.all(*selections)
+                output["metadata"]["cutflow"][cut_name] = ak.sum(current_selection)
+
             # ---------------
             # event variables
             # ---------------
@@ -484,9 +500,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                         njets=2 if self._channel == "2b1l" else 1,
                         weights=weights_container,
                         sf_type="comb",
-                        worging_point=ttbar_jet_selection[self._channel][self._lepton_flavor][
-                            "btag_working_point"
-                        ],
+                        worging_point=ttbar_jet_selection[self._channel][
+                            self._lepton_flavor
+                        ]["btag_working_point"],
                         tagger="deepJet",
                         year=self._year,
                         year_mod=self._yearmod,
@@ -523,12 +539,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                             year_mod=self._yearmod,
                             tag="leading_muon",
                             variation=syst_var,
-                            id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
-                                "muon_id_wp"
-                            ],
-                            iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
-                                "muon_iso_wp"
-                            ],
+                            id_wp=ttbar_muon_selection[self._channel][
+                                self._lepton_flavor
+                            ]["muon_id_wp"],
+                            iso_wp=ttbar_muon_selection[self._channel][
+                                self._lepton_flavor
+                            ]["muon_iso_wp"],
                         )
                         # add muon ID weights
                         muon_corrector.add_id_weight()
@@ -611,10 +627,10 @@ class TtbarAnalysis(processor.ProcessorABC):
                         )
                 elif self._output_type == "array":
                     # uncoment next two lines to save individual weights
-                    #for weight in weights_container.weightStatistics:
+                    # for weight in weights_container.weightStatistics:
                     #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
                     self.add_feature("weights", weights_container.weight())
-            
+
                     # select variables and put them in column accumulators
                     array_dict = {
                         feature_name: processor.column_accumulator(
@@ -623,16 +639,17 @@ class TtbarAnalysis(processor.ProcessorABC):
                         for feature_name, feature_array in self.features.items()
                     }
         # define output dictionary accumulator
-        output = {}
         if self._output_type == "hist":
             output["histograms"] = hist_dict[f"{self._channel}_{self._lepton_flavor}"]
         elif self._output_type == "array":
             output["arrays"] = array_dict
         # save metadata
-        output["metadata"] = {
-            "events_before": nevents,
-            "events_after": nevents_after,
-        }
+        output["metadata"].update(
+            {
+                "events_before": nevents,
+                "events_after": nevents_after,
+            }
+        )
         # save sumw for MC samples
         if self.is_mc:
             output["metadata"].update({"sumw": ak.sum(events.genWeight)})

@@ -1,6 +1,6 @@
 import json
 import time
-import dask     
+import dask
 import pickle
 import argparse
 import numpy as np
@@ -10,21 +10,21 @@ from coffea import processor
 from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-#from wprime_plus_b.processors.candle_processor import CandleProcessor
-#from wprime_plus_b.processors.ttbar_cr1_processor import TTbarCR1Processor
-#from wprime_plus_b.processors.ttbar_cr2_processor import TTbarCR2Processor
 #from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
-#from wprime_plus_b.processors.ztoll_processor_v2 import ZToLLProcessor
-#from wprime_plus_b.processors.ttbar_analysis_processor_deltaphi import TtbarAnalysis
-#from wprime_plus_b.processors.ttbar_analysis_sftest import TtbarAnalysis
+from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
-#from wprime_plus_b.processors.qcd_analysis_processor import QcdAnalysis
-#from wprime_plus_b.processors.cr2_processor import TTbarCR2Processor
-#from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
-#from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
-from wprime_plus_b.selections.ttbar.config import ttbar_electron_selection, ttbar_muon_selection, ttbar_jet_selection
-from wprime_plus_b.selections.ztoll.config import ztoll_electron_selection, ztoll_muon_selection, ztoll_jet_selection
+from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
+from wprime_plus_b.selections.ttbar.config import (
+    ttbar_electron_selection,
+    ttbar_muon_selection,
+    ttbar_jet_selection,
+)
+from wprime_plus_b.selections.ztoll.config import (
+    ztoll_electron_selection,
+    ztoll_muon_selection,
+    ztoll_jet_selection,
+)
 
 
 def main(args):
@@ -37,19 +37,14 @@ def main(args):
         if args.nfiles != -1:
             val = val[: args.nfiles]
         fileset[sample] = [f"root://{args.redirector}/" + file for file in val]
-        
+
     # define processors
     processors = {
-        #"signal": SignalRegionProcessor,
         "ttbar": TtbarAnalysis,
         "ztoll": ZToLLProcessor,
-        #"qcd": QcdAnalysis,
-        #"ttbar_cr2": TTbarCR2Processor,
-        #"btag_eff": BTagEfficiencyProcessor,
-        #"ttbar_cr1": TTbarCR1Processor,
-        #"ttbar_cr2": TTbarCR2Processor,
-        #"candle": CandleProcessor,
-        #"trigger": TriggerEfficiencyProcessor,   
+        "qcd": QcdAnalysis,
+        "btag_eff": BTagEfficiencyProcessor,
+        #"trigger": TriggerEfficiencyProcessor,
     }
     processor_kwargs = {
         "year": args.year,
@@ -90,7 +85,7 @@ def main(args):
             print(f"Uploaded {Path.cwd()} succesfully")
         except OSError:
             print("Failed to upload the directory")
-            
+
     # run processor
     t0 = time.monotonic()
     out = processor.run_uproot_job(
@@ -101,32 +96,46 @@ def main(args):
         executor_args=executor_args,
     )
     exec_time = format_timespan(time.monotonic() - t0)
-    
+
     # get metadata
     metadata = {"walltime": exec_time}
-    metadata.update({'events_before': float(out["metadata"]['events_before'])})
-    metadata.update({'events_after': float(out["metadata"]['events_after'])})
+    metadata.update({"events_before": float(out["metadata"]["events_before"])})
+    metadata.update({"events_after": float(out["metadata"]["events_after"])})
     metadata.update({"fileset": fileset[sample]})
     if "sumw" in out["metadata"]:
-        metadata.update({'sumw': float(out["metadata"]['sumw'])})
-    
+        metadata.update({"sumw": float(out["metadata"]["sumw"])})
+
+    # save cutflow to metadata
+    for cut_selection, nevents in out["metadata"]["cutflow"].items():
+        out["metadata"]["cutflow"][cut_selection] = str(nevents)
+    metadata.update({"cutflow": out["metadata"]["cutflow"]})
+
     # save selectios to metadata
-    selections = {
-        "ttbar": {
-            "electron_selection": ttbar_electron_selection[args.channel][args.lepton_flavor],
-            "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
-            "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
-        },
-        "ztoll": {
-            "electron_selection": ztoll_electron_selection,
-            "muon_selection": ztoll_muon_selection,
-            "jet_selection": ztoll_jet_selection,
+    if args.processor in ["ttbar", "ztoll"]:
+        selections = {
+            "ttbar": {
+                "electron_selection": ttbar_electron_selection[args.channel][
+                    args.lepton_flavor
+                ],
+                "muon_selection": ttbar_muon_selection[args.channel][
+                    args.lepton_flavor
+                ],
+                "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
+            },
+            "ztoll": {
+                "electron_selection": ztoll_electron_selection,
+                "muon_selection": ztoll_muon_selection,
+                "jet_selection": ztoll_jet_selection,
+            },
         }
-    }
-    metadata.update({"electron_selection": selections[args.processor]["electron_selection"]})
-    metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
-    metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
-    
+        metadata.update(
+            {"electron_selection": selections[args.processor]["electron_selection"]}
+        )
+        metadata.update(
+            {"muon_selection": selections[args.processor]["muon_selection"]}
+        )
+        metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
+
     # save args to metadata
     args_dict = vars(args).copy()
     del args_dict["fileset"]
@@ -135,37 +144,20 @@ def main(args):
     if args.processor == "btag_eff":
         del args_dict["lepton_flavor"]
     metadata.update(args_dict)
-    
+
     # drop metadata from output
     del out["metadata"]
-    
+
     # define output and metadata paths
     date = datetime.datetime.today().strftime("%Y-%m-%d")
     base_path = Path(
-        args.output_location
-        + "/"
-        + args.tag
-        + "/"
-        + args.processor
-        + "/"
-        + date
-        + "/"
+        args.output_location + "/" + args.tag + "/" + args.processor + "/" + date + "/"
     )
     ttbar_output_path = Path(
-        str(base_path)
-        + "/"
-        + args.channel 
-        + "/"
-        + args.year
-        + "/"
-        + args.lepton_flavor
+        str(base_path) + "/" + args.channel + "/" + args.year + "/" + args.lepton_flavor
     )
     other_output_path = Path(
-        str(base_path)
-        + "/"
-        + args.year
-        + "/"
-        + args.lepton_flavor
+        str(base_path) + "/" + args.year + "/" + args.lepton_flavor
     )
     output_path = {
         "ttbar": ttbar_output_path,
@@ -177,7 +169,7 @@ def main(args):
         output_path[args.processor].mkdir(parents=True)
     with open(f"{str(output_path[args.processor])}/{sample}.pkl", "wb") as handle:
         pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        
+
     # save metadata
     metadata_path = Path(f"{str(output_path[args.processor])}/metadata")
     if not metadata_path.exists():
@@ -185,7 +177,7 @@ def main(args):
     with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
         f.write(json.dumps(metadata))
 
-        
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
