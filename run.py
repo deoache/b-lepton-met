@@ -10,7 +10,8 @@ from coffea import processor
 from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-#from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
+
+# from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
@@ -29,6 +30,12 @@ from wprime_plus_b.selections.ztoll.config import (
 
 def main(args):
     np.seterr(divide="ignore", invalid="ignore")
+
+    if args.processor == "qcd":
+        assert (
+            args.lepton_flavor == "mu" and args.output_type == "hist"
+        ), "Only muon channel and histograms are available"
+
     # load and process filesets
     fileset = {}
     with open(args.fileset, "r") as handle:
@@ -44,7 +51,7 @@ def main(args):
         "ztoll": ZToLLProcessor,
         "qcd": QcdAnalysis,
         "btag_eff": BTagEfficiencyProcessor,
-        #"trigger": TriggerEfficiencyProcessor,
+        # "trigger": TriggerEfficiencyProcessor,
     }
     processor_kwargs = {
         "year": args.year,
@@ -106,9 +113,10 @@ def main(args):
         metadata.update({"sumw": float(out["metadata"]["sumw"])})
 
     # save cutflow to metadata
-    for cut_selection, nevents in out["metadata"]["cutflow"].items():
-        out["metadata"]["cutflow"][cut_selection] = str(nevents)
-    metadata.update({"cutflow": out["metadata"]["cutflow"]})
+    if args.processor == "ttbar":
+        for cut_selection, nevents in out["metadata"]["cutflow"].items():
+            out["metadata"]["cutflow"][cut_selection] = str(nevents)
+        metadata.update({"cutflow": out["metadata"]["cutflow"]})
 
     # save selectios to metadata
     if args.processor in ["ttbar", "ztoll"]:
