@@ -32,10 +32,7 @@ ttbar_met_axis = hist.axis.Variable(
     edges=[50, 75, 100, 125, 150, 175, 200, 300, 500],
     name="met",
 )
-qcd_met_axis = hist.axis.Variable(
-    edges=[0, 50, 75, 100, 125, 150, 175, 200, 300, 500],
-    name="met",
-)
+
 met_phi_axis = hist.axis.Regular(
     bins=50,
     start=-np.pi,
@@ -163,17 +160,40 @@ dilepton_mass_hist = hist.Hist(dataset_axis, dilepton_mass_axis, hist.storage.We
 # lepton ID region axis
 lepton_id_axis = hist.axis.StrCategory([], name="lepton_id", growth=True)
 
+qcd_met_axis = hist.axis.Variable(
+    edges=[0, 50, 75, 100, 125, 150, 175, 200, 300, 500],
+    name="met",
+)
+
+region_axis = hist.axis.StrCategory(["A", "B", "C", "D"], name="region")
+
 # met histogram
 qcd_met_hist = hist.Hist(
     dataset_axis,
     qcd_met_axis,
-    lepton_id_axis,
+    region_axis,
     hist.storage.Weight(),
 )
 # lepton + MET mass histogram
 qcd_lepton_met_hist = hist.Hist(
     dataset_axis,
     lepton_met_mass_axis,
-    lepton_id_axis,
+    region_axis,
+    hist.storage.Weight(),
+)
+
+# lepton + missing energy + bjet histogram
+qcd_lepton_met_bjet_hist = hist.Hist(
+    dataset_axis,
+    lepton_met_bjet_mass_axis,
+    region_axis,
+    hist.storage.Weight(),
+)
+
+# lepton + bjet histogram
+qcd_lepton_bjet_hist = hist.Hist(
+    dataset_axis,
+    lepton_bjet_mass_axis,
+    region_axis,
     hist.storage.Weight(),
 )
