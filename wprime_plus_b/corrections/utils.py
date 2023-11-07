@@ -22,7 +22,7 @@ POG_JSONS = {
     "pileup": ["LUM", "puWeights.json.gz"],
     "btag": ["BTV", "btagging.json.gz"],
     "met": ["JME", "met.json.gz"],
-    "pujetid": ["JME", "jmar.json.gz"]
+    "pujetid": ["JME", "jmar.json.gz"],
 }
 
 pog_years = {
@@ -69,3 +69,10 @@ def clip_array(array: ak.Array, target=2, fill_value=1) -> ak.Array:
         ak.Array: The clipped collection with a fixed length, padded with None values and filled as specified.
     """
     return ak.fill_none(ak.pad_none(array, target, clip=True), fill_value)
+
+
+def unflat_sf(sf, n):
+    """
+    unflat array and multiply scale factors event-wise
+    """
+    return ak.fill_none(ak.prod(ak.unflatten(sf, n), axis=1), value=1)

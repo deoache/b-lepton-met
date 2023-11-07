@@ -51,7 +51,6 @@ class BTagCorrector:
     def __init__(
         self,
         jets: ak.Array,
-        njets: int,
         weights: Type[Weights],
         sf_type: str = "comb",
         worging_point: str = "M",
@@ -70,6 +69,20 @@ class BTagCorrector:
         self._full_run = full_run
         self._variation = variation
         
+        # load efficiency lookup table (only for deepJet)
+        # efflookup(pt, |eta|, flavor)
+        with importlib.resources.path(
+            "wprime_plus_b.data", f"btag_eff_{self._tagger}_{self._wp}_{year}.coffea"
+        ) as filename:
+            self._efflookup = util.load(str(filename))
+            
+        # load btagging working point (only for deepJet)
+        # https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation
+        with importlib.resources.path("wprime_plus_b.data", "btagWPs.json") as path:
+            with open(path, "r") as handle:
+                btag_working_points = json.load(handle)
+        self._btagwp = btag_working_points[tagger][year + year_mod][worging_point]
+        
         # define correction set
         self._cset = correctionlib.CorrectionSet.from_file(
             get_pog_json(json_name="btag", year=year + year_mod)
@@ -81,24 +94,7 @@ class BTagCorrector:
         self._light_jets = jets[jets.hadronFlavour == 0]
         self._jet_map = {"bc": self._bc_jets, "light": self._light_jets}
 
-        # number of jets to use
-        if njets == "all":
-            njets = ak.max(ak.num(jets))
-        self._njets = njets
-
-        # load efficiency lookup table (only for deepJet)
-        # efflookup(pt, |eta|, flavor)
-        with importlib.resources.path(
-            "wprime_plus_b.data", f"btag_eff_{self._tagger}_{self._wp}_{year}.coffea"
-        ) as filename:
-            self._efflookup = util.load(str(filename))
-        # load btagging working point (only for deepJet)
-        # https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation
-        with importlib.resources.path("wprime_plus_b.data", "btagWPs.json") as path:
-            with open(path, "r") as handle:
-                btag_working_points = json.load(handle)
-        self._btagwp = btag_working_points[tagger][year + year_mod][worging_point]
-
+        
     def add_btag_weights(self, flavor: str) -> None:
         """
         Add b-tagging weights (nominal, up and down) to weights container for bc or light jets
@@ -134,7 +130,7 @@ class BTagCorrector:
 
             # add weights to Weights container
             self._weights.add(
-                name=f"{flavor}_{self._njets}_jets",
+                name=f"{flavor}_jets",
                 weight=jets_weight,
                 weightUp=jets_weight_up,
                 weightDown=jets_weight_down,
@@ -147,30 +143,21 @@ class BTagCorrector:
 
     def efficiency(self, flavor: str, fill_value=1) -> ak.Array:
         """compute the btagging efficiency for 'njets' jets"""
-        eff = self._efflookup(
+        return self._efflookup(
             self._jet_map[flavor].pt,
             np.abs(self._jet_map[flavor].eta),
             self._jet_map[flavor].hadronFlavour,
         )
-        return clip_array(
-            array=eff,
-            target=self._njets,
-            fill_value=fill_value,
-        )
 
     def passbtag_mask(self, flavor, fill_value=True) -> ak.Array:
         """return the mask with jets that pass the b-tagging working point"""
-        pass_mask = self._jet_map[flavor]["btagDeepFlavB"] > self._btagwp
-        return clip_array(array=pass_mask, target=self._njets, fill_value=fill_value)
+        return self._jet_map[flavor]["btagDeepFlavB"] > self._btagwp
 
     def get_scale_factors(self, flavor: str, syst="central", fill_value=1) -> ak.Array:
         """
         compute jets scale factors
         """
-        scale_factors = self.get_sf(flavor=flavor, syst=syst)
-        return clip_array(
-            array=scale_factors, target=self._njets, fill_value=fill_value
-        )
+        return self.get_sf(flavor=flavor, syst=syst)
 
     def get_sf(self, flavor: str, syst: str = "central") -> ak.Array:
         """

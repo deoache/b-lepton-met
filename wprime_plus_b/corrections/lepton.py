@@ -1,8 +1,10 @@
+import copy
 import correctionlib
 import numpy as np
 import awkward as ak
 import importlib.resources
 from typing import Type
+from .utils import unflat_sf
 from coffea.analysis_tools import Weights
 from wprime_plus_b.corrections.utils import pog_years, get_pog_json
 
@@ -50,12 +52,12 @@ class ElectronCorrector:
     ) -> None:
         self.variation = variation
         
-        # electron array
-        self.electrons = electrons
+        # flat electrons array
+        self.e, self.n = ak.flatten(electrons), ak.num(electrons)
 
         # electron transverse momentum and pseudorapidity
-        self.electron_pt = np.array(ak.fill_none(self.electrons.pt, 0.0))
-        self.electron_eta = np.array(ak.fill_none(self.electrons.eta, 0.0))
+        self.electrons_pt = self.e.pt
+        self.electrons_eta = self.e.eta
 
         # weights container
         self.weights = weights
@@ -68,8 +70,6 @@ class ElectronCorrector:
         self.year_mod = year_mod
         self.pog_year = pog_years[year + year_mod]
 
-        self.tag = tag
-
     def add_id_weight(self, id_working_point: str) -> None:
         """
         add electron identification scale factors to weights container
@@ -80,103 +80,77 @@ class ElectronCorrector:
                 Working point {'Loose', 'Medium', 'Tight', 'wp80iso', 'wp80noiso', 'wp90iso', 'wp90noiso'}
         """
         # electron pseudorapidity range: (-inf, inf)
-        electron_eta = self.electron_eta
+        electron_eta = self.electrons_eta
 
         # electron pt range: [10, inf)
         electron_pt = np.clip(
-            self.electron_pt.copy(), 10.0, 499.999
+            copy.deepcopy(self.electrons_pt), 10.0, 499.999
         )  # potential problems with pt > 500 GeV
 
         # remove '_UL' from year
         year = self.pog_year.replace("_UL", "")
 
-        # get scale factors
-        values = {}
-        values["nominal"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sf", id_working_point, electron_eta, electron_pt
+        # get nominal scale factors
+        nominal_sf = unflat_sf(
+            self.cset["UL-Electron-ID-SF"].evaluate(year, "sf", id_working_point, electron_eta, electron_pt), self.n
         )
         if self.variation == "nominal":
-            values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfup", id_working_point, electron_eta, electron_pt
+            # get 'up' and 'down' scale factors
+            up_sf = unflat_sf(
+                self.cset["UL-Electron-ID-SF"].evaluate(year, "sfup", id_working_point, electron_eta, electron_pt), self.n
             )
-            values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfdown", id_working_point, electron_eta, electron_pt
+            down_sf = unflat_sf(
+                self.cset["UL-Electron-ID-SF"].evaluate(year, "sfdown", id_working_point, electron_eta, electron_pt), self.n
             )
             # add scale factors to weights container
             self.weights.add(
-                name=f"{self.tag}_id",
-                weight=values["nominal"],
-                weightUp=values["up"],
-                weightDown=values["down"],
+                name=f"electron_id",
+                weight=nominal_sf,
+                weightUp=up_sf,
+                weightDown=down_sf,
             )
         else:
             self.weights.add(
-                name=f"{self.tag}_id",
-                weight=values["nominal"],
+                name=f"electron_id",
+                weight=nominal_sf,
             )
 
     def add_reco_weight(self) -> None:
         """add electron reconstruction scale factors to weights container"""
         # electron pseudorapidity range: (-inf, inf)
-        electron_eta = self.electron_eta
+        electron_eta = self.electrons_eta
 
         # electron pt range: (20, inf)
         electron_pt = np.clip(
-            self.electron_pt.copy(), 20.1, 499.999
+            copy.deepcopy(self.electrons_pt), 20.1, 499.999
         )  # potential problems with pt > 500 GeV
 
         # remove _UL from year
         year = self.pog_year.replace("_UL", "")
 
-        # get scale factors
-        values = {}
-        values["nominal"] = self.cset["UL-Electron-ID-SF"].evaluate(
-            year, "sf", "RecoAbove20", electron_eta, electron_pt
+        # get nominal scale factors
+        nominal_sf = unflat_sf(
+            self.cset["UL-Electron-ID-SF"].evaluate(year, "sf", "RecoAbove20", electron_eta, electron_pt), self.n
         )
         if self.variation == "nominal":
-            values["up"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfup", "RecoAbove20", electron_eta, electron_pt
+            # get 'up' and 'down' scale factors
+            up_sf = unflat_sf(
+                self.cset["UL-Electron-ID-SF"].evaluate(year, "sfup", "RecoAbove20", electron_eta, electron_pt), self.n
             )
-            values["down"] = self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sfdown", "RecoAbove20", electron_eta, electron_pt
+            down_sf = unflat_sf(
+                self.cset["UL-Electron-ID-SF"].evaluate(year, "sfdown", "RecoAbove20", electron_eta, electron_pt), self.n
             )
             # add scale factors to weights container
             self.weights.add(
-                name=f"{self.tag}_reco",
-                weight=values["nominal"],
-                weightUp=values["up"],
-                weightDown=values["down"],
+                name=f"electron_reco",
+                weight=nominal_sf,
+                weightUp=up_sf,
+                weightDown=down_sf,
             )
         else:
             self.weights.add(
-                name=f"{self.tag}_reco",
-                weight=values["nominal"],
-            )
-
-    def add_trigger_weight(self) -> None:
-        """add electron trigger scale factors to weights container"""
-        # corrections still not provided by POG
-        with importlib.resources.path(
-            "wprime_plus_b.data", f"electron_trigger_{self.pog_year}.json"
-        ) as filename:
-            # correction set
-            cset = correctionlib.CorrectionSet.from_file(str(filename))
-
-            # electron pt range: (10, 500)
-            electron_pt = np.clip(self.electron_pt.copy(), 10, 499.999)
-
-            # electron pseudorapidity range: (-2.5, 2.5)
-            electron_eta = np.clip(self.electron_eta.copy(), -2.499, 2.499)
-
-            # get scale factors (only nominal)
-            values = {}
-            values["nominal"] = cset["UL-Electron-Trigger-SF"].evaluate(
-                electron_eta, electron_pt
-            )
-            # add scale factors to weights container
-            self.weights.add(
-                name=f"{self.tag}_trigger",
-                weight=values["nominal"],
+                name=f"electron_reco",
+                weight=nominal_sf,
             )
 
 
@@ -234,9 +208,12 @@ class MuonCorrector:
         # muon array
         self.muons = muons
 
-        # muon transverse momentum and pseudorapidity
-        self.muon_pt = np.array(ak.fill_none(self.muons.pt, 0.0))
-        self.muon_eta = np.array(ak.fill_none(self.muons.eta, 0.0))
+        # flat muon array
+        self.m, self.n = ak.flatten(muons), ak.num(muons)
+
+        # muons transverse momentum and pseudorapidity
+        self.muons_pt = self.m.pt
+        self.muons_eta = self.m.eta
 
         # weights container
         self.weights = weights
@@ -249,8 +226,6 @@ class MuonCorrector:
         self.year = year
         self.year_mod = year_mod
         self.pog_year = pog_years[year + year_mod]
-
-        self.tag = tag
 
     def add_id_weight(self) -> None:
         """
@@ -268,10 +243,10 @@ class MuonCorrector:
         assert self.id_wp == "tight" and self.iso_wp == "tight", "there's only available muon trigger SF for 'tight' ID and Iso"
         """add muon Trigger Iso (IsoMu24 or IsoMu27) scale factors"""
         # muon absolute pseudorapidity range: [0, 2.4)
-        muon_eta = np.clip(np.abs(self.muon_eta).copy(), 0.0, 2.399)
+        muon_eta = np.clip(np.abs(copy.deepcopy(self.muons_eta)), 0.0, 2.399)
 
         # muon pt range: [29, 200)
-        muon_pt = np.clip(self.muon_pt.copy(), 29.0, 199.999)
+        muon_pt = np.clip(copy.deepcopy(self.muons_pt), 29.0, 199.999)
 
         # scale factors keys
         sfs_keys = {
@@ -279,29 +254,29 @@ class MuonCorrector:
             "2017": "NUM_IsoMu27_DEN_CutBasedIdTight_and_PFIsoTight",
             "2018": "NUM_IsoMu24_DEN_CutBasedIdTight_and_PFIsoTight",
         }
-        # get scale factors
-        values = {}
-        values["nominal"] = self.cset[sfs_keys[self.year]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "sf"
+        # get nominal scale factors
+        nominal_sf = unflat_sf(
+            self.cset[sfs_keys[self.year]].evaluate(self.pog_year, muon_eta, muon_pt, "sf"), self.n
         )
         if self.variation == "nominal":
-            values["up"] = self.cset[sfs_keys[self.year]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systup"
+            # get 'up' and 'down' scale factors
+            up_sf = unflat_sf(
+                self.cset[sfs_keys[self.year]].evaluate(self.pog_year, muon_eta, muon_pt, "systup"), self.n
             )
-            values["down"] = self.cset[sfs_keys[self.year]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systdown"
+            down_sf = unflat_sf(
+                self.cset[sfs_keys[self.year]].evaluate(self.pog_year, muon_eta, muon_pt, "systdown"), self.n
             )
             # add scale factors to weights container
             self.weights.add(
-                name=f"{self.tag}_triggeriso",
-                weight=values["nominal"],
-                weightUp=values["up"],
-                weightDown=values["down"],
+                name=f"muon_triggeriso",
+                weight=nominal_sf,
+                weightUp=up_sf,
+                weightDown=down_sf,
             )
         else:
             self.weights.add(
-                name=f"{self.tag}_triggeriso",
-                weight=values["nominal"],
+                name=f"muon_triggeriso",
+                weight=nominal_sf,
             )
 
     def add_weight(self, sf_type: str) -> None:
@@ -317,10 +292,10 @@ class MuonCorrector:
             assert self.id_wp != "loose", "there's no available SFs"
             
         # muon absolute pseudorapidity range: [0, 2.4)
-        muon_eta = np.clip(np.abs(self.muon_eta).copy(), 0.0, 2.399)
+        muon_eta = np.clip(np.abs(copy.deepcopy(self.muons_eta)), 0.0, 2.399)
 
         # muon pt range: [15, 120)
-        muon_pt = np.clip(self.muon_pt.copy(), 15.0, 119.999)
+        muon_pt = np.clip(copy.deepcopy(self.muons_pt), 15.0, 119.999)
 
         # 'id' and 'iso' scale factors keys
         id_corrections = {
@@ -345,27 +320,27 @@ class MuonCorrector:
             "id": id_corrections[self.id_wp],
             "iso": iso_correction
         }
-        # get scale factors
-        values = {}
-        values["nominal"] = self.cset[sfs_keys[sf_type]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "sf"
+        # get nominal scale factors
+        nominal_sf = unflat_sf(
+            self.cset[sfs_keys[sf_type]].evaluate(self.pog_year, muon_eta, muon_pt, "sf"), self.n
         )
         if self.variation == "nominal":
-            values["up"] = self.cset[sfs_keys[sf_type]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systup"
+            # get 'up' and 'down' scale factors
+            up_sf = unflat_sf(
+                self.cset[sfs_keys[sf_type]].evaluate(self.pog_year, muon_eta, muon_pt, "systup"), self.n
             )
-            values["down"] = self.cset[sfs_keys[sf_type]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systdown"
+            down_sf = unflat_sf(
+                self.cset[sfs_keys[sf_type]].evaluate(self.pog_year, muon_eta, muon_pt, "systdown"), self.n
             )
             # add scale factors to weights container
             self.weights.add(
-                name=f"{self.tag}_{sf_type}",
-                weight=values["nominal"],
-                weightUp=values["up"],
-                weightDown=values["down"],
+                name=f"muon_{sf_type}",
+                weight=nominal_sf,
+                weightUp=up_sf,
+                weightDown=down_sf,
             )
         else:
             self.weights.add(
-                name=f"{self.tag}_{sf_type}",
-                weight=values["nominal"],
+                name=f"muon_{sf_type}",
+                weight=nominal_sf,
             )

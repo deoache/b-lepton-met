@@ -4,7 +4,7 @@ import awkward as ak
 from typing import Type
 from coffea.analysis_tools import Weights
 from wprime_plus_b.corrections.utils import get_pog_json
-
+from .utils import unflat_sf
 
 def add_pujetid_weight(
     jets: ak.Array,
@@ -33,45 +33,41 @@ def add_pujetid_weight(
             if 'nominal' (default) add 'nominal', 'up' and 'down'
             variations to weights container. else, add only 'nominal' weights.
     """
+    # flat jets array since correction function works only on flat arrays
+    j, n = ak.flatten(jets), ak.num(jets)
+    
+    # get jet transverse momentum and pseudorapidity
+    jets_pt = np.clip(j.pt, 12.5, 50)
+    jets_eta = j.eta
+
     # define correction set
     cset = correctionlib.CorrectionSet.from_file(
         get_pog_json("pujetid", year + year_mod)
     )
-
-    # jet transverse momentum and pseudorapidity
-    jet_pt = np.clip(jets.pt, 12.5, 50)
-    jet_eta = np.array(jets.eta)
-
-    # get scale factors
-    scale_factors = {}
-    scale_factors["nominal"] = cset["PUJetID_eff"].evaluate(
-        jet_eta, jet_pt, "nom", working_point
+    # get nominal scale factors
+    nominal_sf = unflat_sf(
+        cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "nom", working_point), n
     )
 
     if variation == "nominal":
-        scale_factors["up"] = cset["PUJetID_eff"].evaluate(
-            jet_eta, jet_pt, "up", working_point
+        # get 'up' and 'down' variations
+        up_sf = unflat_sf(
+            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "up", working_point), n
         )
-        scale_factors["down"] = cset["PUJetID_eff"].evaluate(
-            jet_eta, jet_pt, "down", working_point
+        down_sf = unflat_sf(
+            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "down", working_point), n
         )
-        # add scale factors to weights container
+
+        # add nominal, up and down scale factors to weights container
         weights.add(
             name="pujetid",
-            weight=scale_factors["nominal"]
-            if jet_pt.ndim == 1
-            else np.prod(scale_factors["nominal"], axis=1),
-            weightUp=scale_factors["up"]
-            if jet_pt.ndim == 1
-            else np.prod(scale_factors["up"], axis=1),
-            weightDown=scale_factors["down"]
-            if jet_pt.ndim == 1
-            else np.prod(scale_factors["down"], axis=1),
+            weight=nominal_sf,
+            weightUp=up_sf,
+            weightDown=down_sf,
         )
     else:
+        # add nominal scale factors to weights container
         weights.add(
             name="pujetid",
-            weight=scale_factors["nominal"]
-            if jet_pt.ndim == 1
-            else np.prod(scale_factors["nominal"], axis=1),
+            weight=nominal_sf
         )
