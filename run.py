@@ -3,14 +3,13 @@ import time
 import dask
 import pickle
 import argparse
-import numpy as np
 import datetime
+import numpy as np
 from pathlib import Path
 from coffea import processor
 from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-
 # from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
@@ -80,10 +79,8 @@ def main(args):
         executor_args.update({"workers": args.workers})
     if args.executor == "dask":
         client = Client(args.client)
-        print(f"client: {args.client}")
         executor_args.update({"client": client})
         # upload local directory to dask workers
-        print(f"trying to upload {Path.cwd()} directory")
         try:
             client.register_worker_plugin(
                 UploadDirectory(f"{Path.cwd()}", restart=True, update_path=True),
@@ -109,8 +106,10 @@ def main(args):
     metadata.update({"events_before": float(out["metadata"]["events_before"])})
     metadata.update({"events_after": float(out["metadata"]["events_after"])})
     metadata.update({"fileset": fileset[sample]})
-    if "sumw" in out["metadata"]:
-        metadata.update({"sumw": float(out["metadata"]["sumw"])})
+    metadata.update({"sumw": float(out["metadata"]["sumw"])})
+    for weight, statistics in out["metadata"]["weight_statistics"].items():
+        out["metadata"]["weight_statistics"][weight] = str(statistics)
+    metadata.update({"weight_statistics": out["metadata"]["weight_statistics"]})
 
     # save cutflow to metadata
     if args.processor == "ttbar":
