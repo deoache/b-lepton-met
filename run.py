@@ -106,7 +106,8 @@ def main(args):
     metadata.update({"events_before": float(out["metadata"]["events_before"])})
     metadata.update({"events_after": float(out["metadata"]["events_after"])})
     metadata.update({"fileset": fileset[sample]})
-    metadata.update({"sumw": float(out["metadata"]["sumw"])})
+    metadata.update({"sumw_before": float(out["metadata"]["sumw_before"])})
+    metadata.update({"sumw_after": float(out["metadata"]["sumw_after"])})
     for weight, statistics in out["metadata"]["weight_statistics"].items():
         out["metadata"]["weight_statistics"][weight] = str(statistics)
     metadata.update({"weight_statistics": out["metadata"]["weight_statistics"]})

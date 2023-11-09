@@ -180,7 +180,7 @@ class BTagCorrector:
             syst,
             self._wp,
             np.array(j.hadronFlavour),
-            np.array(abs(j.eta)),
+            np.array(np.clip(abs(j.eta), 0., 2.499)),
             np.array(j.pt),
         )
         return ak.unflatten(sf, nj)

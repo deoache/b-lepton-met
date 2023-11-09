@@ -38,7 +38,7 @@ def add_pujetid_weight(
     
     # get jet transverse momentum and pseudorapidity
     jets_pt = np.clip(j.pt, 12.5, 50)
-    jets_eta = j.eta
+    jets_eta = np.clip(j.eta, -5.8, 5.8)
 
     # define correction set
     cset = correctionlib.CorrectionSet.from_file(

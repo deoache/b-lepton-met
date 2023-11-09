@@ -36,7 +36,7 @@ def add_pileup_sf(
 
 
 def add_pujetid_sf(
-    bjets,
+    jets,
     weights_container,
     bjets_selection,
     year="2017",
@@ -46,7 +46,7 @@ def add_pujetid_sf(
     lepton_flavor="mu",
 ):
     add_pujetid_weight(
-        jets=bjets,
+        jets=jets,
         weights=weights_container,
         year=year,
         year_mod=yearmod,
@@ -56,7 +56,7 @@ def add_pujetid_sf(
 
 
 def add_btag_sf(
-    bjets,
+    jets,
     weights_container,
     bjets_selection,
     year="2017",
@@ -67,7 +67,7 @@ def add_btag_sf(
 ):
     # b-tagging corrector
     btag_corrector = BTagCorrector(
-        jets=bjets,
+        jets=jets,
         weights=weights_container,
         sf_type="comb",
         worging_point=bjets_selection[channel][lepton_flavor]["btag_working_point"],
@@ -82,8 +82,7 @@ def add_btag_sf(
 
 
 def add_lepton_sf(
-    electrons,
-    muons,
+    events,
     weights_container,
     electron_selection,
     muon_selection,
@@ -93,39 +92,38 @@ def add_lepton_sf(
     channel="2b1l",
     lepton_flavor="mu",
 ):
-    if (channel == "1b1e1mu") or (lepton_flavor == "ele"):
-        electron_corrector = ElectronCorrector(
-            electrons=electrons,
-            weights=weights_container,
-            year=year,
-            year_mod=yearmod,
-            variation=variation,
-        )
-        # add electron ID weights
-        electron_corrector.add_id_weight(
-            id_working_point=electron_selection[channel][lepton_flavor][
-                "electron_id_wp"
-            ]
-        )
-        # add electron reco weights
-        electron_corrector.add_reco_weight()
+    
+    electron_corrector = ElectronCorrector(
+        electrons=events.Electron,
+        weights=weights_container,
+        year=year,
+        year_mod=yearmod,
+        variation=variation,
+    )
+    # add electron ID weights
+    electron_corrector.add_id_weight(
+        id_working_point=electron_selection[channel][lepton_flavor][
+            "electron_id_wp"
+        ]
+    )
+    # add electron reco weights
+    electron_corrector.add_reco_weight()
 
     # muon corrector
-    if (channel == "1b1e1mu") or (lepton_flavor == "mu"):
-        muon_corrector = MuonCorrector(
-            muons=muons,
-            weights=weights_container,
-            year=year,
-            year_mod=yearmod,
-            variation=variation,
-            id_wp=muon_selection[channel][lepton_flavor]["muon_id_wp"],
-            iso_wp=muon_selection[channel][lepton_flavor]["muon_iso_wp"],
-        )
-        # add muon ID weights
-        muon_corrector.add_id_weight()
+    muon_corrector = MuonCorrector(
+        muons=events.Muon,
+        weights=weights_container,
+        year=year,
+        year_mod=yearmod,
+        variation=variation,
+        id_wp=muon_selection[channel][lepton_flavor]["muon_id_wp"],
+        iso_wp=muon_selection[channel][lepton_flavor]["muon_iso_wp"],
+    )
+    # add muon ID weights
+    muon_corrector.add_id_weight()
 
-        # add muon iso weights
-        muon_corrector.add_iso_weight()
+    # add muon iso weights
+    muon_corrector.add_iso_weight()
 
     # add trigger weights
     if channel == "1b1e1mu":
@@ -142,10 +140,7 @@ def add_lepton_sf(
 
 def event_weights(
     events,
-    electrons,
-    muons,
-    bjets,
-    met,
+    jets,
     electron_selection,
     muon_selection,
     bjets_selection,
@@ -169,7 +164,7 @@ def event_weights(
 
         # add pujetid weigths
         add_pujetid_sf(
-            bjets,
+            jets,
             weights_container,
             bjets_selection,
             year,
@@ -181,7 +176,7 @@ def event_weights(
 
         # add b-tagging weigths
         add_btag_sf(
-            bjets,
+            jets,
             weights_container,
             bjets_selection,
             year,
@@ -193,8 +188,7 @@ def event_weights(
 
         # add leptons weigths
         add_lepton_sf(
-            electrons,
-            muons,
+            events,
             weights_container,
             electron_selection,
             muon_selection,

@@ -242,10 +242,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso 
             weights_container = weights.event_weights(
                 events,
-                electrons,
-                muons,
-                bjets,
-                met,
+                corrected_jets,
                 ttbar_electron_selection,
                 ttbar_muon_selection,
                 ttbar_jet_selection,
@@ -256,8 +253,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 yearmod=self._yearmod,
                 variation=syst_var,
             )
-            # save sum of weights
-            output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
+            # save sum of weights before selections
+            output["metadata"] = {"sumw_before": ak.sum(weights_container.weight())}
             # save weights statistics 
             output["metadata"].update({"weight_statistics": {}})
             for weight, statistics in weights_container.weightStatistics.items():
@@ -542,6 +539,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     # for weight in weights_container.weightStatistics:
                     #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
                     self.add_feature("weights", weights_container.weight()[region_selection])
+                    output["metadata"].update({"sumw_after": ak.sum(weights_container.weight()[region_selection])})
 
                     # select variables and put them in column accumulators
                     array_dict = {
