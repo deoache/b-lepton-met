@@ -227,7 +227,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             met_pt, met_phi = met_phi_corrections(
                 met_pt=met.pt,
                 met_phi=met.phi,
-                npvs=events.PV.npvs,
+                npvs=events.PV.npvsGood,
                 is_mc=self.is_mc,
                 year=self._year,
                 year_mod=self._yearmod,
@@ -320,11 +320,15 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
+            
+            # good vertices
+            self.selections.add("goodvertex", events.PV.npvsGood > 0)
 
             # define selection regions for each channel
             region_selection = {
                 "2b1l": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -335,6 +339,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -347,6 +352,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 },
                 "1b1e1mu": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -357,6 +363,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -369,6 +376,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 },
                 "1b1l": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -379,6 +387,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
