@@ -5,15 +5,11 @@ import numpy as np
 import awkward as ak
 import importlib.resources
 from coffea import processor
-from coffea.analysis_tools import Weights, PackedSelection
-from wprime_plus_b.processors.utils import histograms
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
-from wprime_plus_b.corrections.btag import BTagCorrector
+from coffea.analysis_tools import PackedSelection
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
-from wprime_plus_b.corrections.pileup import add_pileup_weight
-from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
+from wprime_plus_b.processors.utils import qcd_weights, histograms
+from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.selections.qcd.jet_selection import select_good_bjets
 from wprime_plus_b.selections.qcd.config import (
     qcd_electron_selection,
@@ -156,6 +152,26 @@ class QcdAnalysis(processor.ProcessorABC):
                 year_mod=self._yearmod,
             )
             met["pt"], met["phi"] = met_pt, met_phi
+            
+            # --------------------
+            # event weights vector
+            # --------------------
+            # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
+            # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
+            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso 
+            weights_container = qcd_weights.event_weights(
+                events,
+                corrected_jets,
+                qcd_electron_selection,
+                qcd_muon_selection,
+                qcd_jet_selection,
+                is_mc=self.is_mc,
+                region=region,
+                lepton_flavor=self._lepton_flavor,
+                year=self._year,
+                yearmod=self._yearmod,
+                variation="nominal",
+            )
 
             # ---------------
             # event selection
@@ -193,7 +209,6 @@ class QcdAnalysis(processor.ProcessorABC):
             self.selections.add("trigger_mu", trigger["mu"])
 
             # add MET filters mask
-            # open and load met filters
             with importlib.resources.path(
                 "wprime_plus_b.data", "metfilters.json"
             ) as path:
@@ -206,7 +221,7 @@ class QcdAnalysis(processor.ProcessorABC):
                     metfilters = metfilters & events.Flag[mf]
             self.selections.add("metfilters", metfilters)
 
-            # cut on MET
+            # cuts on MET
             self.selections.add("high_met_pt", met.pt > 50)
             self.selections.add("low_met_pt", met.pt < 50)
 
@@ -217,11 +232,15 @@ class QcdAnalysis(processor.ProcessorABC):
             self.selections.add("muon_veto", ak.num(muons) == 0)
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
+            
+            # add cut on good vertices number
+            self.selections.add("goodvertex", events.PV.npvsGood > 0)
 
             # define selection regions for each channel
             region_selections = {
                 "A": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -232,6 +251,7 @@ class QcdAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -244,6 +264,7 @@ class QcdAnalysis(processor.ProcessorABC):
                 },
                 "B": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -254,6 +275,7 @@ class QcdAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -266,6 +288,7 @@ class QcdAnalysis(processor.ProcessorABC):
                 },
                 "C": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -276,6 +299,7 @@ class QcdAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -288,6 +312,7 @@ class QcdAnalysis(processor.ProcessorABC):
                 },
                 "D": {
                     "ele": [
+                        "goodvertex",
                         "lumi",
                         "trigger_ele",
                         "metfilters",
@@ -298,6 +323,7 @@ class QcdAnalysis(processor.ProcessorABC):
                         "one_electron",
                     ],
                     "mu": [
+                        "goodvertex",
                         "lumi",
                         "trigger_mu",
                         "metfilters",
@@ -363,100 +389,6 @@ class QcdAnalysis(processor.ProcessorABC):
                 self.add_feature("lepton_met_mass", lepton_met_mass)
                 self.add_feature("lepton_met_bjet_mass", lepton_met_bjet_mass)
 
-                # -------------
-                # event weights
-                # -------------
-                weights_container = Weights(
-                    len(events[region_selection]), storeIndividual=True
-                )
-                if self.is_mc:
-                    # add gen weigths
-                    gen_weight = events.genWeight[region_selection]
-                    weights_container.add("genweight", gen_weight)
-
-                    # add L1prefiring weights
-                    if self._year in ("2016", "2017"):
-                        weights_container.add(
-                            "L1Prefiring",
-                            weight=events.L1PreFiringWeight.Nom[region_selection],
-                        )
-                    # add pileup reweighting
-                    add_pileup_weight(
-                        n_true_interactions=ak.to_numpy(
-                            events.Pileup.nPU[region_selection]
-                        ),
-                        weights=weights_container,
-                        year=self._year,
-                        year_mod=self._yearmod,
-                        variation="nominal",
-                    )
-                    # add pujetid weights
-                    add_pujetid_weight(
-                        jets=region_bjets,
-                        weights=weights_container,
-                        year=self._year,
-                        year_mod=self._yearmod,
-                        working_point="T",
-                        variation="nominal",
-                    )
-
-                    # b-tagging corrector
-                    btag_corrector = BTagCorrector(
-                        jets=region_bjets,
-                        njets=1,
-                        weights=weights_container,
-                        sf_type="comb",
-                        worging_point="M",
-                        tagger="deepJet",
-                        year=self._year,
-                        year_mod=self._yearmod,
-                        full_run=False,
-                        variation="nominal",
-                    )
-                    # add b-tagging weights
-                    btag_corrector.add_btag_weights(flavor="bc")
-
-                    # electron corrector
-                    if self._lepton_flavor == "ele":
-                        electron_corrector = ElectronCorrector(
-                            electrons=ak.firsts(region_electrons),
-                            weights=weights_container,
-                            year=self._year,
-                            year_mod=self._yearmod,
-                            tag="leading_electron",
-                            variation="nominal",
-                        )
-                        # add electron ID weights
-                        electron_corrector.add_id_weight(
-                            id_working_point="wp90iso"
-                            if region in ["A", "B"]
-                            else "wp80iso"
-                        )
-                        # add electron reco weights
-                        electron_corrector.add_reco_weight()
-
-                    # muon corrector
-                    if self._lepton_flavor == "mu":
-                        muon_corrector = MuonCorrector(
-                            muons=ak.firsts(region_muons),
-                            weights=weights_container,
-                            year=self._year,
-                            year_mod=self._yearmod,
-                            tag="leading_muon",
-                            variation="nominal",
-                            id_wp="tight" if region in ["A", "B"] else "medium",
-                            iso_wp="tight",
-                        )
-                        # add muon iso weights
-                        muon_corrector.add_iso_weight()
-                        
-                        # how to handle ID and Trigger corrections in the 'medium not tight' case?
-                        # add muon ID weights
-                        # muon_corrector.add_id_weight()
-
-                        # add muon triggeriso weights
-                        # muon_corrector.add_triggeriso_weight()
-
                 # ------------------
                 # histogram filling
                 # ------------------
@@ -472,7 +404,7 @@ class QcdAnalysis(processor.ProcessorABC):
                             **fill_args,
                             dataset=dataset,
                             region=region,
-                            weight=weights_container.weight(),
+                            weight=weights_container.weight()[region_selection],
                         )
 
         # define output dictionary accumulator
