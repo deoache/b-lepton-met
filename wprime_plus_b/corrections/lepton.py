@@ -291,6 +291,8 @@ class MuonCorrector:
         if self.iso_wp == "tight":
             assert self.id_wp != "loose", "there's no available SFs"
             
+        assert self.iso_wp != "medium", "Only LooseRelIso and TightRelIso avaliable"
+            
         # muon absolute pseudorapidity range: [0, 2.4)
         muon_eta = np.clip(np.abs(copy.deepcopy(self.muons_eta)), 0.0, 2.399)
 
