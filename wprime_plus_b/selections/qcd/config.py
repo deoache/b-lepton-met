@@ -35,7 +35,7 @@ qcd_electron_selection = {
             "electron_iso_wp": None,
         },
     },
-    "B": {
+    "D": {
         "ele": {
             "electron_pt_threshold": 55,
             "electron_id_wp": "wp90iso",
