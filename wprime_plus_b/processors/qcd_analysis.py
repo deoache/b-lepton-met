@@ -5,10 +5,15 @@ import numpy as np
 import awkward as ak
 import importlib.resources
 from coffea import processor
-from coffea.analysis_tools import PackedSelection
+from coffea.analysis_tools import PackedSelection, Weights
+from wprime_plus_b.processors.utils import histograms
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
-from wprime_plus_b.processors.utils import qcd_weights, histograms
+from wprime_plus_b.corrections.btag import BTagCorrector
+from wprime_plus_b.corrections.pileup import add_pileup_weight
+from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
+from wprime_plus_b.corrections.pujetid import add_pujetid_weight
+from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.selections.qcd.jet_selection import select_good_bjets
 from wprime_plus_b.selections.qcd.config import (
@@ -72,6 +77,10 @@ class QcdAnalysis(processor.ProcessorABC):
         self.features = {**self.features, name: var}
 
     def process(self, events):
+        # dictionary to store output data and metadata
+        output = {}
+        output["metadata"] = {}
+        
         # get dataset name
         dataset = events.metadata["dataset"]
 
@@ -83,12 +92,100 @@ class QcdAnalysis(processor.ProcessorABC):
 
         # create copies of histogram objects
         hist_dict = copy.deepcopy(self.hist_dict)
+        
+        # apply JEC/JER corrections to jets (in data, the corrections are already applied)
+        if self.is_mc:
+            corrected_jets, met = jet_corrections(events, self._year + self._yearmod)
+        else:
+            corrected_jets, met = events.Jet, events.MET
+            
+        # --------------------
+        # event weights vector
+        # --------------------
+        weights_container = Weights(len(events), storeIndividual=True)
+        if self.is_mc:
+            # add gen weigths
+            weights_container.add("genweight", events.genWeight)
+
+            # add l1prefiring weigths
+            add_l1prefiring_weight(events, weights_container, self._year, "nominal")
+
+            # add pileup weigths
+            add_pileup_weight(
+                events, weights_container, self._year, self._yearmod, "nominal"
+            )
+
+            # add pujetid weigths
+            add_pujetid_weight(
+                jets=corrected_jets,
+                weights=weights_container,
+                year=self._year,
+                year_mod=self._yearmod,
+                working_point="M",
+                variation="nominal",
+            )
+
+            # b-tagging corrector
+            btag_corrector = BTagCorrector(
+                jets=corrected_jets,
+                weights=weights_container,
+                sf_type="comb",
+                worging_point="M",
+                tagger="deepJet",
+                year=self._year,
+                year_mod=self._yearmod,
+                full_run=False,
+                variation="nominal",
+            )
+            # add b-tagging weights
+            btag_corrector.add_btag_weights(flavor="bc")
+            
+            """
+            # electron corrector
+            electron_corrector = ElectronCorrector(
+                electrons=events.Electron,
+                weights=weights_container,
+                year=self._year,
+                year_mod=self._yearmod,
+                variation="nominal",
+            )
+            # add electron ID weights
+            electron_corrector.add_id_weight(
+                id_working_point="wp90iso"
+            )
+            # add electron reco weights
+            electron_corrector.add_reco_weight()
+
+            # muon corrector
+            
+            muon_corrector = MuonCorrector(
+                muons=events.Muon,
+                weights=weights_container,
+                year=self._year,
+                year_mod=self._yearmod,
+                variation="nominal",
+                id_wp="tight",
+                iso_wp="tight"
+            )
+            # add muon ID weights
+            muon_corrector.add_id_weight()
+
+            # add muon iso weights
+            muon_corrector.add_iso_weight()
+
+            # add trigger weights
+            if self._lepton_flavor == "mu":
+                muon_corrector.add_triggeriso_weight()
+            """
+        # save sum of weights before selections
+        output["metadata"]["sumw"] = ak.sum(weights_container.weight())
+        
 
         for region in ["A", "B", "C", "D"]:
+            output["metadata"][region] = {}
             # ------------------
-            # event preselection
+            # bject selection
             # ------------------
-
             # ------------------
             # leptons
             # -------------------
@@ -120,19 +217,13 @@ class QcdAnalysis(processor.ProcessorABC):
             # ------------------
             # jets
             # -------------------
-            # apply JEC/JER corrections to jets (in data, the corrections are already applied)
-            if self.is_mc:
-                corrected_jets, met = jet_corrections(
-                    events, self._year + self._yearmod
-                )
-            else:
-                corrected_jets, met = events.Jet, events.MET
-
             # select good bjets
             good_bjets = select_good_bjets(
                 jets=corrected_jets,
                 year=self._year,
-                btag_working_point="M",
+                btag_working_point=qcd_jet_selection[region][self._lepton_flavor][
+                    "btag_working_point"
+                ],
             )
             good_bjets = (
                 good_bjets
@@ -152,27 +243,8 @@ class QcdAnalysis(processor.ProcessorABC):
                 year_mod=self._yearmod,
             )
             met["pt"], met["phi"] = met_pt, met_phi
-            
-            # --------------------
-            # event weights vector
-            # --------------------
-            # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
-            # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
-            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso 
-            weights_container = qcd_weights.event_weights(
-                events,
-                corrected_jets,
-                qcd_electron_selection,
-                qcd_muon_selection,
-                qcd_jet_selection,
-                is_mc=self.is_mc,
-                region=region,
-                lepton_flavor=self._lepton_flavor,
-                year=self._year,
-                yearmod=self._yearmod,
-                variation="nominal",
-            )
 
+    
             # ---------------
             # event selection
             # ---------------
@@ -232,7 +304,7 @@ class QcdAnalysis(processor.ProcessorABC):
             self.selections.add("muon_veto", ak.num(muons) == 0)
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
-            
+
             # add cut on good vertices number
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
 
@@ -406,18 +478,13 @@ class QcdAnalysis(processor.ProcessorABC):
                             region=region,
                             weight=weights_container.weight()[region_selection],
                         )
-
+            # save metadata
+            output["metadata"][region].update({"events_after": nevents_after})
+            output["metadata"][region].update({"events_after_weighted": ak.sum(weights_container.weight()[region_selection])})
         # define output dictionary accumulator
-        output = {
-            "histograms": hist_dict,
-            "metadata": {
-                "events_before": nevents,
-                "events_after": nevents_after,
-            },
-        }
-        # save sumw for MC samples
-        if self.is_mc:
-            output["metadata"].update({"sumw": ak.sum(events.genWeight)})
+        output["metadata"].update({"events_before": nevents})
+        output["histograms"] = hist_dict
+
         return output
 
     def postprocess(self, accumulator):
