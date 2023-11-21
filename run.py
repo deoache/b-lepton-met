@@ -131,6 +131,7 @@ def main(args):
         metadata = {"walltime": exec_time}
         metadata.update({"events_before": float(out["metadata"]["events_before"])})
         metadata.update({"events_after": float(out["metadata"]["events_after"])})
+        metadata.update({"sumw": float(out["metadata"]["sumw"])})
         metadata.update({"fileset": fileset[sample]})
 
         # save cutflow to metadata
