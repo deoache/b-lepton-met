@@ -5,12 +5,16 @@ import numpy as np
 import awkward as ak
 import importlib.resources
 from coffea import processor
-from coffea.analysis_tools import PackedSelection
+from coffea.analysis_tools import PackedSelection, Weights
 from wprime_plus_b.processors.utils import histograms
-from wprime_plus_b.processors.utils import weights
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
+from wprime_plus_b.corrections.btag import BTagCorrector
+from wprime_plus_b.corrections.pileup import add_pileup_weight
+from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
+from wprime_plus_b.corrections.pujetid import add_pujetid_weight
+from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
 from wprime_plus_b.selections.ttbar.config import (
     ttbar_electron_selection,
@@ -124,12 +128,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(jet_jec_syst_variations)
                 syst_variations.extend(jet_jer_syst_variations)
                 syst_variations.extend(met_obj_syst_variations)
-
         for syst_var in syst_variations:
             # ------------------
             # event preselection
             # ------------------
-            
+
             # ------------------
             # leptons
             # -------------------
@@ -198,7 +201,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     met = met.MET_UnclusteredEnergy.down
             else:
                 corrected_jets, met = events.Jet, events.MET
-
             # select good bjets
             good_bjets = select_good_bjets(
                 jets=corrected_jets,
@@ -239,26 +241,100 @@ class TtbarAnalysis(processor.ProcessorABC):
             # --------------------
             # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
             # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
-            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso 
-            weights_container = weights.event_weights(
-                events,
-                corrected_jets,
-                ttbar_electron_selection,
-                ttbar_muon_selection,
-                ttbar_jet_selection,
-                is_mc=self.is_mc,
-                channel=self._channel,
-                lepton_flavor=self._lepton_flavor,
-                year=self._year,
-                yearmod=self._yearmod,
-                variation=syst_var,
-            )
+            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso
+            weights_container = Weights(len(events), storeIndividual=True)
+            if self.is_mc:
+                # add gen weigths
+                weights_container.add("genweight", events.genWeight)
+
+                # add l1prefiring weigths
+                add_l1prefiring_weight(events, weights_container, self._year, syst_var)
+
+                # add pileup weigths
+                add_pileup_weight(
+                    events, weights_container, self._year, self._yearmod, syst_var
+                )
+
+                # add pujetid weigths
+                add_pujetid_weight(
+                    jets=corrected_jets,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    working_point=ttbar_jet_selection[self._channel][
+                        self._lepton_flavor
+                    ]["btag_working_point"],
+                    variation=syst_var,
+                )
+
+                # b-tagging corrector
+                btag_corrector = BTagCorrector(
+                    jets=corrected_jets,
+                    weights=weights_container,
+                    sf_type="comb",
+                    worging_point=ttbar_jet_selection[self._channel][
+                        self._lepton_flavor
+                    ]["btag_working_point"],
+                    tagger="deepJet",
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    full_run=False,
+                    variation=syst_var,
+                )
+                # add b-tagging weights
+                btag_corrector.add_btag_weights(flavor="bc")
+
+                # electron corrector
+                electron_corrector = ElectronCorrector(
+                    electrons=events.Electron,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation=syst_var,
+                )
+                # add electron ID weights
+                electron_corrector.add_id_weight(
+                    id_working_point=ttbar_electron_selection[self._channel][
+                        self._lepton_flavor
+                    ]["electron_id_wp"]
+                )
+                # add electron reco weights
+                electron_corrector.add_reco_weight()
+
+                # muon corrector
+                muon_corrector = MuonCorrector(
+                    muons=events.Muon,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation=syst_var,
+                    id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                        "muon_id_wp"
+                    ],
+                    iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                        "muon_iso_wp"
+                    ],
+                )
+                # add muon ID weights
+                muon_corrector.add_id_weight()
+
+                # add muon iso weights
+                muon_corrector.add_iso_weight()
+
+                # add trigger weights
+                if self._channel == "1b1e1mu":
+                    if self._lepton_flavor == "ele":
+                        muon_corrector.add_triggeriso_weight()
+                else:
+                    if self._lepton_flavor == "mu":
+                        muon_corrector.add_triggeriso_weight()
+                        
             # save sum of weights before selections
-            output["metadata"] = {"sumw_before": ak.sum(weights_container.weight())}
-            # save weights statistics 
+            output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
+            # save weights statistics
             output["metadata"].update({"weight_statistics": {}})
             for weight, statistics in weights_container.weightStatistics.items():
-                output["metadata"]["weight_statistics"][weight] = statistics      
+                output["metadata"]["weight_statistics"][weight] = statistics
                 
             # ---------------
             # event selection
@@ -320,7 +396,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
-            
+
             # good vertices
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
 
@@ -411,7 +487,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 output["metadata"]["cutflow"][cut_name] = ak.sum(
                     weights_container.weight()[current_selection]
                 )
-
             # ---------------
             # event variables
             # ---------------
@@ -509,8 +584,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                             if variation == "nominal":
                                 syst_weight = event_weights.weight()[region_selection]
                             else:
-                                syst_weight = weights_container.weight(variation)[region_selection]
-
+                                syst_weight = weights_container.weight(variation)[
+                                    region_selection
+                                ]
                             for kin in hist_dict[self._region]:
                                 # get filling arguments
                                 fill_args = {
@@ -547,8 +623,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                     # uncoment next two lines to save individual weights
                     # for weight in weights_container.weightStatistics:
                     #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
-                    self.add_feature("weights", weights_container.weight()[region_selection])
-                    output["metadata"].update({"sumw_after": ak.sum(weights_container.weight()[region_selection])})
+                    self.add_feature(
+                        "weights", weights_container.weight()[region_selection]
+                    )
 
                     # select variables and put them in column accumulators
                     array_dict = {

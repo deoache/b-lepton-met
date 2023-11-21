@@ -6,7 +6,7 @@ import importlib.resources
 from coffea import util
 from typing import Type
 from coffea.analysis_tools import Weights
-from wprime_plus_b.corrections.utils import get_pog_json, clip_array
+from wprime_plus_b.corrections.utils import get_pog_json
 
 
 class BTagCorrector:
@@ -68,21 +68,20 @@ class BTagCorrector:
         self._weights = weights
         self._full_run = full_run
         self._variation = variation
-        
+
         # load efficiency lookup table (only for deepJet)
         # efflookup(pt, |eta|, flavor)
         with importlib.resources.path(
             "wprime_plus_b.data", f"btag_eff_{self._tagger}_{self._wp}_{year}.coffea"
         ) as filename:
             self._efflookup = util.load(str(filename))
-            
         # load btagging working point (only for deepJet)
         # https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation
         with importlib.resources.path("wprime_plus_b.data", "btagWPs.json") as path:
             with open(path, "r") as handle:
                 btag_working_points = json.load(handle)
         self._btagwp = btag_working_points[tagger][year + year_mod][worging_point]
-        
+
         # define correction set
         self._cset = correctionlib.CorrectionSet.from_file(
             get_pog_json(json_name="btag", year=year + year_mod)
@@ -94,7 +93,6 @@ class BTagCorrector:
         self._light_jets = jets[jets.hadronFlavour == 0]
         self._jet_map = {"bc": self._bc_jets, "light": self._light_jets}
 
-        
     def add_btag_weights(self, flavor: str) -> None:
         """
         Add b-tagging weights (nominal, up and down) to weights container for bc or light jets
@@ -115,16 +113,16 @@ class BTagCorrector:
 
         # nominal weights
         jets_weight = self.get_btag_weight(eff, jets_sf, passbtag)
-        
+
         if self._variation == "nominal":
             # systematics
             syst_up = "up_correlated" if self._full_run else "up"
             syst_down = "down_correlated" if self._full_run else "down"
-            
+
             # up and down scale factors
             jets_sf_up = self.get_scale_factors(flavor=flavor, syst=syst_up)
             jets_sf_down = self.get_scale_factors(flavor=flavor, syst=syst_down)
-            
+
             jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
             jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
 
@@ -176,13 +174,25 @@ class BTagCorrector:
         }
         # until correctionlib handles jagged data natively we have to flatten and unflatten
         j, nj = ak.flatten(self._jet_map[flavor]), ak.num(self._jet_map[flavor])
+
+        # get 'in-limits' jets
+        jet_eta_mask = np.abs(j.eta) < 2.499
+        in_jet_mask = jet_eta_mask
+        in_jets = j.mask[in_jet_mask]
+
+        # get jet transverse momentum, abs pseudorapidity and hadron flavour (replace None values with some 'in-limit' value)
+        jets_pt = ak.fill_none(in_jets.pt, 0.0)
+        jets_eta = ak.fill_none(np.abs(in_jets.eta), 0.0)
+        jets_hadron_flavour = ak.fill_none(in_jets.hadronFlavour, 5)
+
         sf = self._cset[cset_keys[flavor]].evaluate(
             syst,
             self._wp,
-            np.array(j.hadronFlavour),
-            np.array(np.clip(abs(j.eta), 0., 2.499)),
-            np.array(j.pt),
+            np.array(jets_hadron_flavour),
+            np.array(jets_eta),
+            np.array(jets_pt),
         )
+        sf = ak.where(in_jet_mask, sf, ak.ones_like(sf))
         return ak.unflatten(sf, nj)
 
     @staticmethod
@@ -202,13 +212,9 @@ class BTagCorrector:
                 mask with jets that pass the b-tagging working point
         """
         # tagged SF = SF * eff / eff = SF
-        tagged_sf = sf.mask[passbtag]
+        tagged_sf = ak.prod(sf.mask[passbtag], axis=-1)
 
         # untagged SF = (1 - SF * eff) / (1 - eff)
-        untagged_sf = ((1 - sf * eff) / (1 - eff)).mask[~passbtag]
+        untagged_sf = ak.prod(((1 - sf * eff) / (1 - eff)).mask[~passbtag], axis=-1)
 
-        # if njets > 1, compute the product of the scale factors
-        if tagged_sf.ndim > 1:
-            tagged_sf = ak.prod(tagged_sf, axis=-1)
-            untagged_sf = ak.prod(untagged_sf, axis=-1)
         return ak.fill_none(tagged_sf * untagged_sf, 1.0)

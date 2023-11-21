@@ -6,23 +6,27 @@ from wprime_plus_b.corrections.utils import get_pog_json
 
 
 def add_pileup_weight(
-    weights: Type[Weights], year: str, year_mod: str, n_true_interactions: ak.Array, variation: str = "nominal"
+    events,
+    weights_container: Type[Weights],
+    year: str,
+    year_mod: str,
+    variation: str = "nominal",
 ) -> None:
     """
     add pileup scale factor
 
     Parameters:
     -----------
-        n_true_interactions:
-            number of true interactions (events.Pileup.nPU)
-        weights:
-            Weights object from coffea.analysis_tools
+        events:
+            Events array
+        weights_container:
+            Weight object from coffea.analysis_tools
         year:
             dataset year {'2016', '2017', '2018'}
         year_mod:
             year modifier {"", "APV"}
         variation:
-            if 'nominal' (default) add 'nominal', 'up' and 'down' 
+            if 'nominal' (default) add 'nominal', 'up' and 'down'
             variations to weights container. else, add only 'nominal' weights.
     """
     # define correction set
@@ -35,23 +39,25 @@ def add_pileup_weight(
         "2017": "Collisions17_UltraLegacy_goldenJSON",
         "2018": "Collisions18_UltraLegacy_goldenJSON",
     }
-    # get scale factors
-    values = {}
-    values["nominal"] = cset[year_to_corr[year]].evaluate(
-        n_true_interactions, "nominal"
+    # get nominal scale factors
+    nominal_sf = cset[year_to_corr[year]].evaluate(
+        ak.to_numpy(events.Pileup.nPU), "nominal"
     )
     if variation == "nominal":
-        values["up"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "up")
-        values["down"] = cset[year_to_corr[year]].evaluate(n_true_interactions, "down")
+        # get up and down variations
+        up_sf = cset[year_to_corr[year]].evaluate(ak.to_numpy(events.Pileup.nPU), "up")
+        down_sf = cset[year_to_corr[year]].evaluate(
+            ak.to_numpy(events.Pileup.nPU), "down"
+        )
         # add pileup scale factors to weights container
-        weights.add(
+        weights_container.add(
             name="pileup",
-            weight=values["nominal"],
-            weightUp=values["up"],
-            weightDown=values["down"],
+            weight=nominal_sf,
+            weightUp=up_sf,
+            weightDown=down_sf,
         )
     else:
-        weights.add(
+        weights_container.add(
             name="pileup",
-            weight=values["nominal"],
+            weight=nominal_sf,
         )

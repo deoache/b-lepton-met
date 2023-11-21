@@ -2,9 +2,10 @@ import correctionlib
 import numpy as np
 import awkward as ak
 from typing import Type
+from .utils import unflat_sf
 from coffea.analysis_tools import Weights
 from wprime_plus_b.corrections.utils import get_pog_json
-from .utils import unflat_sf
+
 
 def add_pujetid_weight(
     jets: ak.Array,
@@ -35,27 +36,41 @@ def add_pujetid_weight(
     """
     # flat jets array since correction function works only on flat arrays
     j, n = ak.flatten(jets), ak.num(jets)
-    
-    # get jet transverse momentum and pseudorapidity
-    jets_pt = np.clip(j.pt, 12.5, 50)
-    jets_eta = np.clip(j.eta, -5.8, 5.8)
+
+    # get 'in-limits' jets
+    jet_pt_mask = (j.pt > 15) & (j.pt < 50)
+    jet_eta_mask = np.abs(j.eta) < 5.83
+    in_jet_mask = jet_pt_mask & jet_eta_mask
+    in_jets = j.mask[in_jet_mask]
+
+    # get jet transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
+    jets_pt = ak.fill_none(in_jets.pt, 15.0)
+    jets_eta = ak.fill_none(in_jets.eta, 0.0)
 
     # define correction set
     cset = correctionlib.CorrectionSet.from_file(
         get_pog_json("pujetid", year + year_mod)
     )
     # get nominal scale factors
+    # If jet in 'in-limits' jets, then take the computed SF, otherwise assign 1
+    # Unflatten to original shape
     nominal_sf = unflat_sf(
-        cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "nom", working_point), n
+        cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "nom", working_point),
+        in_jet_mask,
+        n,
     )
 
     if variation == "nominal":
         # get 'up' and 'down' variations
         up_sf = unflat_sf(
-            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "up", working_point), n
+            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "up", working_point),
+            in_jet_mask,
+            n,
         )
         down_sf = unflat_sf(
-            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "down", working_point), n
+            cset["PUJetID_eff"].evaluate(jets_eta, jets_pt, "down", working_point),
+            in_jet_mask,
+            n,
         )
 
         # add nominal, up and down scale factors to weights container
@@ -67,7 +82,4 @@ def add_pujetid_weight(
         )
     else:
         # add nominal scale factors to weights container
-        weights.add(
-            name="pujetid",
-            weight=nominal_sf
-        )
+        weights.add(name="pujetid", weight=nominal_sf)

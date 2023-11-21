@@ -51,28 +51,19 @@ def get_pog_json(json_name: str, year: str) -> str:
     return f"{POG_CORRECTION_PATH}/POG/{pog_json[0]}/{pog_years[year]}/{pog_json[1]}"
 
 
-def clip_array(array: ak.Array, target=2, fill_value=1) -> ak.Array:
+def unflat_sf(sf: ak.Array, in_limit_mask: ak.Array, n: ak.Array):
     """
-    Clips an awkward array to a fixed length by padding with None values. Fills any remaining
-    None values in the clipped array with 'fill_value'
+    get scale factors for in-limit objects (otherwise assign 1).
+    Unflat array to original shape and multiply scale factors event-wise
 
     Parameters:
     -----------
-        array:
-            Data containing nested lists to pad to a target length
-        target:
-            The intended length of the lists. The output lists will have exactly this length.
-        fill_value:
-            The value used to fill any remaining None values after clipping. Defaults to 1.
-
-    Returns:
-        ak.Array: The clipped collection with a fixed length, padded with None values and filled as specified.
+        sf:
+            Array with 1D scale factors
+        in_limit_mask:
+            Array mask for events with objects within correction limits
+        n:
+            Array with number of objects per event
     """
-    return ak.fill_none(ak.pad_none(array, target, clip=True), fill_value)
-
-
-def unflat_sf(sf, n):
-    """
-    unflat array and multiply scale factors event-wise
-    """
+    sf = ak.where(in_limit_mask, sf, ak.ones_like(sf))
     return ak.fill_none(ak.prod(ak.unflatten(sf, n), axis=1), value=1)
