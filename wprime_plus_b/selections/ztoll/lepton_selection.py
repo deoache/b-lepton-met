@@ -126,26 +126,3 @@ def select_good_muons(
     muon_iso_mask = id_wps[muon_iso_wp]
 
     return (muon_pt_mask) & (muon_eta_mask) & (muon_id_mask) & (muon_iso_mask)
-
-
-def select_good_taus(events: NanoEventsArray) -> ak.highlevel.Array:
-    """
-    Selects and filters "good" taus from a collection of events based on specified criteria.
-
-    Parameters:
-    -----------
-    events:
-        A collection of events represented using the NanoEventsArray class.
-
-    Returns:
-    --------
-        An Awkward Array mask containing the selected "good" taus that satisfy the specified criteria.
-    """
-    return (
-        (events.Tau.pt > 20)
-        & (np.abs(events.Tau.eta) < 2.1)
-        & (events.Tau.dz < 0.2)
-        & (events.Tau.idDeepTau2017v2p1VSjet > 8)
-        & (events.Tau.idDeepTau2017v2p1VSe > 8)
-        & (events.Tau.idDeepTau2017v2p1VSmu > 1)
-    )

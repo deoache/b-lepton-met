@@ -4,7 +4,7 @@ import awkward as ak
 import importlib.resources
 
 
-def select_good_bjets(jets, year: str, btag_working_point: str, jet_pt_threshold: int) -> ak.highlevel.Array:
+def select_good_bjets(jets, year: str, jet_pt_threshold: int, jet_id: int, jet_pileup_id: int, btag_working_point: str) -> ak.highlevel.Array:
     """
     Selects and filters 'good' b-jets from a collection of jets based on specified criteria
 
@@ -27,9 +27,26 @@ def select_good_bjets(jets, year: str, btag_working_point: str, jet_pt_threshold
     with importlib.resources.open_text("wprime_plus_b.data", "btagWPs.json") as file:
         btag_threshold = json.load(file)["deepJet"][year][btag_working_point]
 
-    return (
-        (jets.pt >= jet_pt_threshold)
+    # break up selection for low and high pT jets
+    low_pt_jets_mask = (
+        (jets.pt > jet_pt_threshold)
+        & (jets.pt < 50)
         & (np.abs(jets.eta) < 2.4)
+        & (jets.jetId == jet_id)
+        & (jets.puId == jet_pileup_id)
         & (jets.btagDeepFlavB > btag_threshold)
+    )
+
+    high_pt_jets_mask = (
+        (jets.pt >= 50)
+        & (np.abs(jets.eta) < 2.4)
+        & (jets.jetId == jet_id)
+        & (jets.btagDeepFlavB > btag_threshold)
+    )
+
+    return ak.where(
+        (jets.pt > jet_pt_threshold) & (jets.pt < 50),
+        low_pt_jets_mask,
+        high_pt_jets_mask,
     )
     

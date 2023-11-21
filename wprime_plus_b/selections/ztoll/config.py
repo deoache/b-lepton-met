@@ -11,6 +11,8 @@ ztoll_muon_selection = {
 }
 
 ztoll_jet_selection = {
-    "jet_pt_threshold": 30,
-    "btag_working_point": "T",
+    "jet_pt_threshold": 20,
+    "btag_working_point": "M",
+    "jet_id": 6,
+    "jet_pileup_id": 7,
 }
