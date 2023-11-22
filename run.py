@@ -11,7 +11,7 @@ from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
 
-# from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
+from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 # from wprime_plus_b.processors.btag_efficiency_processor_array import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
@@ -54,7 +54,7 @@ def main(args):
         "ztoll": ZToLLProcessor,
         "qcd": QcdAnalysis,
         # "btag_eff": BTagEfficiencyProcessor,
-        # "trigger": TriggerEfficiencyProcessor,
+        "trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_kwargs = {
         "year": args.year,
@@ -72,6 +72,11 @@ def main(args):
         del processor_kwargs["channel"]
         del processor_kwargs["syst"]
         del processor_kwargs["output_type"]
+    if args.processor == "trigger_eff":
+        del processor_kwargs["channel"]
+        del processor_kwargs["syst"]
+        del processor_kwargs["output_type"]
+        
     # define executors
     executors = {
         "iterative": processor.iterative_executor,
@@ -123,8 +128,8 @@ def main(args):
         "ztoll": other_output_path,
         "qcd": other_output_path,
         "btag_eff": other_output_path,
+        "trigger_eff": other_output_path,
     }
-
     # get metadata
     metadata = {"walltime": exec_time}
     metadata.update({"fileset": fileset[sample]})
@@ -155,32 +160,33 @@ def main(args):
         for weight, statistics in out["metadata"]["weight_statistics"].items():
             out["metadata"]["weight_statistics"][weight] = str(statistics)
         metadata.update({"weight_statistics": out["metadata"]["weight_statistics"]})
-        
-    # save selectios to metadata
-    selections = {
-        "ttbar": {
-            "electron_selection": ttbar_electron_selection[args.channel][
-                args.lepton_flavor
-            ],
-            "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
-            "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
-        },
-        "ztoll": {
-            "electron_selection": ztoll_electron_selection,
-            "muon_selection": ztoll_muon_selection,
-            "jet_selection": ztoll_jet_selection,
-        },
-        "qcd": {
-            "electron_selection": qcd_electron_selection,
-            "muon_selection": qcd_muon_selection,
-            "jet_selection": qcd_jet_selection,
-        },
-    }
-    metadata.update(
-        {"electron_selection": selections[args.processor]["electron_selection"]}
-    )
-    metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
-    metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
+    
+    if args.processor in ["ttbar", "ztoll", "qcd"]:
+        # save selectios to metadata
+        selections = {
+            "ttbar": {
+                "electron_selection": ttbar_electron_selection[args.channel][
+                    args.lepton_flavor
+                ],
+                "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
+                "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
+            },
+            "ztoll": {
+                "electron_selection": ztoll_electron_selection,
+                "muon_selection": ztoll_muon_selection,
+                "jet_selection": ztoll_jet_selection,
+            },
+            "qcd": {
+                "electron_selection": qcd_electron_selection,
+                "muon_selection": qcd_muon_selection,
+                "jet_selection": qcd_jet_selection,
+            },
+        }
+        metadata.update(
+            {"electron_selection": selections[args.processor]["electron_selection"]}
+        )
+        metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
+        metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
 
     # save args to metadata
     args_dict = vars(args).copy()
