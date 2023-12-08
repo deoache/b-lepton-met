@@ -18,7 +18,7 @@ ttbar_electron_selection = {
             "electron_iso_wp": None,
         },
         "mu": {
-            "electron_pt_threshold": 50,
+            "electron_pt_threshold": 30,
             "electron_id_wp": "wp90iso",
             "electron_iso_wp": None,
         },
