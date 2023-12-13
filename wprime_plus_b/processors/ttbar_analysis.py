@@ -328,14 +328,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                 else:
                     if self._lepton_flavor == "mu":
                         muon_corrector.add_triggeriso_weight()
-                        
             # save sum of weights before selections
             output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
             # save weights statistics
             output["metadata"].update({"weight_statistics": {}})
             for weight, statistics in weights_container.weightStatistics.items():
                 output["metadata"]["weight_statistics"][weight] = statistics
-                
             # ---------------
             # event selection
             # ---------------
@@ -564,61 +562,47 @@ class TtbarAnalysis(processor.ProcessorABC):
                     # apply event-wise variations only for nominal
                     if self.is_mc and syst_var == "nominal":
                         # get event weight systematic variations for MC samples
-                        event_weights = [
-                            weight
-                            for weight in weights_container.weightStatistics
-                            if "genweight" not in weight
-                        ]
-                        event_weight_syst_variations_up = [
-                            f"{event_weight}Up" for event_weight in event_weights
-                        ]
-                        event_weight_syst_variations_down = [
-                            f"{event_weight}Down" for event_weight in event_weights
-                        ]
-                        event_weight_syst = ["nominal"]
-                        event_weight_syst.extend(event_weight_syst_variations_up)
-                        event_weight_syst.extend(event_weight_syst_variations_down)
-
-                        for variation in event_weight_syst:
-                            # get weight
+                        variations = ["nominal"] + list(weights_container.variations)
+                        for variation in variations:
                             if variation == "nominal":
-                                syst_weight = event_weights.weight()[region_selection]
-                            else:
-                                syst_weight = weights_container.weight(variation)[
+                                region_weight = weights_container.weight()[
                                     region_selection
                                 ]
+                            else:
+                                region_weight = weights_container.weight(
+                                    modifier=variation
+                                )[region_selection]
                             for kin in hist_dict[self._region]:
-                                # get filling arguments
                                 fill_args = {
                                     feature: normalize(self.features[feature])
                                     for feature in hist_dict[self._region][
                                         kin
-                                    ].axes.name[:-1]
-                                    if "dataset" not in feature
+                                    ].axes.name
+                                    if feature not in ["dataset", "variation"]
                                 }
-                                # fill histograms
                                 hist_dict[self._region][kin].fill(
                                     **fill_args,
                                     dataset=dataset,
                                     variation=variation,
-                                    weight=syst_weight,
+                                    weight=region_weight,
                                 )
-                    # object-wise variations
-                    syst_weight = weights_container.weight()[region_selection]
-                    for kin in hist_dict[self._region]:
-                        # get filling arguments
-                        fill_args = {
-                            feature: normalize(self.features[feature])
-                            for feature in hist_dict[self._region][kin].axes.name[:-1]
-                            if "dataset" not in feature
-                        }
-                        # fill histograms
-                        hist_dict[self._region][kin].fill(
-                            **fill_args,
-                            dataset=dataset,
-                            variation=syst_var,
-                            weight=syst_weight,
-                        )
+                    elif self.is_mc and syst_var != "nominal":
+                        # object-wise variations
+                        region_weight = weights_container.weight()[region_selection]
+                        for kin in hist_dict[self._region]:
+                            # get filling arguments
+                            fill_args = {
+                                feature: normalize(self.features[feature])
+                                for feature in hist_dict[self._region][kin].axes.name[:-1]
+                                if feature not in ["dataset", "variation"]
+                            }
+                            # fill histograms
+                            hist_dict[self._region][kin].fill(
+                                **fill_args,
+                                dataset=dataset,
+                                variation=syst_var,
+                                weight=region_weight,
+                            )
                 elif self._output_type == "array":
                     # uncoment next two lines to save individual weights
                     # for weight in weights_container.weightStatistics:
@@ -626,7 +610,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     self.add_feature(
                         "weights", weights_container.weight()[region_selection]
                     )
-
                     # select variables and put them in column accumulators
                     array_dict = {
                         feature_name: processor.column_accumulator(
