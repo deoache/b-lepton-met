@@ -135,7 +135,7 @@ class BTagCorrector:
             )
         else:
             self._weights.add(
-                name=f"{flavor}_{self._njets}_jets",
+                name=f"{flavor}_jets",
                 weight=jets_weight,
             )
 
