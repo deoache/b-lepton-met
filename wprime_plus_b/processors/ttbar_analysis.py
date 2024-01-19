@@ -603,6 +603,24 @@ class TtbarAnalysis(processor.ProcessorABC):
                                 variation=syst_var,
                                 weight=region_weight,
                             )
+                    
+                    elif not self.is_mc and syst_var == "nominal":
+                        # object-wise variations
+                        region_weight = weights_container.weight()[region_selection]
+                        for kin in hist_dict[self._region]:
+                            # get filling arguments
+                            fill_args = {
+                                feature: normalize(self.features[feature])
+                                for feature in hist_dict[self._region][kin].axes.name[:-1]
+                                if feature not in ["dataset", "variation"]
+                            }
+                            # fill histograms
+                            hist_dict[self._region][kin].fill(
+                                **fill_args,
+                                dataset=dataset,
+                                variation=syst_var,
+                                weight=region_weight,
+                            )
                 elif self._output_type == "array":
                     # uncoment next two lines to save individual weights
                     # for weight in weights_container.weightStatistics:
