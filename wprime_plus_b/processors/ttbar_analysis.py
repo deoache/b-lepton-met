@@ -578,11 +578,10 @@ class TtbarAnalysis(processor.ProcessorABC):
                                     for feature in hist_dict[self._region][
                                         kin
                                     ].axes.name
-                                    if feature not in ["dataset", "variation"]
+                                    if feature not in ["variation"]
                                 }
                                 hist_dict[self._region][kin].fill(
                                     **fill_args,
-                                    dataset=dataset,
                                     variation=variation,
                                     weight=region_weight,
                                 )
@@ -594,12 +593,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                             fill_args = {
                                 feature: normalize(self.features[feature])
                                 for feature in hist_dict[self._region][kin].axes.name[:-1]
-                                if feature not in ["dataset", "variation"]
+                                if feature not in ["variation"]
                             }
                             # fill histograms
                             hist_dict[self._region][kin].fill(
                                 **fill_args,
-                                dataset=dataset,
                                 variation=syst_var,
                                 weight=region_weight,
                             )
@@ -612,12 +610,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                             fill_args = {
                                 feature: normalize(self.features[feature])
                                 for feature in hist_dict[self._region][kin].axes.name[:-1]
-                                if feature not in ["dataset", "variation"]
+                                if feature not in ["variation"]
                             }
                             # fill histograms
                             hist_dict[self._region][kin].fill(
                                 **fill_args,
-                                dataset=dataset,
                                 variation=syst_var,
                                 weight=region_weight,
                             )
@@ -647,7 +644,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "events_after": nevents_after,
             }
         )
-        return output
+        return {dataset: output}
 
     def postprocess(self, accumulator):
         return accumulator
