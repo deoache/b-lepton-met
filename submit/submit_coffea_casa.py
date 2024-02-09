@@ -36,11 +36,11 @@ def run_coffea_casa(args):
             redirector to find CMS datasets. 'xcache' at coffea-casa. 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus.
     """
     # dask client at coffea-casa
-    client = "tls://localhost:8786"
+    client = "tls://daniel-2eocampo-2ehenao-40cern-2ech.dask.cmsaf-prod.flatiron.hollandhpc.org:8786"
 
     # divide filesets in args.nsplit json files
     filesets = get_filesets(args.fileset, args.sample, args.year, args.nsplit)
-
+    
     # submit jobs
     if len(args.nsample) == 0:
         for sample, fileset in filesets.items():
@@ -50,9 +50,9 @@ def run_coffea_casa(args):
             )
     else:
         for sample, fileset in filesets.items():
-            for n in args.nsample:
+            for n in "".join(args.nsample).split(","):
                 #if sample.split("_")[-1] == "1": continue
-                if f"_{n}" in sample:
+                if sample.split("_")[-1] == n:
                     print(f"Processing {sample}")
                     os.system(
                         f"python3 run.py --processor {args.processor} --executor {args.executor} --output_type {args.output_type} --syst {args.syst} --channel {args.channel} --lepton_flavor {args.lepton_flavor} --fileset {fileset} --year {args.year} --nfiles {args.nfiles} --tag {args.tag} --redirector {args.redirector} --client {client}"
