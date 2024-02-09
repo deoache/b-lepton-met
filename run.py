@@ -10,9 +10,8 @@ from coffea import processor
 from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-
 from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
-# from wprime_plus_b.processors.btag_efficiency_processor_array import BTagEfficiencyProcessor
+from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
 from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
@@ -40,6 +39,7 @@ def main(args):
         assert (
             args.lepton_flavor == "mu" and args.output_type == "hist"
         ), "Only muon channel and histograms are available"
+        
     # load and process filesets
     fileset = {}
     with open(args.fileset, "r") as handle:
@@ -48,12 +48,13 @@ def main(args):
         if args.nfiles != -1:
             val = val[: args.nfiles]
         fileset[sample] = [f"root://{args.redirector}/" + file for file in val]
+        
     # define processors
     processors = {
         "ttbar": TtbarAnalysis,
         "ztoll": ZToLLProcessor,
         "qcd": QcdAnalysis,
-        # "btag_eff": BTagEfficiencyProcessor,
+        "btag_eff": BTagEfficiencyProcessor,
         "trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_kwargs = {
@@ -71,7 +72,6 @@ def main(args):
         del processor_kwargs["lepton_flavor"]
         del processor_kwargs["channel"]
         del processor_kwargs["syst"]
-        del processor_kwargs["output_type"]
     if args.processor == "trigger_eff":
         del processor_kwargs["channel"]
         del processor_kwargs["syst"]
@@ -130,82 +130,84 @@ def main(args):
         "btag_eff": other_output_path,
         "trigger_eff": other_output_path,
     }
-    # get metadata
-    metadata = {"walltime": exec_time}
-    metadata.update({"fileset": fileset[sample]})
+    if "metada" in out:
+        # get metadata
+        metadata = {"walltime": exec_time}
+        metadata.update({"fileset": fileset[sample]})
+        
+        # save number of raw initial events
+        metadata.update({"events_before": float(out["metadata"]["events_before"])})
 
-    # save number of raw initial events
-    metadata.update({"events_before": float(out["metadata"]["events_before"])})
+        # save number of weighted initial events
+        metadata.update({"sumw": float(out["metadata"]["sumw"])})
 
-    # save number of weighted initial events
-    metadata.update({"sumw": float(out["metadata"]["sumw"])})
+        if args.processor in ["qcd"]:
+            metadata.update({"nevents": {}})
+            for region in ["A", "B", "C", "D"]:
+                metadata["nevents"].update({region: {}})
+                metadata["nevents"][region]["events_after"] = str(
+                    out["metadata"][region]["events_after"]
+                )
+                metadata["nevents"][region]["events_after_weighted"] = str(
+                    out["metadata"][region]["events_after_weighted"]
+                )
+        if args.processor in ["ttbar", "ztoll"]:
+            metadata.update({"events_after": float(out["metadata"]["events_after"])})
+            # save cutflow to metadata
+            for cut_selection, nevents in out["metadata"]["cutflow"].items():
+                out["metadata"]["cutflow"][cut_selection] = str(nevents)
+            metadata.update({"cutflow": out["metadata"]["cutflow"]})
 
-    if args.processor in ["qcd"]:
-        metadata.update({"nevents": {}})
-        for region in ["A", "B", "C", "D"]:
-            metadata["nevents"].update({region: {}})
-            metadata["nevents"][region]["events_after"] = str(
-                out["metadata"][region]["events_after"]
+            for weight, statistics in out["metadata"]["weight_statistics"].items():
+                out["metadata"]["weight_statistics"][weight] = str(statistics)
+            metadata.update({"weight_statistics": out["metadata"]["weight_statistics"]})
+
+        if args.processor in ["ttbar", "ztoll", "qcd"]:
+            # save selectios to metadata
+            selections = {
+                "ttbar": {
+                    "electron_selection": ttbar_electron_selection[args.channel][
+                        args.lepton_flavor
+                    ],
+                    "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
+                    "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
+                },
+                "ztoll": {
+                    "electron_selection": ztoll_electron_selection,
+                    "muon_selection": ztoll_muon_selection,
+                    "jet_selection": ztoll_jet_selection,
+                },
+                "qcd": {
+                    "electron_selection": qcd_electron_selection,
+                    "muon_selection": qcd_muon_selection,
+                    "jet_selection": qcd_jet_selection,
+                },
+            }
+            metadata.update(
+                {"electron_selection": selections[args.processor]["electron_selection"]}
             )
-            metadata["nevents"][region]["events_after_weighted"] = str(
-                out["metadata"][region]["events_after_weighted"]
-            )
-    if args.processor in ["ttbar", "ztoll"]:
-        metadata.update({"events_after": float(out["metadata"]["events_after"])})
-        # save cutflow to metadata
-        for cut_selection, nevents in out["metadata"]["cutflow"].items():
-            out["metadata"]["cutflow"][cut_selection] = str(nevents)
-        metadata.update({"cutflow": out["metadata"]["cutflow"]})
+            metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
+            metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
 
-        for weight, statistics in out["metadata"]["weight_statistics"].items():
-            out["metadata"]["weight_statistics"][weight] = str(statistics)
-        metadata.update({"weight_statistics": out["metadata"]["weight_statistics"]})
-    
-    if args.processor in ["ttbar", "ztoll", "qcd"]:
-        # save selectios to metadata
-        selections = {
-            "ttbar": {
-                "electron_selection": ttbar_electron_selection[args.channel][
-                    args.lepton_flavor
-                ],
-                "muon_selection": ttbar_muon_selection[args.channel][args.lepton_flavor],
-                "jet_selection": ttbar_jet_selection[args.channel][args.lepton_flavor],
-            },
-            "ztoll": {
-                "electron_selection": ztoll_electron_selection,
-                "muon_selection": ztoll_muon_selection,
-                "jet_selection": ztoll_jet_selection,
-            },
-            "qcd": {
-                "electron_selection": qcd_electron_selection,
-                "muon_selection": qcd_muon_selection,
-                "jet_selection": qcd_jet_selection,
-            },
-        }
-        metadata.update(
-            {"electron_selection": selections[args.processor]["electron_selection"]}
-        )
-        metadata.update({"muon_selection": selections[args.processor]["muon_selection"]})
-        metadata.update({"jet_selection": selections[args.processor]["jet_selection"]})
+        # save args to metadata
+        args_dict = vars(args).copy()
+        del args_dict["fileset"]
+        if args.processor in ["ztoll", "btag_eff"]:
+            del args_dict["channel"]
+        if args.processor == "btag_eff":
+            del args_dict["lepton_flavor"]
+        metadata.update(args_dict)
 
-    # save args to metadata
-    args_dict = vars(args).copy()
-    del args_dict["fileset"]
-    if args.processor in ["ztoll", "btag_eff"]:
-        del args_dict["channel"]
-    if args.processor == "btag_eff":
-        del args_dict["lepton_flavor"]
-    metadata.update(args_dict)
+        # drop metadata from output
+        del out["metadata"]
 
-    # drop metadata from output
-    del out["metadata"]
-
-    # save metadata
-    metadata_path = Path(f"{str(output_path[args.processor])}/metadata")
-    if not metadata_path.exists():
-        metadata_path.mkdir(parents=True)
-    with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
-        f.write(json.dumps(metadata))
+        # save metadata
+        metadata_path = Path(f"{str(output_path[args.processor])}/metadata")
+        if not metadata_path.exists():
+            metadata_path.mkdir(parents=True)
+        with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
+            f.write(json.dumps(metadata))
+            
     # save output
     if not output_path[args.processor].exists():
         output_path[args.processor].mkdir(parents=True)
