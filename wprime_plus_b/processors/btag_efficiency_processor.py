@@ -3,6 +3,7 @@ import hist
 import importlib.resources
 import awkward as ak
 from coffea import processor
+from wprime_plus_b.processors.utils.analysis_utils import normalize
 
 class BTagEfficiencyProcessor(processor.ProcessorABC):
     """
@@ -19,10 +20,11 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
         wp:
             worging point {'L', 'M', 'T'}
     """
-    def __init__(self, year="2017", yearmod="", tagger="deepJet", wp="M"):
+    def __init__(self, year="2017", yearmod="", tagger="deepJet", wp="T", output_type="array"):
         self._year = year + yearmod
         self._tagger = tagger
         self._wp = wp
+        self._output_type = output_type
         
         with importlib.resources.path("wprime_plus_b.data", "btagWPs.json") as path:
             with open(path, "r") as handle:
@@ -43,7 +45,7 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
 
     def process(self, events):
         dataset = events.metadata["dataset"]
-        out = self.make_output()
+        
         
         phasespace_cuts = (
             (abs(events.Jet.eta) < 2.5)
@@ -52,14 +54,33 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
         jets = events.Jet[phasespace_cuts]
         passbtag = jets.btagDeepFlavB > self._btagwp
         
-        out.fill(
-            dataset=dataset,
-            pt=ak.flatten(jets.pt),
-            abseta=ak.flatten(abs(jets.eta)),
-            flavor=ak.flatten(jets.hadronFlavour),
-            passWP=ak.flatten(passbtag),
-        )
-        return out
+        if self._output_type == "hist":
+            output = self.make_output()
+            output.fill(
+                dataset=dataset,
+                pt=ak.flatten(jets.pt),
+                abseta=ak.flatten(abs(jets.eta)),
+                flavor=ak.flatten(jets.hadronFlavour),
+                passWP=ak.flatten(passbtag),
+            )
+            return output
+        
+        elif self._output_type == "array":
+            # select variables and put them in column accumulators
+            features = {
+                "pt": ak.flatten(jets.pt),
+                "abseta": ak.flatten(abs(jets.eta)),
+                "flavor": ak.flatten(jets.hadronFlavour),
+                "pass_wp": ak.flatten(passbtag),
+            }
+            output = {
+                feature_name: processor.column_accumulator(
+                    normalize(feature_array)
+                )
+                for feature_name, feature_array in features.items()
+            }
+        
+        return output
 
     def postprocess(self, accumulator):
         return accumulator
