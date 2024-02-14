@@ -9,6 +9,7 @@ def met_phi_corrections(
     met_pt: ak.Array,
     met_phi: ak.Array,
     npvs: ak.Array,
+    run: ak.Array,
     is_mc: bool,
     year: str,
     year_mod: str = "",
@@ -24,6 +25,8 @@ def met_phi_corrections(
             MET azimuthal angle
         npvs:
             Total number of reconstructed primary vertices
+        run:
+            Run number
         is_mc:
             True if dataset is MC
         year:
@@ -42,16 +45,18 @@ def met_phi_corrections(
     met_pt = np.clip(met_pt, 0.0, 6499.0)
     met_phi = np.clip(met_phi, -3.5, 3.5)
 
+    # use correct run ranges when working with data, otherwise use uniform run numbers in an arbitrary large window
     run_ranges = {
         "2016APV": [272007, 278771],
         "2016": [278769, 284045],
         "2017": [297020, 306463],
         "2018": [315252, 325274],
     }
-
     data_kind = "mc" if is_mc else "data"
-    run = np.random.randint(run_ranges[year][0], run_ranges[year][1], size=len(met_pt))
-
+    if data_kind == "mc":
+        run = np.random.randint(
+            run_ranges[year][0], run_ranges[year][1], size=len(met_pt)
+        )
     try:
         corrected_met_pt = cset[f"pt_metphicorr_pfmet_{data_kind}"].evaluate(
             met_pt.to_numpy(), met_phi.to_numpy(), npvs.to_numpy(), run

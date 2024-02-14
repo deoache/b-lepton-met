@@ -230,6 +230,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 met_pt=met.pt,
                 met_phi=met.phi,
                 npvs=events.PV.npvsGood,
+                run=events.run,
                 is_mc=self.is_mc,
                 year=self._year,
                 year_mod=self._yearmod,
