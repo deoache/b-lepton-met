@@ -61,7 +61,6 @@ def main(args):
             if args["nfiles"] != -1:
                 root_file = root_file[: args["nfiles"]]
         fileset[sample] = [f"root://{args['redirector']}/" + file for file in root_file]
-        print(f"{fileset=}")
 
         # define processors and its kwargs
         processors = {
@@ -80,7 +79,6 @@ def main(args):
             "syst",
         ]
         processor_kwargs = {k: args[k] for k in processor_args if args[k]}
-        print(f"{processor_kwargs=}")
 
         # define executors
         executors = {
@@ -137,90 +135,89 @@ def main(args):
         # get metadata
         metadata = {"walltime": exec_time}
         metadata.update({"fileset": fileset[sample]})
-        if isinstance(out, dict):
-            if "metadata" in out[sample]:
-                output_metadata = out[sample]["metadata"]
-                # save number of raw initial events
+        if "metadata" in out[sample]:
+            output_metadata = out[sample]["metadata"]
+            # save number of raw initial events
+            metadata.update(
+                {"events_before": float(output_metadata["events_before"])}
+            )
+            # save number of weighted initial events
+            metadata.update({"sumw": float(output_metadata["sumw"])})
+
+            if args["processor"] in ["qcd"]:
+                metadata.update({"nevents": {}})
+                for region in ["A", "B", "C", "D"]:
+                    metadata["nevents"].update({region: {}})
+                    metadata["nevents"][region]["events_after"] = str(
+                        output_metadata[region]["events_after"]
+                    )
+                    metadata["nevents"][region]["events_after_weighted"] = str(
+                        output_metadata[region]["events_after_weighted"]
+                    )
+
+            if args["processor"] in ["ttbar", "ztoll"]:
                 metadata.update(
-                    {"events_before": float(output_metadata["events_before"])}
+                    {"events_after": float(output_metadata["events_after"])}
                 )
-                # save number of weighted initial events
-                metadata.update({"sumw": float(output_metadata["sumw"])})
+                # save cutflow to metadata
+                for cut_selection, nevents in output_metadata["cutflow"].items():
+                    output_metadata["cutflow"][cut_selection] = str(nevents)
+                metadata.update({"cutflow": output_metadata["cutflow"]})
 
-                if args["processor"] in ["qcd"]:
-                    metadata.update({"nevents": {}})
-                    for region in ["A", "B", "C", "D"]:
-                        metadata["nevents"].update({region: {}})
-                        metadata["nevents"][region]["events_after"] = str(
-                            output_metadata[region]["events_after"]
-                        )
-                        metadata["nevents"][region]["events_after_weighted"] = str(
-                            output_metadata[region]["events_after_weighted"]
-                        )
-                        
-                if args["processor"] in ["ttbar", "ztoll"]:
-                    metadata.update(
-                        {"events_after": float(output_metadata["events_after"])}
-                    )
-                    # save cutflow to metadata
-                    for cut_selection, nevents in output_metadata["cutflow"].items():
-                        output_metadata["cutflow"][cut_selection] = str(nevents)
-                    metadata.update({"cutflow": output_metadata["cutflow"]})
+                for weight, statistics in output_metadata[
+                    "weight_statistics"
+                ].items():
+                    output_metadata["weight_statistics"][weight] = str(statistics)
+                metadata.update(
+                    {"weight_statistics": output_metadata["weight_statistics"]}
+                )
 
-                    for weight, statistics in output_metadata[
-                        "weight_statistics"
-                    ].items():
-                        output_metadata["weight_statistics"][weight] = str(statistics)
-                    metadata.update(
-                        {"weight_statistics": output_metadata["weight_statistics"]}
-                    )
-                    
-                if args["processor"] in ["ttbar", "ztoll", "qcd"]:
-                    # save selectios to metadata
-                    selections = {
-                        "ttbar": {
-                            "electron_selection": ttbar_electron_selection[
-                                args["channel"]
-                            ][args["lepton_flavor"]],
-                            "muon_selection": ttbar_muon_selection[args["channel"]][
-                                args["lepton_flavor"]
-                            ],
-                            "jet_selection": ttbar_jet_selection[args["channel"]][
-                                args["lepton_flavor"]
-                            ],
-                        },
-                        "ztoll": {
-                            "electron_selection": ztoll_electron_selection,
-                            "muon_selection": ztoll_muon_selection,
-                            "jet_selection": ztoll_jet_selection,
-                        },
-                        "qcd": {
-                            "electron_selection": qcd_electron_selection,
-                            "muon_selection": qcd_muon_selection,
-                            "jet_selection": qcd_jet_selection,
-                        },
+            if args["processor"] in ["ttbar", "ztoll", "qcd"]:
+                # save selectios to metadata
+                selections = {
+                    "ttbar": {
+                        "electron_selection": ttbar_electron_selection[
+                            args["channel"]
+                        ][args["lepton_flavor"]],
+                        "muon_selection": ttbar_muon_selection[args["channel"]][
+                            args["lepton_flavor"]
+                        ],
+                        "jet_selection": ttbar_jet_selection[args["channel"]][
+                            args["lepton_flavor"]
+                        ],
+                    },
+                    "ztoll": {
+                        "electron_selection": ztoll_electron_selection,
+                        "muon_selection": ztoll_muon_selection,
+                        "jet_selection": ztoll_jet_selection,
+                    },
+                    "qcd": {
+                        "electron_selection": qcd_electron_selection,
+                        "muon_selection": qcd_muon_selection,
+                        "jet_selection": qcd_jet_selection,
+                    },
+                }
+                metadata.update(
+                    {
+                        "electron_selection": selections[args["processor"]][
+                            "electron_selection"
+                        ]
                     }
-                    metadata.update(
-                        {
-                            "electron_selection": selections[args["processor"]][
-                                "electron_selection"
-                            ]
-                        }
-                    )
-                    metadata.update(
-                        {
-                            "muon_selection": selections[args["processor"]][
-                                "muon_selection"
-                            ]
-                        }
-                    )
-                    metadata.update(
-                        {
-                            "jet_selection": selections[args["processor"]][
-                                "jet_selection"
-                            ]
-                        }
-                    )
+                )
+                metadata.update(
+                    {
+                        "muon_selection": selections[args["processor"]][
+                            "muon_selection"
+                        ]
+                    }
+                )
+                metadata.update(
+                    {
+                        "jet_selection": selections[args["processor"]][
+                            "jet_selection"
+                        ]
+                    }
+                )
             # save args to metadata
             args_dict = args.copy()
             metadata.update(args_dict)
