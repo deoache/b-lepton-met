@@ -20,7 +20,7 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
         wp:
             worging point {'L', 'M', 'T'}
     """
-    def __init__(self, year="2017", yearmod="", tagger="deepJet", wp="T", output_type="array"):
+    def __init__(self, year="2017", yearmod="", tagger="deepJet", wp="M", output_type="hist"):
         self._year = year + yearmod
         self._tagger = tagger
         self._wp = wp
@@ -46,7 +46,6 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
     def process(self, events):
         dataset = events.metadata["dataset"]
         
-        
         phasespace_cuts = (
             (abs(events.Jet.eta) < 2.5)
             & (events.Jet.pt > 20.)
@@ -54,6 +53,7 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
         jets = events.Jet[phasespace_cuts]
         passbtag = jets.btagDeepFlavB > self._btagwp
         
+        out = {}
         if self._output_type == "hist":
             output = self.make_output()
             output.fill(
@@ -63,7 +63,7 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
                 flavor=ak.flatten(jets.hadronFlavour),
                 passWP=ak.flatten(passbtag),
             )
-            return output
+            out["histograms"] = output
         
         elif self._output_type == "array":
             # select variables and put them in column accumulators
@@ -79,8 +79,9 @@ class BTagEfficiencyProcessor(processor.ProcessorABC):
                 )
                 for feature_name, feature_array in features.items()
             }
+            out["arrays"] = output
         
-        return output
+        return {dataset: out}
 
     def postprocess(self, accumulator):
         return accumulator

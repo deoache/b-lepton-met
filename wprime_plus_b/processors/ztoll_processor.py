@@ -120,6 +120,7 @@ class ZToLLProcessor(processor.ProcessorABC):
             met_pt=met.pt,
             met_phi=met.phi,
             npvs=events.PV.npvsGood,
+            run=events.run,
             is_mc=self.is_mc,
             year=self._year,
             year_mod=self._yearmod,
@@ -367,11 +368,9 @@ class ZToLLProcessor(processor.ProcessorABC):
                     fill_args = {
                         feature: utils.analysis_utils.normalize(self.features[feature])
                         for feature in hist_dict[kin].axes.name
-                        if "dataset" not in feature
                     }
                     hist_dict[kin].fill(
                         **fill_args,
-                        dataset=dataset,
                         weight=region_weights,
                     )
             else:
@@ -393,7 +392,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 "events_after": nevents_after,
             }
         )
-        return output
+        return {dataset: output}
 
     def postprocess(self, accumulator):
         return accumulator

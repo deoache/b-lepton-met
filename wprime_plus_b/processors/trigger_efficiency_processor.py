@@ -231,6 +231,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             met_pt=met.pt,
             met_phi=met.phi,
             npvs=events.PV.npvsGood,
+            run=events.run,
             is_mc=self.is_mc,
             year=self._year,
             year_mod="",
@@ -502,7 +503,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         output["metadata"].update({"events_before": nevents})
         output["histograms"] = self.histograms
         
-        return output
+        return {dataset: output}
 
     def postprocess(self, accumulator):
         return accumulator

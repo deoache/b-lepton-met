@@ -238,6 +238,7 @@ class QcdAnalysis(processor.ProcessorABC):
                 met_pt=met.pt,
                 met_phi=met.phi,
                 npvs=events.PV.npvs,
+                run=events.run,
                 is_mc=self.is_mc,
                 year=self._year,
                 year_mod=self._yearmod,
@@ -470,11 +471,9 @@ class QcdAnalysis(processor.ProcessorABC):
                         fill_args = {
                             feature: normalize(self.features[feature])
                             for feature in hist_dict[kin].axes.name[:-1]
-                            if "dataset" not in feature
                         }
                         hist_dict[kin].fill(
                             **fill_args,
-                            dataset=dataset,
                             region=region,
                             weight=weights_container.weight()[region_selection],
                         )
@@ -485,7 +484,7 @@ class QcdAnalysis(processor.ProcessorABC):
         output["metadata"].update({"events_before": nevents})
         output["histograms"] = hist_dict
 
-        return output
+        return {dataset: output}
 
     def postprocess(self, accumulator):
         return accumulator
