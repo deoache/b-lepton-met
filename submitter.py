@@ -98,6 +98,9 @@ def main(args):
         dataset_year=args["year"] + args["yearmod"],
         mkdir=True,
     )
+    if args["tag"]:
+        processor_output_path = processor_output_path / args["tag"]
+
     # load dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
     # divide dataset into 'nsplit' json files
@@ -330,6 +333,13 @@ if __name__ == "__main__":
         type=str,
         default="xcache",
         help="redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)",
+    )
+    parser.add_argument(
+        "--tag",
+        dest="tag",
+        type=str,
+        default="",
+        help="tag to reference output files directory",
     )
     args = parser.parse_args()
     main(args)
