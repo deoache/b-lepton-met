@@ -54,6 +54,10 @@ def main(args):
     )
     # run over each sample partition
     for sample, fileset_path in filesets.items():
+        if len(args['nsample']) != 0:
+            if sample.split("_")[-1] not in args['nsample']:
+                continue
+        print(f"Processing {sample}")
         fileset = {}
         with open(fileset_path, "r") as handle:
             data = json.load(handle)
@@ -90,7 +94,7 @@ def main(args):
             "schema": processor.NanoAODSchema,
         }
         if args["executor"] == "futures":
-            executor_args.update({"workers": args.workers})
+            executor_args.update({"workers": args["workers"]})
         if args["executor"] == "dask":
             client = Client("tls://localhost:8786")
             executor_args.update({"client": client})
