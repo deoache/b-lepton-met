@@ -75,11 +75,23 @@ class ElectronCorrector:
             id_working_point:
                 Working point {'Loose', 'Medium', 'Tight', 'wp80iso', 'wp80noiso', 'wp90iso', 'wp90noiso'}
         """
+        id_wps = {
+            # mva ID working points https://twiki.cern.ch/twiki/bin/view/CMS/MultivariateElectronIdentificationRun2
+            "wp80iso": self.e.mvaFall17V2Iso_WP80,
+            "wp90iso": self.e.mvaFall17V2Iso_WP90,
+            "wp80noiso": self.e.mvaFall17V2noIso_WP80,
+            "wp90noiso": self.e.mvaFall17V2noIso_WP90,
+            # cutbased ID working points https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
+            "loose": self.e.cutBased == 2,
+            "medium": self.e.cutBased == 3,
+            "tight": self.e.cutBased == 4,
+        }
         # get 'in-limits' electrons
         electron_pt_mask = (self.e.pt > 10.0) & (
             self.e.pt < 499.999
         )  # potential problems with pt > 500 GeV
-        in_electron_mask = electron_pt_mask
+        electron_id_mask = id_wps[id_working_point]
+        in_electron_mask = electron_pt_mask & electron_id_mask
         in_electrons = self.e.mask[in_electron_mask]
 
         # get electrons transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
@@ -262,10 +274,10 @@ class MuonCorrector:
         self.add_weight(sf_type="iso")
 
     def add_triggeriso_weight(self) -> None:
+        """add muon Trigger Iso (IsoMu24 or IsoMu27) scale factors"""
         assert (
             self.id_wp == "tight" and self.iso_wp == "tight"
         ), "there's only available muon trigger SF for 'tight' ID and Iso"
-        """add muon Trigger Iso (IsoMu24 or IsoMu27) scale factors"""
         # get 'in-limits' muons
         muon_pt_mask = (self.m.pt > 29.0) & (self.m.pt < 199.999)
         muon_eta_mask = np.abs(self.m.eta) < 2.399
@@ -332,10 +344,29 @@ class MuonCorrector:
             assert self.id_wp != "loose", "there's no available SFs"
         assert self.iso_wp != "medium", "Only LooseRelIso and TightRelIso avaliable"
 
+        id_wps = {
+            # cutbased ID working points 
+            "loose": self.m.looseId,
+            "medium": self.m.mediumId,
+            "tight": self.m.tightId,
+        }
+        iso_wps = {
+            "loose": self.m.pfRelIso04_all < 0.25
+            if hasattr(self.m, "pfRelIso04_all")
+            else self.m.pfRelIso03_all < 0.25,
+            "medium": self.m.pfRelIso04_all < 0.20
+            if hasattr(self.m, "pfRelIso04_all")
+            else self.m.pfRelIso03_all < 0.20,
+            "tight": self.m.pfRelIso04_all < 0.15
+            if hasattr(self.m, "pfRelIso04_all")
+            else self.m.pfRelIso03_all < 0.15,
+        }
         # get 'in-limits' muons
         muon_pt_mask = (self.m.pt > 15.0) & (self.m.pt < 199.999)
         muon_eta_mask = np.abs(self.m.eta) < 2.399
-        in_muon_mask = muon_pt_mask & muon_eta_mask
+        muon_id_mask = id_wps[self.id_wp]
+        muon_iso_mask = iso_wps[self.iso_wp]
+        in_muon_mask = muon_pt_mask & muon_eta_mask & muon_id_mask
         in_muons = self.m.mask[in_muon_mask]
 
         # get muons transverse momentum and abs pseudorapidity (replace None values with some 'in-limit' value)
