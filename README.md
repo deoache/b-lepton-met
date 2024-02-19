@@ -294,47 +294,39 @@ We use the common json format for scale factors (SF), hence the requirement to i
 
 ## How to run
 
-The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
+The `submitter.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
 
 ```bash
-python3 submit.py --help
+python3 submitter.py --help
 ```
 The output should look something like this:
 
 ```
-usage: submit.py [-h] [--facility FACILITY] [--redirector REDIRECTOR] [--processor PROCESSOR] [--executor EXECUTOR]
-                 [--workers WORKERS] [--year YEAR] [--yearmod YEARMOD] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR]
-                 [--fileset FILESET] [--sample SAMPLE] [--nfiles NFILES] [--nsplit NSPLIT] [--tag TAG] [--eos EOS]
-                 [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE] [--syst SYST]
+usage: submitter.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD]
+                    [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES] [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE] [--syst SYST]
+                    [--redirector REDIRECTOR]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --facility FACILITY   facility to run jobs {'coffea-casa', 'lxplus'} (default coffea-casa)
-  --redirector REDIRECTOR
-                        redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-
-                        cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)
   --processor PROCESSOR
-                        processor to be used {trigger, ttbar, candle, btag_eff} (default ttbar)
-  --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
-  --workers WORKERS     number of workers to use with futures executor (default 4)
-  --year YEAR           year of the data {2016, 2017, 2018} (default 2017)
-  --yearmod YEARMOD     year modifier {'', 'APV'} (default '')
-  --channel CHANNEL     channel to be processed {'2b1l', '1b1e1mu'}
+                        processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)
+  --channel CHANNEL     channel to be processed {'2b1l', '1b1e1mu', '1b1l'}
   --lepton_flavor LEPTON_FLAVOR
                         lepton flavor to be processed {'mu', 'ele'}
-  --fileset FILESET     name of a json file at `wprime_plus_b/fileset` (default
-                        `wprime_plus_b/fileset/fileset_{year}_UL_NANO.json`)
-  --sample SAMPLE       sample key to be processed {'all', 'mc' or <sample_name>} (default all)
+  --sample SAMPLE       sample key to be processed
+  --year YEAR           year of the data {2016, 2017, 2018} (default 2017)
+  --yearmod YEARMOD     year modifier {'', 'APV'} (default '')
+  --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
+  --workers WORKERS     number of workers to use with futures executor (default 4)
   --nfiles NFILES       number of .root files to be processed by sample. To run all files use -1 (default 1)
-  --nsplit NSPLIT       number of subsets to divide the fileset into (default 1)
-  --tag TAG             tag of the submitted jobs (default test)
-  --eos EOS             wheter to copy or not output files to EOS (default False)
-  --nsample NSAMPLE     nsample
+  --nsample NSAMPLE     partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)
   --chunksize CHUNKSIZE
                         number of chunks to process
   --output_type OUTPUT_TYPE
                         type of output {hist, array}
   --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
+  --redirector REDIRECTOR
+                        redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)
 ```
 By running this script, a desired processor is executed at some facility, defined by the `--facility` flag. [Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is faster and more convenient, however still somewhat experimental so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
 
@@ -342,9 +334,11 @@ The processor to be run is selected using the `--processor` flag.
 
 In the $t\bar{t}$ case, you can choose channel and lepton flavor by means of the `--channel` and `--lepton_flavor` flags. The output type of the processor (histograms or arrays) is defined with the `output_type` flag.
 
+The year can be selected using the `--year` flag, and the `--yearmod` flag is used to specify whether the dataset uses APV or not.
+
 You can select the executor to run the processor using the `--executor` flag. Three executors are available: `iterative`, `futures`, and `dask`. The `iterative` executor uses a single worker, while the `futures` executor uses the number of workers specified by the `--workers` flag. The `dask` executor uses Dask functionalities to scale up the analysis (only available at coffea-casa).
 
-With `--fileset` you can define the name of a .json fileset at `wprime_plus_b/fileset`. By default, `--fileset UL`, selects the `wprime_plus_b/fileset/fileset_{year}_UL_NANO.json` fileset. The year can be selected using the `--year` flag, and the `--yearmod` flag is used to specify whether the dataset uses APV or not. Use `--sample all` or `--sample mc` to run over all or only MC samples, respectively. You can also select a particular sample with `--sample <sample_name>`, where the available sample names are:
+You can select a particular sample with `--sample <sample_name>`, where the available sample names are:
   * `DYJetsToLL_M-50_HT-70to100`
   * `DYJetsToLL_M-50_HT-100to200`
   * `DYJetsToLL_M-50_HT-200to400`
@@ -376,7 +370,7 @@ With `--fileset` you can define the name of a .json fileset at `wprime_plus_b/fi
 
 If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
 
-To lighten the workload of jobs, the fileset can be divided into sub-filesets by means of the `--nsplit` flag. You can also define the number of `.root` files to use by sample using the `--nfiles` option. Set `--nfiles -1` to use all `.root` files. The `--tag` flag is used to defined a label for the submitted jobs.
+To lighten the workload of jobs, the fileset can be divided into sub-filesets by means of the `--nsplit` flag. You can also define the number of `.root` files to use by sample using the `--nfiles` option. Set `--nfiles -1` to use all `.root` files.
 
 When you attempt to open a CMS file, your application must query a redirector (defined by the `--redirector` flag) to find the file. Which redirector you use depends on your region and facility. At coffea-casa, use `--redirector xcache`. At lxplus, if you are working in the US, it is best to use `cmsxrootd.fnal.gov`, while in Europe and Asia, it is best to use `xrootd-cms.infn.it`. There is also a "global redirector" at `cms-xrd-global.cern.ch` which will query all locations.
 
@@ -385,17 +379,17 @@ When you attempt to open a CMS file, your application must query a redirector (d
 Let's assume we are using coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
 
 ```bash
-python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist --tag test
+python submitter.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist
 ```
 
 To scale up the analysis using Dask, first you need to define your Dask client inside the `submit/submit_coffea_casa.py` script (line 37), and then type:
 
 ```bash
-python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5 --tag test
+python submitter.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5
 ```
-The results will be stored in the `/outfiles` folder
+The results will be stored in the `wprime_plus_b/outs` folder
 
-### Submitting condor jobs at lxplus
+### Submitting condor jobs at lxplus (TO DO)
 
 To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. This requires that you already have a grid certificate installed. The needed grid proxy is obtained via the usual command
 ```bash
@@ -414,50 +408,6 @@ If you set `--eos` to `True`, the logs and outputs will be copied to your EOS ar
 #### Notes: 
 * Currently, the processors are only functional for the year 2017. 
 
-
-
- 
-
-## Setting up coffea environments
-
-#### Install miniconda (if you do not have it already)
-In your lxplus area:
-```
-# download miniconda
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-
-# run and follow instructions  
-bash Miniconda3-latest-Linux-x86_64.sh
-
-# Make sure to choose `yes` for the following one to let the installer initialize Miniconda3
-# > Do you wish the installer to initialize Miniconda3
-# > by running conda init? [yes|no]
-```
-Verify the installation is successful by running conda info and check if the paths are pointing to your Miniconda installation. 
-If you cannot run conda command, check if you need to add the conda path to your PATH variable in your bashrc/zshrc file, e.g.,
-```
-export PATH="$HOME/nobackup/miniconda3/bin:$PATH"
-```
-To disable auto activation of the base environment:
-```
-conda config --set auto_activate_base false
-```
-
-#### Set up a conda environment and install the required packages
-```
-# create a new conda environment
-conda create -n coffea-env python=3.8
-
-# activate the environment
-conda activate coffea-env
-
-# install packages
-pip install numpy pandas coffea correctionlib pyarrow
-
-# install xrootd
-conda install -c conda-forge xrootd
-```
-
 ## Data fileset
 
 The fileset json files that contain a dictionary of the files per sample are in the `data/fileset` directory.
@@ -465,30 +415,20 @@ The fileset json files that contain a dictionary of the files per sample are in 
 #### Re-making the input dataset files with DAS
 
 ```
-# connect to lxplus with a port forward to access the jupyter notebook server
-ssh <your_username>@lxplus.cern.ch localhost:8800 localhost:8800
-
-# create a working directory and clone the repo (if you have not done yet)
-git clone https://github.com/deoache/wprime_plus_b
-
-# enable the coffea environment
-conda activate coffea-env
+# connect to lxplus 
+ssh <your_username>@lxplus.cern.ch
 
 # then activate your proxy
 voms-proxy-init --voms cms --valid 100:00
 
-# activate cmsset
-source /cvmfs/cms.cern.ch/cmsset_default.sh
+# clone the repository 
+git clone https://github.com/deoache/wprime_plus_b.git
 
-# open the jupyter notebook on a browser
-cd data/fileset/
-jupyter notebook --no-browser --port 8800
+# run the 'make_fileset' script
+cd wprime_plus_b/fileset/
+python make_fileset.py
 ```
-
-there should be a link looking like `http://localhost:8800/?token=...`, displayed in the output at this point, paste that into your browser.
-You should see a jupyter notebook with a directory listing.
-
-Open `filesetDAS.ipynb` and run it. The json files containing the datasets to be run should be saved in the same `fileset/` directory.
+The json files containing the datasets to be run should be saved in the same `fileset/` directory.
 
 We use the recomended Run-2 UltraLegacy Datasets. See https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun2LegacyAnalysis
 
