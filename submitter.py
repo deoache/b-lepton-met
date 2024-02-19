@@ -245,7 +245,7 @@ if __name__ == "__main__":
         dest="processor",
         type=str,
         default="ttbar",
-        help="processor to be used {trigger, ttbar, candle, btag_eff} (default ttbar)",
+        help="processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)",
     )
     parser.add_argument(
         "--executor",
@@ -280,7 +280,7 @@ if __name__ == "__main__":
         dest="channel",
         type=str,
         default="",
-        help="channel to be processed {'2b1l', '1b1e1mu'}",
+        help="channel to be processed {'2b1l', '1b1e1mu', '1b1l'}",
     )
     parser.add_argument(
         "--lepton_flavor",
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         dest="nsample",
         type=list,
         default=[],
-        help="nsample",
+        help="partitions to run (--nsample 1,2,3 will run partitions 1,2 and 3)",
     )
     parser.add_argument(
         "--chunksize",
@@ -329,7 +329,7 @@ if __name__ == "__main__":
         dest="sample",
         type=str,
         default="all",
-        help="sample key to be processed {'all', 'mc' or <sample_name>} (default all)",
+        help="sample key to be processed",
     )
     args = parser.parse_args()
     main(args)
