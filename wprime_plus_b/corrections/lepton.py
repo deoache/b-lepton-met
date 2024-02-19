@@ -20,6 +20,8 @@ from wprime_plus_b.corrections.utils import pog_years, get_pog_json
 #
 # working points: (Loose, Medium, RecoAbove20, RecoBelow20, Tight, Veto, wp80iso, wp80noiso, wp90iso, wp90noiso)
 #
+
+
 class ElectronCorrector:
     """
     Electron corrector class
@@ -93,14 +95,11 @@ class ElectronCorrector:
         electron_id_mask = id_wps[id_working_point]
         in_electron_mask = electron_pt_mask & electron_id_mask
         in_electrons = self.e.mask[in_electron_mask]
-
         # get electrons transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
         electron_pt = ak.fill_none(in_electrons.pt, 10.0)
         electron_eta = ak.fill_none(in_electrons.eta, 0.0)
-
         # remove '_UL' from year
         year = self.pog_year.replace("_UL", "")
-
         # get nominal scale factors
         nominal_sf = unflat_sf(
             self.cset["UL-Electron-ID-SF"].evaluate(
@@ -146,14 +145,11 @@ class ElectronCorrector:
         )  # potential problems with pt > 500 GeV
         in_electron_mask = electron_pt_mask
         in_electrons = self.e.mask[in_electron_mask]
-
         # get electrons transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
         electron_pt = ak.fill_none(in_electrons.pt, 20.1)
         electron_eta = ak.fill_none(in_electrons.eta, 0.0)
-
         # remove _UL from year
         year = self.pog_year.replace("_UL", "")
-
         # get nominal scale factors
         nominal_sf = unflat_sf(
             self.cset["UL-Electron-ID-SF"].evaluate(
@@ -205,6 +201,8 @@ class ElectronCorrector:
 #          2017: for isoMu27 NUM_IsoMu27_DEN_CutBasedIdTight_and_PFIsoTight?
 #          2018: for IsoMu24 NUM_IsoMu24_DEN_CutBasedIdTight_and_PFIsoTight?
 #
+
+
 class MuonCorrector:
     """
     Muon corrector class
@@ -245,21 +243,40 @@ class MuonCorrector:
         self.iso_wp = iso_wp
         # muon array
         self.muons = muons
-
         # flat muon array
         self.m, self.n = ak.flatten(muons), ak.num(muons)
-
         # weights container
         self.weights = weights
-
         # define correction set
         self.cset = correctionlib.CorrectionSet.from_file(
             get_pog_json(json_name="muon", year=year + year_mod)
         )
-
         self.year = year
         self.year_mod = year_mod
         self.pog_year = pog_years[year + year_mod]
+        self.id_wps = {
+            # cutbased ID working points
+            "loose": self.m.looseId,
+            "medium": self.m.mediumId,
+            "tight": self.m.tightId,
+        }
+        self.iso_wps = {
+            "loose": (
+                self.m.pfRelIso04_all < 0.25
+                if hasattr(self.m, "pfRelIso04_all")
+                else self.m.pfRelIso03_all < 0.25
+            ),
+            "medium": (
+                self.m.pfRelIso04_all < 0.20
+                if hasattr(self.m, "pfRelIso04_all")
+                else self.m.pfRelIso03_all < 0.20
+            ),
+            "tight": (
+                self.m.pfRelIso04_all < 0.15
+                if hasattr(self.m, "pfRelIso04_all")
+                else self.m.pfRelIso03_all < 0.15
+            ),
+        }
 
     def add_id_weight(self) -> None:
         """
@@ -281,13 +298,13 @@ class MuonCorrector:
         # get 'in-limits' muons
         muon_pt_mask = (self.m.pt > 29.0) & (self.m.pt < 199.999)
         muon_eta_mask = np.abs(self.m.eta) < 2.399
-        in_muon_mask = muon_pt_mask & muon_eta_mask
+        muon_id_mask = self.id_wps[self.id_wp]
+        muon_iso_mask = self.iso_wps[self.iso_wp]
+        in_muon_mask = muon_pt_mask & muon_eta_mask & muon_id_mask & muon_iso_mask
         in_muons = self.m.mask[in_muon_mask]
-
         # get muons transverse momentum and abs pseudorapidity (replace None values with some 'in-limit' value)
         muon_pt = ak.fill_none(in_muons.pt, 29.0)
         muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
-
         # scale factors keys
         sfs_keys = {
             "2016": "NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight",
@@ -344,35 +361,16 @@ class MuonCorrector:
             assert self.id_wp != "loose", "there's no available SFs"
         assert self.iso_wp != "medium", "Only LooseRelIso and TightRelIso avaliable"
 
-        id_wps = {
-            # cutbased ID working points 
-            "loose": self.m.looseId,
-            "medium": self.m.mediumId,
-            "tight": self.m.tightId,
-        }
-        iso_wps = {
-            "loose": self.m.pfRelIso04_all < 0.25
-            if hasattr(self.m, "pfRelIso04_all")
-            else self.m.pfRelIso03_all < 0.25,
-            "medium": self.m.pfRelIso04_all < 0.20
-            if hasattr(self.m, "pfRelIso04_all")
-            else self.m.pfRelIso03_all < 0.20,
-            "tight": self.m.pfRelIso04_all < 0.15
-            if hasattr(self.m, "pfRelIso04_all")
-            else self.m.pfRelIso03_all < 0.15,
-        }
         # get 'in-limits' muons
         muon_pt_mask = (self.m.pt > 15.0) & (self.m.pt < 199.999)
         muon_eta_mask = np.abs(self.m.eta) < 2.399
-        muon_id_mask = id_wps[self.id_wp]
-        muon_iso_mask = iso_wps[self.iso_wp]
-        in_muon_mask = muon_pt_mask & muon_eta_mask & muon_id_mask
+        muon_id_mask = self.id_wps[self.id_wp]
+        muon_iso_mask = self.iso_wps[self.iso_wp]
+        in_muon_mask = muon_pt_mask & muon_eta_mask & muon_id_mask & muon_iso_mask
         in_muons = self.m.mask[in_muon_mask]
-
         # get muons transverse momentum and abs pseudorapidity (replace None values with some 'in-limit' value)
         muon_pt = ak.fill_none(in_muons.pt, 15.0)
         muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
-
         # 'id' and 'iso' scale factors keys
         id_corrections = {
             "loose": "NUM_LooseID_DEN_TrackerMuons",
