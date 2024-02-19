@@ -234,46 +234,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--redirector",
-        dest="redirector",
-        type=str,
-        default="xcache",
-        help="redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)",
-    )
-    parser.add_argument(
         "--processor",
         dest="processor",
         type=str,
         default="ttbar",
         help="processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)",
-    )
-    parser.add_argument(
-        "--executor",
-        dest="executor",
-        type=str,
-        default="iterative",
-        help="executor to be used {iterative, futures, dask} (default iterative)",
-    )
-    parser.add_argument(
-        "--workers",
-        dest="workers",
-        type=int,
-        default=4,
-        help="number of workers to use with futures executor (default 4)",
-    )
-    parser.add_argument(
-        "--year",
-        dest="year",
-        type=str,
-        default="2017",
-        help="year of the data {2016, 2017, 2018} (default 2017)",
-    )
-    parser.add_argument(
-        "--yearmod",
-        dest="yearmod",
-        type=str,
-        default="",
-        help="year modifier {'', 'APV'} (default '')",
     )
     parser.add_argument(
         "--channel",
@@ -290,6 +255,41 @@ if __name__ == "__main__":
         help="lepton flavor to be processed {'mu', 'ele'}",
     )
     parser.add_argument(
+        "--sample",
+        dest="sample",
+        type=str,
+        default="all",
+        help="sample key to be processed",
+    )
+    parser.add_argument(
+        "--year",
+        dest="year",
+        type=str,
+        default="2017",
+        help="year of the data {2016, 2017, 2018} (default 2017)",
+    )
+    parser.add_argument(
+        "--yearmod",
+        dest="yearmod",
+        type=str,
+        default="",
+        help="year modifier {'', 'APV'} (default '')",
+    )
+    parser.add_argument(
+        "--executor",
+        dest="executor",
+        type=str,
+        default="iterative",
+        help="executor to be used {iterative, futures, dask} (default iterative)",
+    )
+    parser.add_argument(
+        "--workers",
+        dest="workers",
+        type=int,
+        default=4,
+        help="number of workers to use with futures executor (default 4)",
+    )
+    parser.add_argument(
         "--nfiles",
         dest="nfiles",
         type=int,
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         dest="nsample",
         type=list,
         default=[],
-        help="partitions to run (--nsample 1,2,3 will run partitions 1,2 and 3)",
+        help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     parser.add_argument(
         "--chunksize",
@@ -325,11 +325,11 @@ if __name__ == "__main__":
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
     )
     parser.add_argument(
-        "--sample",
-        dest="sample",
+        "--redirector",
+        dest="redirector",
         type=str,
-        default="all",
-        help="sample key to be processed",
+        default="xcache",
+        help="redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)",
     )
     args = parser.parse_args()
     main(args)
