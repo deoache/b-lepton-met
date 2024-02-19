@@ -63,24 +63,13 @@ def run_checker(args: dict) -> None:
     available_processors = ["ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"] 
     assert args["processor"] in available_processors, f"Incorrect processor. Available processors are: {available_processors}"
     
-    # check channel
-    available_channels = ["2b1l", "1b1e1mu", "1b1l"]
-    assert args["channel"] in available_channels, f"Incorrect channel. Available channels are: {available_channels}"
-    
-    # check lepton flavor
-    available_lepton_flavors = ["ele", "mu"]
-    assert args["lepton_flavor"] in available_lepton_flavors, f"Incorrect lepton flavor. Available lepton flavors are: {available_lepton_flavors}"
-    
     if args["processor"] == "ttbar":
-        assert args["channel"] in [
-            "2b1l",
-            "1b1e1mu",
-            "1b1l",
-        ], "Incorrect 'channel' argument. Options are '2b1l', '1b1e1mu', '1b1l'"
-        assert args["lepton_flavor"] in [
-            "ele",
-            "mu",
-        ], "Incorrect 'lepton_flavor' argument. Options are 'ele' or 'mu'"
+        # check channel
+        available_channels = ["2b1l", "1b1e1mu", "1b1l"]
+        assert args["channel"] in available_channels, f"Incorrect channel. Available channels are: {available_channels}"
+        # check lepton flavor
+        available_lepton_flavors = ["ele", "mu"]
+        assert args["lepton_flavor"] in available_lepton_flavors, f"Incorrect lepton flavor. Available lepton flavors are: {available_lepton_flavors}"
         
         # check Data sample
         if args["channel"] == "1b1e1mu":
@@ -95,6 +84,9 @@ def run_checker(args: dict) -> None:
                 assert args["sample"] != "SingleMuon", "2b1l electron channel should be run with SingleElectron dataset"
                 
     if args["processor"] == "qcd":
+        # check channel
+        available_channels = ["A", "B", "C", "D"]
+        assert args["channel"] in available_channels, f"Incorrect channel. Available channels are: {available_channels}"
         assert (
             args["lepton_flavor"] == "mu" and args["output_type"] == "hist"
         ), "Only muon channel and histograms are available"
@@ -103,7 +95,7 @@ def run_checker(args: dict) -> None:
 def manage_args(args: dict) -> dict:
     processor_args_mapping = {
         "ztoll": ["channel", "syst"],
-        "qcd": ["channel", "syst"],
+        "qcd": ["syst"],
         "btag_eff": ["lepton_flavor", "channel", "syst"],
         "trigger_eff": ["channel", "syst", "output_type"],
     }

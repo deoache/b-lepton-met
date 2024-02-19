@@ -148,14 +148,14 @@ def main(args):
             # save qcd metadata
             if args["processor"] in ["qcd"]:
                 metadata.update({"nevents": {}})
-                for region in ["A", "B", "C", "D"]:
-                    metadata["nevents"].update({region: {}})
-                    metadata["nevents"][region]["events_after"] = str(
-                        output_metadata[region]["events_after"]
-                    )
-                    metadata["nevents"][region]["events_after_weighted"] = str(
-                        output_metadata[region]["events_after_weighted"]
-                    )
+                region = args["channel"]
+                metadata["nevents"].update({region: {}})
+                metadata["nevents"][region]["events_after"] = str(
+                    output_metadata[region]["events_after"]
+                )
+                metadata["nevents"][region]["events_after_weighted"] = str(
+                    output_metadata[region]["events_after_weighted"]
+                )
             # save cutflow to metadata
             if args["processor"] in ["ttbar", "ztoll"]:
                 metadata.update(
@@ -174,7 +174,7 @@ def main(args):
                     {"weight_statistics": output_metadata["weight_statistics"]}
                 )
             # save selectios to metadata
-            if args["processor"] in ["ttbar", "ztoll", "qcd"]:
+            if args["processor"] == "ttbar": #, "ztoll", "qcd"]:
                 selections = {
                     "ttbar": {
                         "electron_selection": ttbar_electron_selection[
@@ -187,17 +187,24 @@ def main(args):
                             args["lepton_flavor"]
                         ],
                     },
+                }
+            elif args["processor"] == "ztoll": #, "ztoll", "qcd"]:
+                selections = {
                     "ztoll": {
                         "electron_selection": ztoll_electron_selection,
                         "muon_selection": ztoll_muon_selection,
                         "jet_selection": ztoll_jet_selection,
-                    },
+                    }
+                }
+            elif args["processor"] == "qcd": #, "ztoll", "qcd"]:
+                selections = {
                     "qcd": {
                         "electron_selection": qcd_electron_selection,
                         "muon_selection": qcd_muon_selection,
                         "jet_selection": qcd_jet_selection,
                     },
                 }
+            if args["processor"] in ["ttbar", "ztoll", "qcd"]:
                 metadata.update(
                     {
                         "electron_selection": selections[args["processor"]][

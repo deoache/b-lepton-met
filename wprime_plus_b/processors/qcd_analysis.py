@@ -50,12 +50,14 @@ class QcdAnalysis(processor.ProcessorABC):
 
     def __init__(
         self,
+        channel: str = "A",
         lepton_flavor: str = "ele",
         year: str = "2017",
         yearmod: str = "",
         syst: str = "nominal",
         output_type: str = "hist",
     ):
+        self._channel = channel
         self._year = year
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
@@ -182,6 +184,7 @@ class QcdAnalysis(processor.ProcessorABC):
         
 
         for region in ["A", "B", "C", "D"]:
+            if region != self._channel: continue
             output["metadata"][region] = {}
             # ------------------
             # bject selection
