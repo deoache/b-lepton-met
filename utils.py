@@ -59,10 +59,19 @@ def get_filesets(sample: str, year: str, nsplit: int):
     return divide_fileset(sample, year, nsplit)
 
 def run_checker(args: dict) -> None:
+    # check processor
+    available_processors = ["ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"] 
+    assert args["processor"] in available_processors, f"Incorrect processor. Available processors are: {available_processors}"
+    
+    # check channel
+    available_channels = ["2b1l", "1b1e1mu", "1b1l"]
+    assert args["channel"] in available_channels, f"Incorrect channel. Available channels are: {available_channels}"
+    
+    # check lepton flavor
+    available_lepton_flavors = ["ele", "mu"]
+    assert args["lepton_flavor"] in available_lepton_flavors, f"Incorrect lepton flavor. Available lepton flavors are: {available_lepton_flavors}"
+    
     if args["processor"] == "ttbar":
-        assert args[
-            "channel"
-        ], "No 'channel' argument specified! You must to provide a channel"
         assert args["channel"] in [
             "2b1l",
             "1b1e1mu",
@@ -73,6 +82,18 @@ def run_checker(args: dict) -> None:
             "mu",
         ], "Incorrect 'lepton_flavor' argument. Options are 'ele' or 'mu'"
         
+        # check Data sample
+        if args["channel"] == "1b1e1mu":
+            if args["lepton_flavor"] == "mu":
+                assert args["sample"] != "SingleMuon", "1b1e1mu muon channel should be run with SingleElectron dataset"
+            else:
+                assert args["sample"] != "SingleElectron", "1b1e1mu electron channel should be run with SingleMuon dataset"
+        else:
+            if args["lepton_flavor"] == "mu":
+                assert args["sample"] != "SingleElectron", "2b1l muon channel should be run with SingleMuon dataset"
+            else:
+                assert args["sample"] != "SingleMuon", "2b1l electron channel should be run with SingleElectron dataset"
+                
     if args["processor"] == "qcd":
         assert (
             args["lepton_flavor"] == "mu" and args["output_type"] == "hist"
