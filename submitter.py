@@ -42,10 +42,64 @@ def main(args):
     # check and manage args
     run_checker(vars(args))
     args = manage_args(vars(args))
-    
+    # define processors and executors
+    processors = {
+        "ttbar": TtbarAnalysis,
+        "ztoll": ZToLLProcessor,
+        "qcd": QcdAnalysis,
+        "btag_eff": BTagEfficiencyProcessor,
+        "trigger_eff": TriggerEfficiencyProcessor,
+    }
+    processor_args = [
+        "year",
+        "yearmod",
+        "channel",
+        "lepton_flavor",
+        "output_type",
+        "syst",
+    ]
+    processor_kwargs = {k: args[k] for k in processor_args if args[k]}
+    executors = {
+        "iterative": processor.iterative_executor,
+        "futures": processor.futures_executor,
+        "dask": processor.dask_executor,
+    }
+    executor_args = {
+        "schema": processor.NanoAODSchema,
+    }
+    if args["executor"] == "futures":
+        executor_args.update({"workers": args["workers"]})
+    if args["executor"] == "dask":
+        client = Client("tls://localhost:8786")
+        executor_args.update({"client": client})
+        # upload local directory to dask workers
+        try:
+            client.register_worker_plugin(
+                UploadDirectory(f"{Path.cwd()}", restart=True, update_path=True),
+                nanny=True,
+            )
+            print(f"Uploaded {Path.cwd()} succesfully")
+        except OSError:
+            print("Failed to upload the directory")
+    # get processor config
+    processor_config_name = "_".join(
+        [
+            i
+            for i in [args["processor"], args["channel"], args["lepton_flavor"]]
+            if i
+        ]
+    )
+    processor_config = load_processor_config(config_name=processor_config_name)
+    # get processor output path
+    processor_output_path = paths.processor_path(
+        processor_name=processor_config.name,
+        processor_lepton_flavour=processor_config.lepton_flavor,
+        processor_channel=processor_config.channel,
+        dataset_year=args["year"] + args["yearmod"],
+        mkdir=True,
+    )
     # load dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
-    
     # divide dataset into 'nsplit' json files
     filesets = get_filesets(
         sample=args["sample"],
@@ -65,65 +119,6 @@ def main(args):
             if args["nfiles"] != -1:
                 root_file = root_file[: args["nfiles"]]
         fileset[sample] = [f"root://{args['redirector']}/" + file for file in root_file]
-
-        # define processors and its kwargs
-        processors = {
-            "ttbar": TtbarAnalysis,
-            "ztoll": ZToLLProcessor,
-            "qcd": QcdAnalysis,
-            "btag_eff": BTagEfficiencyProcessor,
-            "trigger_eff": TriggerEfficiencyProcessor,
-        }
-        processor_args = [
-            "year",
-            "yearmod",
-            "channel",
-            "lepton_flavor",
-            "output_type",
-            "syst",
-        ]
-        processor_kwargs = {k: args[k] for k in processor_args if args[k]}
-
-        # define executors
-        executors = {
-            "iterative": processor.iterative_executor,
-            "futures": processor.futures_executor,
-            "dask": processor.dask_executor,
-        }
-        executor_args = {
-            "schema": processor.NanoAODSchema,
-        }
-        if args["executor"] == "futures":
-            executor_args.update({"workers": args["workers"]})
-        if args["executor"] == "dask":
-            client = Client("tls://localhost:8786")
-            executor_args.update({"client": client})
-            # upload local directory to dask workers
-            try:
-                client.register_worker_plugin(
-                    UploadDirectory(f"{Path.cwd()}", restart=True, update_path=True),
-                    nanny=True,
-                )
-                print(f"Uploaded {Path.cwd()} succesfully")
-            except OSError:
-                print("Failed to upload the directory")
-                
-        # get processor config
-        processor_config_name = "_".join(
-            [
-                i
-                for i in [args["processor"], args["channel"], args["lepton_flavor"]]
-                if i
-            ]
-        )
-        processor_config = load_processor_config(config_name=processor_config_name)
-        processor_output_path = paths.processor_path(
-            processor_name=processor_config.name,
-            processor_lepton_flavour=processor_config.lepton_flavor,
-            processor_channel=processor_config.channel,
-            dataset_year=args["year"] + args["yearmod"],
-            mkdir=True,
-        )
         
         # run processor
         t0 = time.monotonic()
@@ -147,7 +142,7 @@ def main(args):
             )
             # save number of weighted initial events
             metadata.update({"sumw": float(output_metadata["sumw"])})
-
+            # save qcd metadata
             if args["processor"] in ["qcd"]:
                 metadata.update({"nevents": {}})
                 for region in ["A", "B", "C", "D"]:
@@ -158,7 +153,7 @@ def main(args):
                     metadata["nevents"][region]["events_after_weighted"] = str(
                         output_metadata[region]["events_after_weighted"]
                     )
-
+            # save cutflow to metadata
             if args["processor"] in ["ttbar", "ztoll"]:
                 metadata.update(
                     {"events_after": float(output_metadata["events_after"])}
@@ -175,9 +170,8 @@ def main(args):
                 metadata.update(
                     {"weight_statistics": output_metadata["weight_statistics"]}
                 )
-
+            # save selectios to metadata
             if args["processor"] in ["ttbar", "ztoll", "qcd"]:
-                # save selectios to metadata
                 selections = {
                     "ttbar": {
                         "electron_selection": ttbar_electron_selection[
@@ -225,14 +219,12 @@ def main(args):
             # save args to metadata
             args_dict = args.copy()
             metadata.update(args_dict)
-
             # save metadata
             metadata_path = Path(f"{processor_output_path}/metadata")
             if not metadata_path.exists():
                 metadata_path.mkdir(parents=True)
             with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
                 f.write(json.dumps(metadata))
-                
         # save output
         with open(f"{processor_output_path}/{sample}.pkl", "wb") as handle:
             pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
