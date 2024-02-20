@@ -84,7 +84,7 @@ class TtbarAnalysis(processor.ProcessorABC):
 
         # initialize dictionary of arrays
         self.array_dict = {}
-
+                
     def add_feature(self, name: str, var: ak.Array) -> None:
         """add a variable array to the out dictionary"""
         self.features = {**self.features, name: var}
@@ -107,6 +107,19 @@ class TtbarAnalysis(processor.ProcessorABC):
 
         # create copy of array dictionary
         array_dict = copy.deepcopy(self.array_dict)
+        
+        # get triggers masks
+        with importlib.resources.path(
+            "wprime_plus_b.data", "triggers.json"
+        ) as path:
+            with open(path, "r") as handle:
+                self._triggers = json.load(handle)[self._year]
+        trigger_mask = {}
+        for ch in ["ele", "mu"]:
+            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
+            for t in self._triggers[ch]:
+                if t in events.HLT.fields:
+                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
 
         # define systematic variations
         syst_variations = ["nominal"]
@@ -301,7 +314,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
-
+                
                 # muon corrector
                 muon_corrector = MuonCorrector(
                     muons=events.Muon,
@@ -325,10 +338,15 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # add trigger weights
                 if self._channel == "1b1e1mu":
                     if self._lepton_flavor == "ele":
-                        muon_corrector.add_triggeriso_weight()
+                        muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                    else:
+                        electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
                 else:
                     if self._lepton_flavor == "mu":
-                        muon_corrector.add_triggeriso_weight()
+                        muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                    else:
+                        electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
+                        
             # save sum of weights before selections
             output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
             # save weights statistics
@@ -356,19 +374,8 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("lumi", lumi_mask)
 
             # add lepton triggers masks
-            with importlib.resources.path(
-                "wprime_plus_b.data", "triggers.json"
-            ) as path:
-                with open(path, "r") as handle:
-                    self._triggers = json.load(handle)[self._year]
-            trigger = {}
-            for ch in ["ele", "mu"]:
-                trigger[ch] = np.zeros(nevents, dtype="bool")
-                for t in self._triggers[ch]:
-                    if t in events.HLT.fields:
-                        trigger[ch] = trigger[ch] | events.HLT[t]
-            self.selections.add("trigger_ele", trigger["ele"])
-            self.selections.add("trigger_mu", trigger["mu"])
+            self.selections.add("trigger_ele", trigger_mask["ele"])
+            self.selections.add("trigger_mu", trigger_mask["mu"])
 
             # add MET filters mask
             # open and load met filters
