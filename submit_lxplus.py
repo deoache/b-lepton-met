@@ -11,6 +11,7 @@ def get_command(args, nsample=None):
     cmd += f" --channel {args.channel}"
     cmd += f" --lepton_flavor {args.lepton_flavor}"
     cmd += f" --year {args.year}"
+    cmd += f" --sample {args.sample}"
     cmd += f" --executor {args.executor}"
     cmd += f" --workers {args.workers}"
     cmd += f" --nfiles {args.nfiles}"
