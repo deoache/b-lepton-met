@@ -294,17 +294,17 @@ We use the common json format for scale factors (SF), hence the requirement to i
 
 ## How to run
 
-The `submitter.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
+The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
 
 ```bash
-python3 submitter.py --help
+python3 submit.py --help
 ```
 The output should look something like this:
 
 ```
-usage: submitter.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD]
-                    [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES] [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE] [--syst SYST]
-                    [--redirector REDIRECTOR]
+usage: submit.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD]
+                 [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES] [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE]
+                 [--syst SYST] [--facility FACILITY] [--tag TAG]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -325,8 +325,8 @@ optional arguments:
   --output_type OUTPUT_TYPE
                         type of output {hist, array}
   --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
-  --redirector REDIRECTOR
-                        redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)
+  --facility FACILITY   facility to launch jobs {coffea-casa, lxplus}
+  --tag TAG             tag to reference output files directory
 ```
 By running this script, a desired processor is executed at some facility, defined by the `--facility` flag. [Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is faster and more convenient, however still somewhat experimental so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
 
@@ -379,13 +379,13 @@ When you attempt to open a CMS file, your application must query a redirector (d
 Let's assume we are using coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
 
 ```bash
-python submitter.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist
+python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist
 ```
 
 To scale up the analysis using Dask, first you need to define your Dask client inside the `submit/submit_coffea_casa.py` script (line 37), and then type:
 
 ```bash
-python submitter.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5
+python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5
 ```
 The results will be stored in the `wprime_plus_b/outs` folder
 
