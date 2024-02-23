@@ -19,11 +19,15 @@ def divide_list(lst: list, n: int):
     return result
 
 
-def divide_fileset(sample: str, year: str, nsplit: int):
+def divide_fileset(sample: str, year: str, nsplit: int, facility: str):
     # load fileset  
     main_dir = Path.cwd()
     fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset")
-    with open(f"{fileset_path}/fileset_{year}_UL_NANO.json", "r") as handle:
+    if facility == "lxplus":
+        json_file = f"{fileset_path}/fileset_{year}_UL_NANO_lxplus.json"
+    else:
+        json_file = f"{fileset_path}/fileset_{year}_UL_NANO.json" 
+    with open(json_file, "r") as handle:
         data = json.load(handle)
         
     # make output filesets directory
@@ -55,8 +59,8 @@ def divide_fileset(sample: str, year: str, nsplit: int):
 
     return filesets
 
-def get_filesets(sample: str, year: str, nsplit: int):
-    return divide_fileset(sample, year, nsplit)
+def get_filesets(sample: str, year: str, nsplit: int, facility: str):
+    return divide_fileset(sample, year, nsplit, facility)
 
 def run_checker(args: dict) -> None:
     # check processor

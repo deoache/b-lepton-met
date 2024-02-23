@@ -108,6 +108,7 @@ def main(args):
         sample=args["sample"],
         year=args["year"] + args["yearmod"],
         nsplit=dataset_config.nsplit,
+        facility=args["facility"]
     )
     # run over each sample partition
     for sample, fileset_path in filesets.items():
@@ -121,7 +122,11 @@ def main(args):
         for root_file in data.values():
             if args["nfiles"] != -1:
                 root_file = root_file[: args["nfiles"]]
-        fileset[sample] = [f"root://{args['redirector']}/" + file for file in root_file]
+        
+        if args["facility"] == "coffea-casa":
+            fileset[sample] = [f"root://xcache/" + file for file in root_file]
+        else:
+            fileset[sample] = root_file
         
         # run processor
         t0 = time.monotonic()
@@ -335,11 +340,11 @@ if __name__ == "__main__":
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
     )
     parser.add_argument(
-        "--redirector",
-        dest="redirector",
+        "--facility",
+        dest="facility",
         type=str,
-        default="xcache",
-        help="redirector to find CMS datasets {use 'xcache' at coffea-casa. use 'cmsxrootd.fnal.gov', 'xrootd-cms.infn.it' or 'cms-xrd-global.cern.ch' at lxplus} (default xcache)",
+        default="coffea-casa",
+        help="facility to launch jobs {coffea-casa, lxplus}",
     )
     parser.add_argument(
         "--tag",
