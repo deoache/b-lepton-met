@@ -16,6 +16,7 @@ def get_command(args, nsample=None):
     cmd += f" --nfiles {args.nfiles}"
     cmd += f" --output_type {args.output_type}"
     cmd += f" --syst {args.syst}"
+    cmd += f" --facility lxplus"
     if nsample:
         cmd += f" --nsample {nsample}"
     return cmd
@@ -52,7 +53,7 @@ def submit_condor(jobname, cmd):
     for line in sh_template_file:
         line = line.replace("MAINDIRECTORY", str(main_dir))
         line = line.replace("COMMAND", cmd)
-        line = line.replace("EOSDIR", eos_dir)
+        line = line.replace("EOSDIR", str(eos_dir))
         sh_file.write(line)
     sh_file.close()
     sh_template_file.close()
