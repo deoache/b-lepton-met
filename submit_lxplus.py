@@ -66,14 +66,14 @@ def submit_condor(jobname, cmd):
 def main(args):
     # load dataset config
     dataset_config = load_dataset_config(config_name=args.sample)
-    jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}"
     nsplits = dataset_config.nsplit
     if nsplits == 1:
+        jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}"
         cmd = get_command(args)
         submit_condor(jobname, cmd)
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
-            jobname += f"_{nsplit}"
+            jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}_{nsplit}"
             cmd = get_command(args, nsplit)
             submit_condor(jobname, cmd)
     

@@ -107,4 +107,8 @@ def manage_args(args: dict) -> dict:
     if processor in processor_args_mapping:
         for arg in processor_args_mapping[processor]:
             args[arg] = None
+            
+    # process nsample arg
+    if args.get("nsample"):
+        args["nsample"] = args["nsample"].split(",")
     return args
