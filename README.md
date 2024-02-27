@@ -18,7 +18,8 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
 
 - [Setting up coffea environments](#Setting-up-coffea-environments)
 - [Data fileset](#Data-fileset)
-    * [Re-making the input dataset files with DAS](#Re-making-the-input-dataset-files-with-DAS)
+    * [Re-making the input filesets with DAS](#Re-making-the-input-filesets-with-DAS)
+    * [Making the input filesets with xrootd endpoints](#Making-the-input-filesets-with-xrootd-endpoints)
     * [Luminosity](#luminosity)
 
 ## Processors
@@ -370,68 +371,70 @@ You can select a particular sample with `--sample <sample_name>`, where the avai
 
 If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
 
-To lighten the workload of jobs, the fileset can be divided into sub-filesets by means of the `--nsplit` flag. You can also define the number of `.root` files to use by sample using the `--nfiles` option. Set `--nfiles -1` to use all `.root` files.
+To lighten the workload of jobs, the fileset is divided into sub-filesets. The number of partitions per dataset can be defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml). Set `--nfiles -1` to use all `.root` files.
 
-When you attempt to open a CMS file, your application must query a redirector (defined by the `--redirector` flag) to find the file. Which redirector you use depends on your region and facility. At coffea-casa, use `--redirector xcache`. At lxplus, if you are working in the US, it is best to use `cmsxrootd.fnal.gov`, while in Europe and Asia, it is best to use `xrootd-cms.infn.it`. There is also a "global redirector" at `cms-xrd-global.cern.ch` which will query all locations.
+When you attempt to open a CMS file, your application must query a redirector to find the file. Which redirector you use depends on your region and facility. At coffea-casa, we use the `xcache` redirector. At lxplus, we use a xrootd endpoint rather than a redirector, since it is far more robust (see [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/fileset_2017_UL_NANO_lxplus.json)). We use [Coffea24 Dataset Discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) to build this fileset (TO DO: Details of fileset building).
 
 ### Submitting jobs at Coffea-Casa
 
-Let's assume we are using coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
+Let's assume we are at coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
 
 ```bash
-python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1 --output_type hist
+python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1
 ```
-
-To scale up the analysis using Dask, first you need to define your Dask client inside the `submit/submit_coffea_casa.py` script (line 37), and then type:
+Then, if everything is ok, you can run the full dataset with:
 
 ```bash
-python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor dask --sample TTTo2L2Nu --nfiles -1 --nsplit 5
+python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor futures --sample TTTo2L2Nu --nfiles -1
 ```
 The results will be stored in the `wprime_plus_b/outs` folder
 
-### Submitting condor jobs at lxplus (TO DO)
+### Submitting condor jobs at lxplus 
 
-To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. This requires that you already have a grid certificate installed. The needed grid proxy is obtained via the usual command
+To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
 ```bash
 voms-proxy-init --voms cms
 ```
-To execute a processor using all samples of a particular year type:
+To execute a processor using some sample of a particular year type:
 ```bash
-python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --facility lxplus --redirector cmsxrootd.fnal.gov --sample all --year 2017 --nfiles -1 --nsplit 5 --tag test --eos True
+python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
 ```
 The script will create the condor and executable files (using the `submit.sub` and `submit.sh` templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). After submitting the jobs, you can watch their status typing
 ```bash
 watch condor_q
 ```
-If you set `--eos` to `True`, the logs and outputs will be copied to your EOS area. 
+The output will be save to your EOS area. 
 
 #### Notes: 
 * Currently, the processors are only functional for the year 2017. 
 
 ## Data fileset
 
-The fileset json files that contain a dictionary of the files per sample are in the `data/fileset` directory.
+We use the [make_fileset.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset.py) script to make the filesets
 
-#### Re-making the input dataset files with DAS
+#### Re-making the input filesets with DAS
 
 ```
 # connect to lxplus 
 ssh <your_username>@lxplus.cern.ch
 
 # then activate your proxy
-voms-proxy-init --voms cms --valid 100:00
+voms-proxy-init --voms cms
 
 # clone the repository 
 git clone https://github.com/deoache/wprime_plus_b.git
 
 # run the 'make_fileset' script
-cd wprime_plus_b/fileset/
+cd wprime_plus_b/wprime_plus_b/fileset/
 python make_fileset.py
 ```
-The json files containing the datasets to be run should be saved in the same `fileset/` directory.
+The json files containing the datasets will be saved in the same `fileset/` directory.
 
 We use the recomended Run-2 UltraLegacy Datasets. See https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun2LegacyAnalysis
 
+#### Making the input filesets with xrootd endpoints
+
+TO DO
 
 #### Luminosity
 
