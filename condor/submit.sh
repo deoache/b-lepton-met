@@ -1,9 +1,10 @@
 #!/bin/bash
 
 export XRD_NETWORKSTACK=IPv4
-export X509_USER_PROXY=$HOME/tmp/x509up
+export XRD_RUNFORKHANDLER=1
+export X509_USER_PROXY=X509PATH
+voms-proxy-info -all
+voms-proxy-info -all -file X509PATH
 cd MAINDIRECTORY
 
 COMMAND
-
-xrdcp -r condor/out/ EOSDIR

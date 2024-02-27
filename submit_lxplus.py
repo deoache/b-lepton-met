@@ -5,25 +5,48 @@ from pathlib import Path
 from wprime_plus_b.utils.load_config import load_dataset_config
 
 
+def move_X509():
+    """move x509 proxy file from /tmp to /afs/private. Returns the afs path"""
+    try:
+        x509_localpath = (
+            [
+                line
+                for line in os.popen("voms-proxy-info").read().split("\n")
+                if line.startswith("path")
+            ][0]
+            .split(":")[-1]
+            .strip()
+        )
+    except Exception as err:
+        raise RuntimeError(
+            "x509 proxy could not be parsed, try creating it with 'voms-proxy-init --voms cms'"
+        ) from err
+    x509_path = f"{Path.home()}/private/{x509_localpath.split('/')[-1]}"
+    subprocess.run(["cp", x509_localpath, x509_path])
+    return x509_path
+
+
 def get_command(args, nsample=None):
+    username = os.environ["USER"]
     cmd = f"python submit.py"
     cmd += f" --processor {args.processor}"
     cmd += f" --channel {args.channel}"
     cmd += f" --lepton_flavor {args.lepton_flavor}"
     cmd += f" --year {args.year}"
-    cmd += f" --sample {args.sample}"
     cmd += f" --executor {args.executor}"
     cmd += f" --workers {args.workers}"
     cmd += f" --nfiles {args.nfiles}"
     cmd += f" --output_type {args.output_type}"
     cmd += f" --syst {args.syst}"
     cmd += f" --facility lxplus"
+    cmd += f" --sample {args.sample}"
+    cmd += f" --username {username}"
     if nsample:
         cmd += f" --nsample {nsample}"
     return cmd
 
 
-def submit_condor(jobname, cmd):
+def submit_condor(jobname, cmd, flavor):
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
 
@@ -32,10 +55,6 @@ def submit_condor(jobname, cmd):
     if not log_dir.exists():
         log_dir.mkdir()
         
-    # define EOS area to move output files
-    username = os.environ["USER"]
-    eos_dir = Path(f"/eos/user/{username[0]}/{username}")
-    
     # make condor file
     condor_template_file = open(f"{condor_dir}/submit.sub")
     local_condor = f"{condor_dir}/{jobname}.sub"
@@ -43,41 +62,44 @@ def submit_condor(jobname, cmd):
     for line in condor_template_file:
         line = line.replace("DIRECTORY", str(condor_dir))
         line = line.replace("JOBNAME", jobname)
+        line = line.replace("JOBFLAVOR", f'"{flavor}"')
         condor_file.write(line)
     condor_file.close()
     condor_template_file.close()
 
     # make executable file
+    x509_path = move_X509()
     sh_template_file = open(f"{condor_dir}/submit.sh")
     local_sh = f"{condor_dir}/{jobname}.sh"
     sh_file = open(local_sh, "w")
     for line in sh_template_file:
         line = line.replace("MAINDIRECTORY", str(main_dir))
         line = line.replace("COMMAND", cmd)
-        line = line.replace("EOSDIR", str(eos_dir))
+        line = line.replace("X509PATH", x509_path)
         sh_file.write(line)
     sh_file.close()
     sh_template_file.close()
-
-    # submit jobs
-    #subprocess.run(["condor_submit", local_condor])
-
     
+    # submit jobs
+    print(f"submitting {jobname}")
+    subprocess.run(["condor_submit", local_condor])
+
+
 def main(args):
     # load dataset config
     dataset_config = load_dataset_config(config_name=args.sample)
+    jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}"
     nsplits = dataset_config.nsplit
     if nsplits == 1:
-        jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}"
         cmd = get_command(args)
-        submit_condor(jobname, cmd)
+        submit_condor(jobname, cmd, flavor="microcentury")
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
-            jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}_{nsplit}"
+            jobname += f"_{nsplit}"
             cmd = get_command(args, nsplit)
-            submit_condor(jobname, cmd)
-    
-    
+            submit_condor(jobname, cmd, flavor="longlunch")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 

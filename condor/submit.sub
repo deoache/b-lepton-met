@@ -4,5 +4,6 @@ output                = DIRECTORY/logs/JOBNAME.$(ClusterId).$(ProcId).out
 error                 = DIRECTORY/logs/JOBNAME.$(ClusterId).$(ProcId).err
 log                   = DIRECTORY/logs/JOBNAME.$(ClusterId).$(ProcId).log
 
-+SingularityImage = "/cvmfs/unpacked.cern.ch/registry.hub.docker.com/coffeateam/coffea-dask:latest-py3.9"
++JobFlavour           = JOBFLAVOR
++SingularityImage     = "/cvmfs/unpacked.cern.ch/registry.hub.docker.com/coffeateam/coffea-dask:latest-py3.9"
 queue 1

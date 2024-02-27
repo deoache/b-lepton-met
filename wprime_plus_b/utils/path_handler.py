@@ -1,4 +1,6 @@
+import os
 import pathlib
+
 
 class Paths:
 
@@ -9,7 +11,6 @@ class Paths:
         Prints out the detected root path.
         """
         self.root_path = pathlib.Path(__file__).resolve().parent.parent
-        # print("self.root_path: ", self.root_path)
 
     @staticmethod
     def safe_return(path: pathlib.Path, path_type: str, mkdir: bool) -> pathlib.Path:
@@ -34,8 +35,6 @@ class Paths:
                     f"'path_type' has to be either 'file' or 'directory'. "
                     f"Got: {path_type}"
                 )
-        # print("path is ",path)  #/work/krgedia/CMSSW_10_1_0/src/Xbb/python/gnn_b_tagging_efficiency/configs/foo/foo.py
-
         return path
 
     def processor_path(
@@ -45,6 +44,8 @@ class Paths:
         processor_channel: str = None,
         dataset_year: str = None,
         mkdir: bool = None,
+        lxplus: bool = False,
+        username: str = None,
     ):
         processor_path = "/".join(
             [
@@ -58,10 +59,13 @@ class Paths:
                 if elem is not None
             ]
         )
+        if lxplus:
+            eos_path = pathlib.Path(
+                f"/eos/user/{username[0]}/{username}/wprime_plus_b"
+            )
+        root_path = eos_path if lxplus else self.root_path
         return self.safe_return(
-            path=self.root_path
-            / "outs"
-            / processor_path,
+            path=root_path / "outs" / processor_path,
             path_type="directory",
             mkdir=mkdir,
         )

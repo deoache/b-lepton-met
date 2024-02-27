@@ -42,6 +42,7 @@ def main(args):
     # check and manage args
     run_checker(vars(args))
     args = manage_args(vars(args))
+
     # define processors and executors
     processors = {
         "ttbar": TtbarAnalysis,
@@ -83,13 +84,10 @@ def main(args):
             print("Failed to upload the directory")
     # get processor config
     processor_config_name = "_".join(
-        [
-            i
-            for i in [args["processor"], args["channel"], args["lepton_flavor"]]
-            if i
-        ]
+        [i for i in [args["processor"], args["channel"], args["lepton_flavor"]] if i]
     )
     processor_config = load_processor_config(config_name=processor_config_name)
+
     # get processor output path
     processor_output_path = paths.processor_path(
         processor_name=processor_config.name,
@@ -97,23 +95,23 @@ def main(args):
         processor_channel=processor_config.channel,
         dataset_year=args["year"] + args["yearmod"],
         mkdir=True,
+        lxplus=True if args["facility"] == "lxplus" else False,
+        username=args["username"],
     )
     if args["tag"]:
         processor_output_path = processor_output_path / args["tag"]
-
+        
     # load dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
-    # divide dataset into 'nsplit' json files
     filesets = get_filesets(
         sample=args["sample"],
         year=args["year"] + args["yearmod"],
         nsplit=dataset_config.nsplit,
-        facility=args["facility"]
+        facility=args["facility"],
     )
-    # run over each sample partition
     for sample, fileset_path in filesets.items():
-        if len(args['nsample']) != 0:
-            if sample.split("_")[-1] not in args['nsample']:
+        if len(args["nsample"]) != 0:
+            if sample.split("_")[-1] not in args["nsample"]:
                 continue
         print(f"Processing {sample}")
         fileset = {}
@@ -122,12 +120,11 @@ def main(args):
         for root_file in data.values():
             if args["nfiles"] != -1:
                 root_file = root_file[: args["nfiles"]]
-        
         if args["facility"] == "coffea-casa":
             fileset[sample] = [f"root://xcache/" + file for file in root_file]
         else:
             fileset[sample] = root_file
-        
+            
         # run processor
         t0 = time.monotonic()
         out = processor.run_uproot_job(
@@ -145,9 +142,7 @@ def main(args):
         if "metadata" in out[sample]:
             output_metadata = out[sample]["metadata"]
             # save number of raw initial events
-            metadata.update(
-                {"events_before": float(output_metadata["events_before"])}
-            )
+            metadata.update({"events_before": float(output_metadata["events_before"])})
             # save number of weighted initial events
             metadata.update({"sumw": float(output_metadata["sumw"])})
             # save qcd metadata
@@ -171,20 +166,18 @@ def main(args):
                     output_metadata["cutflow"][cut_selection] = str(nevents)
                 metadata.update({"cutflow": output_metadata["cutflow"]})
 
-                for weight, statistics in output_metadata[
-                    "weight_statistics"
-                ].items():
+                for weight, statistics in output_metadata["weight_statistics"].items():
                     output_metadata["weight_statistics"][weight] = str(statistics)
                 metadata.update(
                     {"weight_statistics": output_metadata["weight_statistics"]}
                 )
             # save selectios to metadata
-            if args["processor"] == "ttbar": #, "ztoll", "qcd"]:
+            if args["processor"] == "ttbar": 
                 selections = {
                     "ttbar": {
-                        "electron_selection": ttbar_electron_selection[
-                            args["channel"]
-                        ][args["lepton_flavor"]],
+                        "electron_selection": ttbar_electron_selection[args["channel"]][
+                            args["lepton_flavor"]
+                        ],
                         "muon_selection": ttbar_muon_selection[args["channel"]][
                             args["lepton_flavor"]
                         ],
@@ -193,7 +186,7 @@ def main(args):
                         ],
                     },
                 }
-            elif args["processor"] == "ztoll": #, "ztoll", "qcd"]:
+            elif args["processor"] == "ztoll":
                 selections = {
                     "ztoll": {
                         "electron_selection": ztoll_electron_selection,
@@ -201,7 +194,7 @@ def main(args):
                         "jet_selection": ztoll_jet_selection,
                     }
                 }
-            elif args["processor"] == "qcd": #, "ztoll", "qcd"]:
+            elif args["processor"] == "qcd":  
                 selections = {
                     "qcd": {
                         "electron_selection": qcd_electron_selection,
@@ -218,18 +211,10 @@ def main(args):
                     }
                 )
                 metadata.update(
-                    {
-                        "muon_selection": selections[args["processor"]][
-                            "muon_selection"
-                        ]
-                    }
+                    {"muon_selection": selections[args["processor"]]["muon_selection"]}
                 )
                 metadata.update(
-                    {
-                        "jet_selection": selections[args["processor"]][
-                            "jet_selection"
-                        ]
-                    }
+                    {"jet_selection": selections[args["processor"]]["jet_selection"]}
                 )
             # save args to metadata
             args_dict = args.copy()
@@ -314,8 +299,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--nsample",
         dest="nsample",
-        type=str,
-        default="",
+        type=list,
+        default=[],
         help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     parser.add_argument(
@@ -352,6 +337,13 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="tag to reference output files directory",
+    )
+    parser.add_argument(
+        "--username",
+        dest="username",
+        type=str,
+        default="",
+        help="cern username",
     )
     args = parser.parse_args()
     main(args)
