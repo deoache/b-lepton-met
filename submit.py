@@ -109,9 +109,9 @@ def main(args):
         nsplit=dataset_config.nsplit,
         facility=args["facility"],
     )
-    args["nsample"] = args["nsample"].split(",")
     for sample, fileset_path in filesets.items():
         if len(args["nsample"]) != 0:
+            args["nsample"] = args["nsample"].split(",")
             if sample.split("_")[-1] not in args["nsample"]:
                 continue
         print(f"Processing {sample}")
