@@ -109,6 +109,7 @@ def main(args):
         nsplit=dataset_config.nsplit,
         facility=args["facility"],
     )
+    args["nsample"] = args["nsample"].split(",")
     for sample, fileset_path in filesets.items():
         if len(args["nsample"]) != 0:
             if sample.split("_")[-1] not in args["nsample"]:
@@ -299,8 +300,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--nsample",
         dest="nsample",
-        type=list,
-        default=[],
+        type=str,
+        default="",
         help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     parser.add_argument(
