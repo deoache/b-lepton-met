@@ -111,8 +111,8 @@ def main(args):
     )
     for sample, fileset_path in filesets.items():
         if len(args["nsample"]) != 0:
-            args["nsample"] = args["nsample"].split(",")
-            if sample.split("_")[-1] not in args["nsample"]:
+            samples_keys = args["nsample"].split(",")
+            if sample.split("_")[-1] not in samples_keys:
                 continue
         print(f"Processing {sample}")
         fileset = {}
