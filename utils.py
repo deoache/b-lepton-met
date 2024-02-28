@@ -35,7 +35,9 @@ def divide_fileset(sample: str, year: str, nsplit: int, facility: str):
     # make output filesets directory
     output_directory = Path(f"{fileset_path}/filesets")
     if output_directory.exists():
-        subprocess.run(["rm", f"{output_directory}/*"])
+        for file in output_directory.glob("*"):
+            if file.is_file():
+                file.unlink()
     else:
         output_directory.mkdir(parents=True)
         
