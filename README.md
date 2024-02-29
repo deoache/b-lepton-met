@@ -138,7 +138,7 @@ python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor
 ```
 The results will be stored in the `wprime_plus_b/outs` folder
 
-### Submitting condor jobs at lxplus 
+### Submitting jobs at lxplus
 
 To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
 ```bash
