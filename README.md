@@ -12,6 +12,7 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
 - [Data/MC filesets](Data/MC-filesets)
     * [Making the input filesets for Coffea-Casa](#Making-the-input-filesets-for-Coffea-Casa)
     * [Making the input filesets for Lxplus](#Making-the-input-filesets-for-Lxplus)
+    * [Before submitting](#Before-submitting)
 - [Submitting jobs](#Submitting-jobs)
     * [Submitting jobs at Coffea-Casa](#Submitting-jobs-at-Coffea-Casa)
     * [Submitting jobs at lxplus](#Submitting-jobs-at-lxplus)
@@ -73,16 +74,19 @@ We use the [dataset discovery tools](https://coffeateam.github.io/coffea/noteboo
 
 The json files containing the datasets will be saved in the `wprime_plus_b/fileset/coffea-casa` or `wprime_plus_b/fileset/lxplus` directories, depending on which script is executed.
 
-
-## Submitting jobs
-
-[Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
+### Before submitting
 
 Before submitting jobs, make sure you have the facility (`coffea-casa` or `lxplus`) datasets by typing:
 
 ```bash
 python3 process_filesets.py --<facility>
 ```
+
+## Submitting jobs
+
+[Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
+
+
 
 ### Submitting jobs at Coffea-Casa
 
