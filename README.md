@@ -68,6 +68,9 @@ singularity shell -B /afs -B /eos -B /cvmfs /cvmfs/unpacked.cern.ch/registry.hub
 
 # run the 'make_fileset_lxplus' script
 python make_fileset_lxplus.py
+
+# exit the singularity
+exit
 ```
 We use the [dataset discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) from Coffea 2024, that's why we need to use a singularity shell in which we can use these tools.
 
@@ -81,6 +84,8 @@ Before submitting jobs, make sure you have the facility (`coffea-casa` or `lxplu
 ```bash
 python3 process_filesets.py --<facility>
 ```
+
+This script will partition each dataset into `nsplit` samples, which are defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml), and create a folder in `wprime_plus_b/fileset` containing the dataset partitions. These are the filesets read in the execution step.
 
 ## Submitting jobs
 
