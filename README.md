@@ -144,7 +144,7 @@ To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in 
 ```bash
 voms-proxy-init --voms cms
 ```
-To execute a processor using some sample of a particular year type:
+To execute a processor we use the [submit_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/main/submit_lxplus.py) script:
 ```bash
 python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
 ```
