@@ -78,6 +78,12 @@ The json files containing the datasets will be saved in the `wprime_plus_b/files
 
 [Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
 
+Before submitting jobs, make sure you have the facility (`coffea-casa` or `lxplus`) datasets by typing:
+
+```bash
+python3 process_filesets.py --<facility>
+```
+
 ### Submitting jobs at Coffea-Casa
 
 The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
@@ -138,13 +144,13 @@ python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor
 ```
 The results will be stored in the `wprime_plus_b/outs` folder
 
-### Submitting jobs at lxplus
+### Submitting condor jobs at lxplus 
 
 To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
 ```bash
 voms-proxy-init --voms cms
 ```
-To execute a processor we use the [submit_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/main/submit_lxplus.py) script:
+To execute a processor using some sample of a particular year type:
 ```bash
 python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
 ```
