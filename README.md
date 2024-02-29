@@ -82,7 +82,7 @@ The json files containing the datasets will be saved in the `wprime_plus_b/files
 Before submitting jobs, make sure you have the facility (`coffea-casa` or `lxplus`) datasets by typing:
 
 ```bash
-python3 process_filesets.py --<facility>
+python3 process_filesets.py --facility <facility>
 ```
 
 This script will partition each dataset into `nsplit` samples, which are defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml), and create a folder in `wprime_plus_b/fileset` containing the dataset partitions. These are the filesets read in the execution step.
