@@ -8,19 +8,154 @@
 
 Python package for analyzing W' + b in the electron and muon channels. The analysis uses a columnar framework to process input tree-based [NanoAOD](https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD) files using the [coffea](https://coffeateam.github.io/coffea/) and [scikit-hep](https://scikit-hep.org) Python libraries.
 
+
+- [Data/MC filesets](Data/MC-filesets)
+    * [Making the input filesets for Coffea-Casa](#Making-the-input-filesets-for-Coffea-Casa)
+    * [Making the input filesets for Lxplus](#Making-the-input-filesets-for-Lxplus)
+- [Submitting jobs](#Submitting-jobs)
+    * [Submitting jobs at Coffea-Casa](#Submitting-jobs-at-Coffea-Casa)
+    * [Submitting jobs at lxplus](#Submitting-jobs-at-lxplus)
 - [Processors](#Processors)
     * [Trigger efficiency processor](#Trigger-efficiency-processor)
     * [tt processor](#tt-processor)
 - [Corrections and scale factors](#Corrections-and-scale-factors)
-- [How to run](#How-to-run)
-    * [Submitting jobs at Coffea-Casa](#Submitting-jobs-at-Coffea-Casa)
-    * [Submitting condor jobs at lxplus](#Submitting-condor-jobs-at-lxplus)
+- [Luminosity](#luminosity)
 
-- [Setting up coffea environments](#Setting-up-coffea-environments)
-- [Data fileset](#Data-fileset)
-    * [Re-making the input filesets with DAS](#Re-making-the-input-filesets-with-DAS)
-    * [Making the input filesets with xrootd endpoints](#Making-the-input-filesets-with-xrootd-endpoints)
-    * [Luminosity](#luminosity)
+
+## Data/MC filesets
+
+We use the recomended Run-2 UltraLegacy [datasets](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/das_datasets.json). See https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun2LegacyAnalysis. 
+
+#### Making the input filesets for Coffea-Casa
+
+To build the input data/MC filesets to be used in Coffea-Casa use the [make_fileset.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset.py) script:
+```
+# connect to lxplus 
+ssh <your_username>@lxplus.cern.ch
+
+# then activate your proxy
+voms-proxy-init --voms cms
+
+# clone the repository 
+git clone https://github.com/deoache/wprime_plus_b.git
+
+# move to the fileset directory
+cd wprime_plus_b/wprime_plus_b/fileset/
+
+# run the 'make_fileset' script
+python3 make_fileset.py
+```
+
+#### Making the input filesets for Lxplus
+
+It has been observed that, in lxplus, opening files through a concrete xrootd endpoint rather than a redirector is far more robust. Use the [make_fileset_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset_lxplus.py) script to build the input filesets with xrootd endpoints:
+```
+# connect to lxplus 
+ssh <your_username>@lxplus.cern.ch
+
+# then activate your proxy
+voms-proxy-init --voms cms
+
+# clone the repository 
+git clone https://github.com/deoache/wprime_plus_b.git
+
+# move to the fileset directory
+cd wprime_plus_b/wprime_plus_b/fileset/
+
+# get the singularity shell 
+singularity shell -B /afs -B /eos -B /cvmfs /cvmfs/unpacked.cern.ch/registry.hub.docker.com/coffeateam/coffea-dask:latest-py3.10
+
+# run the 'make_fileset_lxplus' script
+python make_fileset_lxplus.py
+```
+We use the [dataset discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) from Coffea 2024, that's why we need to use a singularity shell in which we can use these tools.
+
+
+The json files containing the datasets will be saved in the `wprime_plus_b/fileset/coffea-casa` or `wprime_plus_b/fileset/lxplus` directories, depending on which script is executed.
+
+
+## Submitting jobs
+
+[Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
+
+### Submitting jobs at Coffea-Casa
+
+The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
+
+```bash
+python3 submit.py --help
+```
+The output should look something like this:
+
+```
+usage: submit.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD]
+                 [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES] [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE]
+                 [--syst SYST] [--facility FACILITY] [--tag TAG]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --processor PROCESSOR
+                        processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)
+  --channel CHANNEL     channel to be processed {'2b1l', '1b1e1mu', '1b1l'}
+  --lepton_flavor LEPTON_FLAVOR
+                        lepton flavor to be processed {'mu', 'ele'}
+  --sample SAMPLE       sample key to be processed
+  --year YEAR           year of the data {2016, 2017, 2018} (default 2017)
+  --yearmod YEARMOD     year modifier {'', 'APV'} (default '')
+  --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
+  --workers WORKERS     number of workers to use with futures executor (default 4)
+  --nfiles NFILES       number of .root files to be processed by sample. To run all files use -1 (default 1)
+  --nsample NSAMPLE     partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)
+  --chunksize CHUNKSIZE
+                        number of chunks to process
+  --output_type OUTPUT_TYPE
+                        type of output {hist, array}
+  --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
+  --facility FACILITY   facility to launch jobs {coffea-casa, lxplus}
+  --tag TAG             tag to reference output files directory
+```
+
+* The processor to be run is selected using the `--processor` flag. 
+* According to the processor, you can choose channel and lepton flavor by means of the `--channel` and `--lepton_flavor` flags
+* You can select a particular sample with `--sample <sample_name>` (see samples names [here]((https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/das_datasets.json)))
+* The year can be selected using the `--year` flag, and the `--yearmod` flag is used to specify whether the dataset uses APV or not.
+* You can select the executor to run the processor using the `--executor` flag. Three executors are available: `iterative`, `futures`, and `dask`. The `iterative` executor uses a single worker, while the `futures` executor uses the number of workers specified by the `--workers` flag. The `dask` executor uses Dask functionalities to scale up the analysis (only available at coffea-casa).
+* To lighten the workload of jobs, the fileset is divided into sub-filesets. The number of partitions per dataset can be defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml). Set `--nfiles -1` to use all `.root` files.
+* You can set `--nsample <n>` to run only the `n` partition of the selected dataset.
+* The output type of the processor (histograms or arrays) is defined with the `output_type` flag.
+* If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
+* The selected processor is executed at some facility, defined by the `--facility` flag.  
+
+Let's assume we want to execute the `ttbar` processor, in the `2b1l` electron control region, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
+
+```bash
+python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1
+```
+Then, if everything is ok, you can run the full dataset with:
+
+```bash
+python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor futures --sample TTTo2L2Nu --nfiles -1
+```
+The results will be stored in the `wprime_plus_b/outs` folder
+
+### Submitting condor jobs at lxplus 
+
+To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
+```bash
+voms-proxy-init --voms cms
+```
+To execute a processor using some sample of a particular year type:
+```bash
+python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
+```
+The script will create the condor and executable files (using the `submit.sub` and `submit.sh` templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). After submitting the jobs, you can watch their status typing
+```bash
+watch condor_q
+```
+The output will be save to your EOS area. 
+
+#### Notes: 
+* Currently, the processors are only functional for the year 2017. 
 
 ## Processors
 
@@ -29,7 +164,6 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
 Processor use to compute trigger efficiencies. 
 
 The processor applies the following pre-selection cuts
-
 
 
 
@@ -276,12 +410,12 @@ We implement this correction [here](wprime_plus_b/corrections/met.py). This corr
 We use the common json format for scale factors (SF), hence the requirement to install [correctionlib](https://github.com/cms-nanoAOD/correctionlib). The SF themselves can be found in the central [POG repository](https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration), synced once a day with CVMFS: `/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration`. A summary of their content can be found [here](https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/). The SF implemented are:
 
 * [Pileup SF](wprime_plus_b/corrections/pileup.py)
-* [Electron ID, Reconstruction and Trigger* SF](wprime_plus_b/corrections/lepton.py) (see the `ElectronCorrector` class)
+* [Electron ID, Reconstruction and Trigger SF](wprime_plus_b/corrections/lepton.py) (see the `ElectronCorrector` class)
 * [Muon ID, Iso and TriggerIso ](wprime_plus_b/corrections/lepton.py) (see the `MuonCorrector` class)
 * [PileupJetId SF](wprime_plus_b/corrections/pujetid.py)
 * L1PreFiring SF: These are read from the NanoAOD events as `events.L1PreFiringWeight.Nom/Up/Dn`.
 
-*The use of these scale factors are not by default approved from EGM. We are using the scale factors derived by Siqi Yuan https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgHLTScaleFactorMeasurements
+*We derive our own set of trigger scale factors. 
 
 * B-tagging: b-tagging weights are computed as (see https://twiki.cern.ch/twiki/bin/viewauth/CMS/BTagSFMethods):
 
@@ -293,150 +427,9 @@ We use the common json format for scale factors (SF), hence the requirement to i
 
   The computation of the b-tagging weights can be found [here](wprime_plus_b/corrections/btag.py)
 
-## How to run
 
-The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
 
-```bash
-python3 submit.py --help
-```
-The output should look something like this:
-
-```
-usage: submit.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD]
-                 [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES] [--nsample NSAMPLE] [--chunksize CHUNKSIZE] [--output_type OUTPUT_TYPE]
-                 [--syst SYST] [--facility FACILITY] [--tag TAG]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --processor PROCESSOR
-                        processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)
-  --channel CHANNEL     channel to be processed {'2b1l', '1b1e1mu', '1b1l'}
-  --lepton_flavor LEPTON_FLAVOR
-                        lepton flavor to be processed {'mu', 'ele'}
-  --sample SAMPLE       sample key to be processed
-  --year YEAR           year of the data {2016, 2017, 2018} (default 2017)
-  --yearmod YEARMOD     year modifier {'', 'APV'} (default '')
-  --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
-  --workers WORKERS     number of workers to use with futures executor (default 4)
-  --nfiles NFILES       number of .root files to be processed by sample. To run all files use -1 (default 1)
-  --nsample NSAMPLE     partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)
-  --chunksize CHUNKSIZE
-                        number of chunks to process
-  --output_type OUTPUT_TYPE
-                        type of output {hist, array}
-  --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
-  --facility FACILITY   facility to launch jobs {coffea-casa, lxplus}
-  --tag TAG             tag to reference output files directory
-```
-By running this script, a desired processor is executed at some facility, defined by the `--facility` flag. [Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is faster and more convenient, however still somewhat experimental so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
-
-The processor to be run is selected using the `--processor` flag. 
-
-In the $t\bar{t}$ case, you can choose channel and lepton flavor by means of the `--channel` and `--lepton_flavor` flags. The output type of the processor (histograms or arrays) is defined with the `output_type` flag.
-
-The year can be selected using the `--year` flag, and the `--yearmod` flag is used to specify whether the dataset uses APV or not.
-
-You can select the executor to run the processor using the `--executor` flag. Three executors are available: `iterative`, `futures`, and `dask`. The `iterative` executor uses a single worker, while the `futures` executor uses the number of workers specified by the `--workers` flag. The `dask` executor uses Dask functionalities to scale up the analysis (only available at coffea-casa).
-
-You can select a particular sample with `--sample <sample_name>`, where the available sample names are:
-  * `DYJetsToLL_M-50_HT-70to100`
-  * `DYJetsToLL_M-50_HT-100to200`
-  * `DYJetsToLL_M-50_HT-200to400`
-  * `DYJetsToLL_M-50_HT-400to600`
-  * `DYJetsToLL_M-50_HT-600to800`
-  * `DYJetsToLL_M-50_HT-800to1200`
-  * `DYJetsToLL_M-50_HT-1200to2500`
-  * `DYJetsToLL_M-50_HT-2500toInf`
-  * `WJetsToLNu_HT-100To200`
-  * `WJetsToLNu_HT-200To400`
-  * `WJetsToLNu_HT-400To600`
-  * `WJetsToLNu_HT-600To800`
-  * `WJetsToLNu_HT-800To1200`
-  * `WJetsToLNu_HT-1200To2500`
-  * `WJetsToLNu_HT-2500ToInf`
-  * `ST_s-channel_4f_leptonDecays`
-  * `ST_t-channel_antitop_5f_InclusiveDecays`
-  * `ST_t-channel_top_5f_InclusiveDecays`
-  * `ST_tW_antitop_5f_inclusiveDecays`
-  * `ST_tW_top_5f_inclusiveDecays`
-  * `TTTo2L2Nu`
-  * `TTToHadronic`
-  * `TTToSemiLeptonic`
-  * `WW`
-  * `WZ`
-  * `ZZ`
-  * `SingleElectron`
-  * `SingleMuon`
-
-If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
-
-To lighten the workload of jobs, the fileset is divided into sub-filesets. The number of partitions per dataset can be defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml). Set `--nfiles -1` to use all `.root` files.
-
-When you attempt to open a CMS file, your application must query a redirector to find the file. Which redirector you use depends on your region and facility. At coffea-casa, we use the `xcache` redirector. At lxplus, we use a xrootd endpoint rather than a redirector, since it is far more robust (see [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/fileset_2017_UL_NANO_lxplus.json)). We use [Coffea24 Dataset Discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) to build this fileset (TO DO: Details of fileset building).
-
-### Submitting jobs at Coffea-Casa
-
-Let's assume we are at coffea-casa and we want to execute the `ttbar` processor, in the `2b1l` control region, for the electron channel, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
-
-```bash
-python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1
-```
-Then, if everything is ok, you can run the full dataset with:
-
-```bash
-python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor futures --sample TTTo2L2Nu --nfiles -1
-```
-The results will be stored in the `wprime_plus_b/outs` folder
-
-### Submitting condor jobs at lxplus 
-
-To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
-```bash
-voms-proxy-init --voms cms
-```
-To execute a processor using some sample of a particular year type:
-```bash
-python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
-```
-The script will create the condor and executable files (using the `submit.sub` and `submit.sh` templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). After submitting the jobs, you can watch their status typing
-```bash
-watch condor_q
-```
-The output will be save to your EOS area. 
-
-#### Notes: 
-* Currently, the processors are only functional for the year 2017. 
-
-## Data fileset
-
-We use the [make_fileset.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset.py) script to make the filesets
-
-#### Re-making the input filesets with DAS
-
-```
-# connect to lxplus 
-ssh <your_username>@lxplus.cern.ch
-
-# then activate your proxy
-voms-proxy-init --voms cms
-
-# clone the repository 
-git clone https://github.com/deoache/wprime_plus_b.git
-
-# run the 'make_fileset' script
-cd wprime_plus_b/wprime_plus_b/fileset/
-python make_fileset.py
-```
-The json files containing the datasets will be saved in the same `fileset/` directory.
-
-We use the recomended Run-2 UltraLegacy Datasets. See https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun2LegacyAnalysis
-
-#### Making the input filesets with xrootd endpoints
-
-TO DO
-
-#### Luminosity
+## Luminosity
 
 See luminosity recomendations for Run2 at https://twiki.cern.ch/twiki/bin/view/CMS/LumiRecommendationsRun2. To obtain the integrated luminosity type (on lxplus):
 
