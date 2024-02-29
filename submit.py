@@ -101,12 +101,10 @@ def main(args):
     if args["tag"]:
         processor_output_path = processor_output_path / args["tag"]
         
-    # load dataset config
-    dataset_config = load_dataset_config(config_name=args["sample"])
+    # get .json filesets for sample
     filesets = get_filesets(
         sample=args["sample"],
         year=args["year"] + args["yearmod"],
-        nsplit=dataset_config.nsplit,
         facility=args["facility"],
     )
     for sample, fileset_path in filesets.items():
