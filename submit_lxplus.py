@@ -67,9 +67,9 @@ def submit_condor(jobname:str , cmd: str, flavor: str):
 
 
 def main(args):
+    build_filesets(facility="lxplus")
     args = vars(args)
     run_checker(args)
-    build_filesets(facility="lxplus")
     jobname = f'{args["processor"]}_{args["channel"]}_{args["lepton_flavor"]}_{args["sample"]}'
     dataset_config = load_dataset_config(config_name=args["sample"])
     if dataset_config.nsplit == 1:

@@ -111,12 +111,6 @@ def run_checker(args: dict) -> None:
         args["facility"] in available_facilitys
     ), f"Incorrect facility. Available facilities are: {available_facilitys}"
     
-    # check that datasets exists
-    fileset_path = Path(f"{Path.cwd()}/wprime_plus_b/fileset/{args['facility']}")
-    assert (
-        fileset_path.exists()
-    ), f"Filesets have not been created. Type 'python3 process_filesets.py --facility {args['facility']}'"
-    
     # check processor
     available_processors = ["ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"]
     assert (
