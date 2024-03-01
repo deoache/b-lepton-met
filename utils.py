@@ -8,11 +8,12 @@ from wprime_plus_b.utils.load_config import load_dataset_config
 
 
 def get_command(args):
-    username = os.environ["USER"]
+    """return command to submit jobs at coffea-casa or lxplus"""
     cmd = f"python submit.py"
     for arg in args:
         if args[arg]:
             cmd += f" --{arg} {args[arg]}"
+    cmd += f" --username {os.environ['USER']}"
     return cmd
 
 def divide_list(lst: list, n: int):
