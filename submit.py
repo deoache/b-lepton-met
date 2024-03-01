@@ -39,10 +39,7 @@ from wprime_plus_b.selections.qcd.config import (
 
 
 def main(args):
-    # check and manage args
-    run_checker(vars(args))
     args = manage_args(vars(args))
-
     # define processors and executors
     processors = {
         "ttbar": TtbarAnalysis,
@@ -250,21 +247,21 @@ if __name__ == "__main__":
         "--lepton_flavor",
         dest="lepton_flavor",
         type=str,
-        default="mu",
+        default="",
         help="lepton flavor to be processed {'mu', 'ele'}",
     )
     parser.add_argument(
         "--sample",
         dest="sample",
         type=str,
-        default="all",
+        default="",
         help="sample key to be processed",
     )
     parser.add_argument(
         "--year",
         dest="year",
         type=str,
-        default="2017",
+        default="",
         help="year of the data {2016, 2017, 2018} (default 2017)",
     )
     parser.add_argument(
@@ -278,7 +275,7 @@ if __name__ == "__main__":
         "--executor",
         dest="executor",
         type=str,
-        default="iterative",
+        default="",
         help="executor to be used {iterative, futures, dask} (default iterative)",
     )
     parser.add_argument(
@@ -327,7 +324,7 @@ if __name__ == "__main__":
         "--facility",
         dest="facility",
         type=str,
-        default="coffea-casa",
+        default="",
         help="facility to launch jobs {coffea-casa, lxplus}",
     )
     parser.add_argument(
