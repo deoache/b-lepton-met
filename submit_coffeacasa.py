@@ -109,7 +109,7 @@ if __name__ == "__main__":
         "--facility",
         dest="facility",
         type=str,
-        default="coffea-casa",
+        default="",
         help="facility to launch jobs {coffea-casa, lxplus}",
     )
     parser.add_argument(
