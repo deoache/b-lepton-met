@@ -74,26 +74,9 @@ exit
 ```
 We use the [dataset discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) from Coffea 2024, that's why we need to use a singularity shell in which we can use these tools.
 
+The json files containing the datasets will be saved in the `wprime_plus_b/fileset` directory. This files are the input to the [build_filesets](https://github.com/deoache/wprime_plus_b/blob/main/utils.py#L36) function that divides each dataset into `nsplit` datasets (located in the `wprime_plus_b/fileset/<facility>` folder), which are the datasets read in the execution step. The `nsplit` of each dataset are defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml).
 
-The json files containing the datasets will be saved in the `wprime_plus_b/fileset/coffea-casa` or `wprime_plus_b/fileset/lxplus` directories, depending on which script is executed.
-
-### Before submitting
-
-Before submitting jobs, make sure you have the facility (`coffea-casa` or `lxplus`) datasets by typing:
-
-```bash
-python3 process_filesets.py --facility <facility>
-```
-
-This script will partition each dataset into `nsplit` samples, which are defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml), and create a folder in `wprime_plus_b/fileset` containing the dataset partitions. These are the filesets read in the execution step.
-
-## Submitting jobs
-
-[Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended. 
-
-
-
-### Submitting jobs at Coffea-Casa
+## Submitting jobs 
 
 The `submit.py` file executes a desired processor with user-selected options. To see a list of arguments needed to run this script please enter the following in the terminal:
 
@@ -141,21 +124,28 @@ optional arguments:
 * If you choose histograms as output, you can add some systematics to the output. With `--syst nominal`, variations of the scale factors will be added. With `jet` or `met`, JEC/JER or MET variations will be added, respectively. Use `full` to add all variations. 
 * The selected processor is executed at some facility, defined by the `--facility` flag.  
 
-Let's assume we want to execute the `ttbar` processor, in the `2b1l` electron control region, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
+
+### Submitting jobs at Coffea-Casa
+
+[Coffea-Casa](https://coffea-casa.readthedocs.io/en/latest/cc_user.html) is easier to use and more convenient for beginners, however still somewhat experimental, so for large inputs and/or processors which may require heavier cpu/memory using HTCondor at lxplus is recommended.
+
+To submit jobs at Coffea-Casa we use the [submit_coffeacasa.py](https://github.com/deoache/wprime_plus_b/blob/main/submit_coffeacasa.py) script. Let's assume we want to execute the `ttbar` processor, in the `2b1l` electron control region, using the `TTTo2L2Nu` sample from 2017. To test locally first, can do e.g.:
 
 ```bash
-python3 submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1
+python3 submit_coffeacasa.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor iterative --sample TTTo2L2Nu --nfiles 1
 ```
 Then, if everything is ok, you can run the full dataset with:
 
 ```bash
-python submit.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor futures --sample TTTo2L2Nu --nfiles -1
+python submit_coffeacasa.py --processor ttbar --channel 2b1l --lepton_flavor ele --executor futures --sample TTTo2L2Nu --nfiles -1
 ```
-The results will be stored in the `wprime_plus_b/outs` folder
+The results will be stored in the `wprime_plus_b/outs` folder.
 
 ### Submitting condor jobs at lxplus 
 
-To submit jobs at lxplus using HTCondor, you need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
+To submit jobs at lxplus using HTCondor we use the [submit_coffeacasa.py](https://github.com/deoache/wprime_plus_b/blob/main/submit_lxplus.py) script. It will create the condor and executable files (using the [submit.sub](https://github.com/deoache/wprime_plus_b/blob/main/condor/submit.sub) and [submit.sh](https://github.com/deoache/wprime_plus_b/blob/main/condor/submit.sh) templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). 
+
+You need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
 ```bash
 voms-proxy-init --voms cms
 ```
@@ -163,7 +153,7 @@ To execute a processor using some sample of a particular year type:
 ```bash
 python3 submit_lxplus.py --processor ttbar --channel 2b1l --lepton_flavor ele --sample TTTo2L2Nu --year 2017 --nfiles -1
 ```
-The script will create the condor and executable files (using the `submit.sub` and `submit.sh` templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). After submitting the jobs, you can watch their status typing
+ After submitting the jobs, you can watch their status typing
 ```bash
 watch condor_q
 ```
