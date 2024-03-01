@@ -2,6 +2,7 @@ import os
 import argparse
 import subprocess
 from pathlib import Path
+from utils import get_command, run_checker, build_filesets
 from wprime_plus_b.utils.load_config import load_dataset_config
 
 
@@ -26,27 +27,8 @@ def move_X509():
     return x509_path
 
 
-def get_command(args, nsample=None):
-    username = os.environ["USER"]
-    cmd = f"python submit.py"
-    cmd += f" --processor {args.processor}"
-    cmd += f" --channel {args.channel}"
-    cmd += f" --lepton_flavor {args.lepton_flavor}"
-    cmd += f" --year {args.year}"
-    cmd += f" --executor {args.executor}"
-    cmd += f" --workers {args.workers}"
-    cmd += f" --nfiles {args.nfiles}"
-    cmd += f" --output_type {args.output_type}"
-    cmd += f" --syst {args.syst}"
-    cmd += f" --facility lxplus"
-    cmd += f" --sample {args.sample}"
-    cmd += f" --username {username}"
-    if nsample:
-        cmd += f" --nsample {nsample}"
-    return cmd
-
-
-def submit_condor(jobname, cmd, flavor):
+def submit_condor(jobname:str , cmd: str, flavor: str):
+    """build condor and executable files, and submit condor job"""
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
 
@@ -54,7 +36,6 @@ def submit_condor(jobname, cmd, flavor):
     log_dir = Path(str(condor_dir) + "/logs")
     if not log_dir.exists():
         log_dir.mkdir()
-        
     # make condor file
     condor_template_file = open(f"{condor_dir}/submit.sub")
     local_condor = f"{condor_dir}/{jobname}.sub"
@@ -86,17 +67,19 @@ def submit_condor(jobname, cmd, flavor):
 
 
 def main(args):
-    dataset_config = load_dataset_config(config_name=args.sample)
-    nsplits = dataset_config.nsplit
-    if nsplits == 1:
-        jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}"
+    args = vars(args)
+    run_checker(args)
+    build_filesets(facility="lxplus")
+    jobname = f'{args["processor"]}_{args["channel"]}_{args["lepton_flavor"]}_{args["sample"]}'
+    dataset_config = load_dataset_config(config_name=args["sample"])
+    if dataset_config.nsplit == 1:
         cmd = get_command(args)
         submit_condor(jobname, cmd, flavor="microcentury")
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
-            jobname = f"{args.processor}_{args.channel}_{args.lepton_flavor}_{args.sample}_{nsplit}"
-            cmd = get_command(args, nsplit)
-            submit_condor(jobname, cmd, flavor="longlunch")
+            args["nsample"] = nsplit
+            cmd = get_command(args)
+            submit_condor(jobname + f"_{nsplit}", cmd, flavor="longlunch")
 
 
 if __name__ == "__main__":
@@ -178,6 +161,20 @@ if __name__ == "__main__":
         type=str,
         default="nominal",
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
+    )
+    parser.add_argument(
+        "--facility",
+        dest="facility",
+        type=str,
+        default="lxplus",
+        help="facility to launch jobs {coffea-casa, lxplus}",
+    )
+    parser.add_argument(
+        "--nsample",
+        dest="nsample",
+        type=str,
+        default="",
+        help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     args = parser.parse_args()
     main(args)
