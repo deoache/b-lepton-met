@@ -92,7 +92,7 @@ def get_filesets(sample: str, year: str, facility: str):
             filesets[file_name] = file
     if len(filesets) != 1:
         # sort the dictionary keys based on the number after the "_" in ascending order
-        sorted_keys = sorted(filesets.keys(), key=lambda x: int(x.split("_")[1]))
+        sorted_keys = sorted(filesets.keys(), key=lambda x: int(x.split("_")[-1]))
         # create an ordered dictionary using the sorted keys
         ordered_filesets = OrderedDict((key, filesets[key]) for key in sorted_keys)
         return ordered_filesets
