@@ -74,11 +74,13 @@ def main(args):
     dataset_config = load_dataset_config(config_name=args["sample"])
     if dataset_config.nsplit == 1:
         cmd = get_command(args)
+        cmd += " --facility lxplus"
         submit_condor(jobname, cmd, flavor="microcentury")
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
+            cmd += " --facility lxplus"
             submit_condor(jobname + f"_{nsplit}", cmd, flavor="longlunch")
 
 
@@ -161,13 +163,6 @@ if __name__ == "__main__":
         type=str,
         default="nominal",
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
-    )
-    parser.add_argument(
-        "--facility",
-        dest="facility",
-        type=str,
-        default="lxplus",
-        help="facility to launch jobs {coffea-casa, lxplus}",
     )
     parser.add_argument(
         "--nsample",

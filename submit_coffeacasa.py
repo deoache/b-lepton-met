@@ -8,6 +8,7 @@ def main(args):
     run_checker(args)
     build_filesets(facility="coffea-casa")
     cmd = get_command(args)
+    cmd += " --facility coffea-casa"
     os.system(cmd)
     
     
@@ -104,13 +105,6 @@ if __name__ == "__main__":
         type=str,
         default="nominal",
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
-    )
-    parser.add_argument(
-        "--facility",
-        dest="facility",
-        type=str,
-        default="",
-        help="facility to launch jobs {coffea-casa, lxplus}",
     )
     parser.add_argument(
         "--tag",

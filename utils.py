@@ -101,15 +101,9 @@ def get_filesets(sample: str, year: str, facility: str):
 
 def run_checker(args: dict) -> None:
     # check args
-    requiered_args = ["processor", "sample", "executor", "year", "facility", "output_type", "nfiles"]
+    requiered_args = ["processor", "sample", "executor", "year", "output_type", "nfiles"]
     for arg in requiered_args:
         assert arg in args, f"You must provide the {arg} argument!"
-            
-    # check facility
-    available_facilitys = ["coffea-casa", "lxplus"]
-    assert (
-        args["facility"] in available_facilitys
-    ), f"Incorrect facility. Available facilities are: {available_facilitys}"
     
     # check processor
     available_processors = ["ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"]
