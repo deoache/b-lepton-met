@@ -27,22 +27,33 @@ def move_X509():
     return x509_path
 
 
-def submit_condor(jobname:str , cmd: str, flavor: str):
+def submit_condor(args: dict, cmd:str, flavor: str):
     """build condor and executable files, and submit condor job"""
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
-
-    # create logs and output directories
-    log_dir = Path(str(condor_dir) + "/logs")
+    
+    # set jobname
+    jobname = f'{args["processor"]}_{args["channel"]}_{args["lepton_flavor"]}_{args["sample"]}'
+    if args["nsample"]:
+        jobname += f'_{args["nsample"]}'
+    
+    # create logs and condor directories
+    log_dir = Path(f"{str(condor_dir)}/logs/{args['processor']}/{args['year']}")
     if not log_dir.exists():
-        log_dir.mkdir()
+        log_dir.mkdir(parents=True)
+    local_condor_path = Path(f"{condor_dir}/{args['processor']}/{args['year']}")
+    if not local_condor_path.exists():
+        local_condor_path.mkdir(parents=True)                        
+    local_condor = f"{local_condor_path}/{jobname}.sub"
+    
     # make condor file
     condor_template_file = open(f"{condor_dir}/submit.sub")
-    local_condor = f"{condor_dir}/{jobname}.sub"
     condor_file = open(local_condor, "w")
     for line in condor_template_file:
         line = line.replace("DIRECTORY", str(condor_dir))
         line = line.replace("JOBNAME", jobname)
+        line = line.replace("PROCESSOR", args["processor"])
+        line = line.replace("YEAR", args["year"])
         line = line.replace("JOBFLAVOR", f'"{flavor}"')
         condor_file.write(line)
     condor_file.close()
@@ -51,7 +62,7 @@ def submit_condor(jobname:str , cmd: str, flavor: str):
     # make executable file
     x509_path = move_X509()
     sh_template_file = open(f"{condor_dir}/submit.sh")
-    local_sh = f"{condor_dir}/{jobname}.sh"
+    local_sh = f"{local_condor_path}/{jobname}.sh"
     sh_file = open(local_sh, "w")
     for line in sh_template_file:
         line = line.replace("MAINDIRECTORY", str(main_dir))
@@ -70,18 +81,17 @@ def main(args):
     build_filesets(facility="lxplus")
     args = vars(args)
     run_checker(args)
-    jobname = f'{args["processor"]}_{args["channel"]}_{args["lepton_flavor"]}_{args["sample"]}'
     dataset_config = load_dataset_config(config_name=args["sample"])
     if dataset_config.nsplit == 1:
         cmd = get_command(args)
         cmd += " --facility lxplus"
-        submit_condor(jobname, cmd, flavor="microcentury")
+        submit_condor(args, cmd, flavor="microcentury")
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
             cmd += " --facility lxplus"
-            submit_condor(jobname + f"_{nsplit}", cmd, flavor="longlunch")
+            submit_condor(args, cmd, flavor="longlunch")
 
 
 if __name__ == "__main__":

@@ -14,11 +14,13 @@ from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
+from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
+from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector, TauCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
 from wprime_plus_b.selections.ttbar.config import (
     ttbar_electron_selection,
     ttbar_muon_selection,
+    ttbar_tau_selection,
     ttbar_jet_selection,
 )
 from wprime_plus_b.selections.ttbar.lepton_selection import (
@@ -141,14 +143,60 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(jet_jec_syst_variations)
                 syst_variations.extend(jet_jer_syst_variations)
                 syst_variations.extend(met_obj_syst_variations)
+                
         for syst_var in syst_variations:
+            # apply JEC/JER corrections to jets (in data, the corrections are already applied)
+            # and propagate to MET
+            if self.is_mc:
+                corrected_jets, met = jet_corrections(
+                    events, self._year + self._yearmod
+                )
+                # jet JEC/JER shift
+                if syst_var == "JESUp":
+                    corrected_jets = corrected_jets.JES_Total.up
+                elif syst_var == "JESDown":
+                    corrected_jets = corrected_jets.JES_Total.down
+                elif syst_var == "JERUp":
+                    corrected_jets = corrected_jets.JER.up
+                elif syst_var == "JERDown":
+                    corrected_jets = corrected_jets.JER.down
+                # MET UnclusteredEnergy shift
+                elif syst_var == "UEUp":
+                    met = met.MET_UnclusteredEnergy.up
+                elif syst_var == "UEDown":
+                    met = met.MET_UnclusteredEnergy.down
+            else:
+                corrected_jets, met = events.Jet, events.MET
+                
+            # apply MET phi corrections
+            met_pt, met_phi = met_phi_corrections(
+                met_pt=met.pt,
+                met_phi=met.phi,
+                npvs=events.PV.npvsGood,
+                run=events.run,
+                is_mc=self.is_mc,
+                year=self._year,
+                year_mod=self._yearmod,
+            )
+            met["pt"], met["phi"] = met_pt, met_phi
+            
+            # apply Tau energy corrections (only to MC)
+            corrected_taus = events.Tau
+            if self.is_mc:
+                # Data does not have corrections
+                corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
+                    events, "2017", "", "DeepTau2017v2p1", "nom"
+                )
+                # Given the tau corrections. We need to recalculate the MET.
+                # https://github.com/columnflow/columnflow/blob/16d35bb2f25f62f9110a8f1089e8dc5c62b29825/columnflow/calibration/util.py#L42
+                # https://github.com/Katsch21/hh2bbtautau/blob/e268752454a0ce0089ff08cc6c373a353be77679/hbt/calibration/tau.py#L117
+                met["pt"], met["phi"] = met_corrected_tes(
+                    old_taus=events.Tau, new_taus=corrected_taus, met=met
+                )
+
             # ------------------
             # event preselection
             # ------------------
-
-            # ------------------
-            # leptons
-            # -------------------
             # select good electrons
             good_electrons = select_good_electrons(
                 events=events,
@@ -183,37 +231,32 @@ class TtbarAnalysis(processor.ProcessorABC):
             muons = events.Muon[good_muons]
 
             # select good taus
+            good_taus = select_good_taus(
+                taus=corrected_taus,
+                tau_pt_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_pt_threshold"
+                ],
+                tau_eta_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_eta_threshold"
+                ],
+                tau_dz_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_dz_threshold"
+                ],
+                tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_jet"],
+                tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_ele"],
+                tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_mu"],
+                prong=ttbar_tau_selection[self._channel][self._lepton_flavor]["prongs"],
+            )
             good_taus = (
-                select_good_taus(events)
+                (good_taus)
                 & (delta_r_mask(events.Tau, electrons, threshold=0.4))
                 & (delta_r_mask(events.Tau, muons, threshold=0.4))
             )
-            taus = events.Tau[good_taus]
+            taus = corrected_taus[good_taus]
 
             # ------------------
             # jets
             # -------------------
-            # apply JEC/JER corrections to jets (in data, the corrections are already applied)
-            if self.is_mc:
-                corrected_jets, met = jet_corrections(
-                    events, self._year + self._yearmod
-                )
-                # jet JEC/JER shift
-                if syst_var == "JESUp":
-                    corrected_jets = corrected_jets.JES_Total.up
-                elif syst_var == "JESDown":
-                    corrected_jets = corrected_jets.JES_Total.down
-                elif syst_var == "JERUp":
-                    corrected_jets = corrected_jets.JER.up
-                elif syst_var == "JERDown":
-                    corrected_jets = corrected_jets.JER.down
-                # MET UnclusteredEnergy shift
-                elif syst_var == "UEUp":
-                    met = met.MET_UnclusteredEnergy.up
-                elif syst_var == "UEDown":
-                    met = met.MET_UnclusteredEnergy.down
-            else:
-                corrected_jets, met = events.Jet, events.MET
             # select good bjets
             good_bjets = select_good_bjets(
                 jets=corrected_jets,
@@ -235,20 +278,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                 good_bjets
                 & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
                 & (delta_r_mask(corrected_jets, muons, threshold=0.4))
+                & (delta_r_mask(corrected_jets, taus, threshold=0.4))
             )
             bjets = corrected_jets[good_bjets]
-
-            # apply MET phi corrections
-            met_pt, met_phi = met_phi_corrections(
-                met_pt=met.pt,
-                met_phi=met.phi,
-                npvs=events.PV.npvsGood,
-                run=events.run,
-                is_mc=self.is_mc,
-                year=self._year,
-                year_mod=self._yearmod,
-            )
-            met["pt"], met["phi"] = met_pt, met_phi
 
             # --------------------
             # event weights vector
@@ -262,7 +294,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 weights_container.add("genweight", events.genWeight)
 
                 # add l1prefiring weigths
-                add_l1prefiring_weight(events, weights_container, self._year, syst_var)
+                #add_l1prefiring_weight(events, weights_container, self._year, syst_var)
 
                 # add pileup weigths
                 add_pileup_weight(
@@ -346,6 +378,21 @@ class TtbarAnalysis(processor.ProcessorABC):
                         muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
                     else:
                         electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
+                        
+                # tau corrections
+                tau_corrector = TauCorrector(
+                    taus=corrected_taus,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_jet"],
+                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_ele"],
+                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_mu"],
+                    variation=syst_var,
+                )
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
                         
             # save sum of weights before selections
             output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
