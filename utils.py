@@ -34,23 +34,25 @@ def divide_list(lst: list, n: int):
     return result
 
 def build_filesets(facility: str):
+    """
+    build filesets partitions for an specific facility
+    """
     main_dir = Path.cwd()
     fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset")
-    
-    # make output filesets directory
-    output_directory = Path(f"{fileset_path}/{facility}")
-    if output_directory.exists():
-        for file in output_directory.glob("*"):
-            if file.is_file():
-                file.unlink()
-    else:
-        output_directory.mkdir(parents=True)
-    
-    # load filesets
     with open(f"{fileset_path}/das_datasets.json", "r") as f:
         datasets = json.load(f)
     for yreco in datasets:
         year = yreco.replace("_UL", "")
+        
+        # make output filesets directory
+        output_directory = Path(f"{fileset_path}/{year}/{facility}")
+        if output_directory.exists():
+            for file in output_directory.glob("*"):
+                if file.is_file():
+                    file.unlink()
+        else:
+            output_directory.mkdir(parents=True)
+            
         for sample in datasets[yreco]:
             if facility == "lxplus":
                 json_file = f"{fileset_path}/fileset_{year}_UL_NANO_lxplus.json"
@@ -83,7 +85,7 @@ def build_filesets(facility: str):
 def get_filesets(sample: str, year: str, facility: str):
     """return a dictionary with sample names as keys and .json files as values"""
     main_dir = Path.cwd()
-    fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset/{facility}")
+    fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset/{year}/{facility}")
     file_list = glob.glob(f"{fileset_path}/*.json")
     filesets = {}
     for file in file_list:
