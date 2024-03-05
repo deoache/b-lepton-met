@@ -212,7 +212,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         corrected_taus = events.Tau
         if self.is_mc:
             # Data does not have corrections
-
             corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
                 events, "2017", "", "DeepTau2017v2p1", "nom"
             )
@@ -236,6 +235,12 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             & (corrected_taus.idDeepTau2017v2p1VSmu > 8)
             & (decay_mode_mask)
         )
+        good_taus = (
+            (good_taus)
+            & (delta_r_mask(events.Tau, electrons, threshold=0.4))
+            & (delta_r_mask(events.Tau, muons, threshold=0.4))
+        )
+        taus = corrected_taus[good_taus]
         # b-jets
         # break up selection for low and high pT jets
         low_pt_jets_mask = (
@@ -279,7 +284,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         # --------------------
         # event weights vector
         # --------------------
-
         weights_container = Weights(len(events), storeIndividual=True)
         if self.is_mc:
             # add gen weigths
@@ -393,6 +397,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         self.selections.add("one_muon", ak.num(muons) == 1)
         self.selections.add("muon_veto", ak.num(muons) == 0)
         self.selections.add("electron_veto", ak.num(electrons) == 0)
+        self.selections.add("tau_veto", ak.num(taus) == 0)
 
         # regions
         regions = {
@@ -405,6 +410,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     "atleastone_bjet",
                     "one_muon",
                     "one_electron",
+                    "tau_veto"
                 ],
                 "denominator": [
                     "trigger_mu",
@@ -413,6 +419,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     "atleastone_bjet",
                     "one_muon",
                     "one_electron",
+                    "tau_veto"
                 ],
             },
             "mu": {
@@ -424,6 +431,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     "atleastone_bjet",
                     "one_electron",
                     "one_muon",
+                    "tau_veto"
                 ],
                 "denominator": [
                     "trigger_ele",
@@ -432,6 +440,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     "atleastone_bjet",
                     "one_electron",
                     "one_muon",
+                    "tau_veto"
                 ],
             },
         }
