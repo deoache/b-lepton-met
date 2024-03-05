@@ -3,6 +3,7 @@ import copy
 import correctionlib
 import numpy as np
 import awkward as ak
+import importlib.resources
 from typing import Type
 from pathlib import Path
 from .utils import unflat_sf
@@ -522,8 +523,8 @@ class TauCorrector:
         self.tau_vs_jet = tau_vs_jet
         self.tau_vs_ele = tau_vs_ele
         self.tau_vs_mu = tau_vs_mu
-        with open(f"{Path.home()}/wprime_plus_b/wprime_plus_b/data/tau_wps.json", "r") as f:
-            taus_wp = json.load(f)
+        with importlib.resources.open_text("wprime_plus_b.data", "tau_wps.json") as file:
+            taus_wp = json.load(file)
         self.tau_vs_jet_wp = taus_wp["DeepTau2017"]["deep_tau_jet"][tau_vs_jet]
         self.tau_vs_ele_wp = taus_wp["DeepTau2017"]["deep_tau_electron"][tau_vs_ele]
         self.tau_vs_mu_wp = taus_wp["DeepTau2017"]["deep_tau_muon"][tau_vs_mu]
