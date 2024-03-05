@@ -1,5 +1,5 @@
 import json
-import hist 
+import hist
 import pickle
 import numpy as np
 import pandas as pd
@@ -14,7 +14,12 @@ from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
+from wprime_plus_b.corrections.lepton import (
+    ElectronCorrector,
+    MuonCorrector,
+    TauCorrector,
+)
+from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
 
 
 class TriggerEfficiencyProcessor(processor.ProcessorABC):
@@ -23,6 +28,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         year: str = "2017",
         yearmod: str = "",
         lepton_flavor: str = "ele",
+        output_type: str = "hist",
     ):
         self._year = year
         self._yearmod = yearmod
@@ -150,14 +156,28 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         nevents = len(events)
         self.is_mc = hasattr(events, "genWeight")
         self.histograms = self.make_output()
-        
+
         # dictionary to store output data and metadata
         output = {}
-        
+
+        # get triggers masks
+        trigger_mask = {}
+        for ch in ["ele", "mu"]:
+            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
+            for t in self._triggers[ch]:
+                if t in events.HLT.fields:
+                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+                    
+        # apply corrections to jet/met
+        if self.is_mc:
+            corrected_jets, met = jet_corrections(events, self._year)
+        else:
+            corrected_jets, met = events.Jet, events.MET
+            
         # --------------------
         # object selection
         # --------------------
-        # electrons
+        # select electrons
         good_electrons = (
             (events.Electron.pt >= 30)
             & (np.abs(events.Electron.eta) < 2.4)
@@ -171,9 +191,8 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 else events.Electron.mvaFall17V2Iso_WP90
             )
         )
-        electrons = events.Electron[good_electrons]
-
-        # muons
+        electrons = events.Electron[good_electrons]  
+        # select muons
         good_muons = (
             (events.Muon.pt >= 30)
             & (np.abs(events.Muon.eta) < 2.4)
@@ -188,13 +207,36 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             delta_r_mask(events.Muon, electrons, threshold=0.4)
         )
         muons = events.Muon[good_muons]
-
-        # b-jets
+        # correct and select muons
+        # apply Tau energy corrections (only to MC)
+        corrected_taus = events.Tau
         if self.is_mc:
-            corrected_jets, met = jet_corrections(events, self._year)
-        else:
-            corrected_jets, met = events.Jet, events.MET
-            
+            # Data does not have corrections
+
+            corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
+                events, "2017", "", "DeepTau2017v2p1", "nom"
+            )
+            # Given the tau corrections. We need to recalculate the MET.
+            # https://github.com/columnflow/columnflow/blob/16d35bb2f25f62f9110a8f1089e8dc5c62b29825/columnflow/calibration/util.py#L42
+            # https://github.com/Katsch21/hh2bbtautau/blob/e268752454a0ce0089ff08cc6c373a353be77679/hbt/calibration/tau.py#L117
+
+            met["pt"], met["phi"] = met_corrected_tes(
+                old_taus=events.Tau, new_taus=corrected_taus, met=met
+            )
+        tau_dm = corrected_taus.decayMode
+        decay_mode_mask = ak.zeros_like(tau_dm)
+        for mode in [0, 1, 2, 10, 11]:
+            decay_mode_mask = np.logical_or(decay_mode_mask, tau_dm == mode)
+        good_taus = (
+            (corrected_taus.pt > 20)
+            & (np.abs(corrected_taus.eta) < 2.3)
+            & (np.abs(corrected_taus.dz) < 0.2)
+            & (corrected_taus.idDeepTau2017v2p1VSjet > 32)
+            & (corrected_taus.idDeepTau2017v2p1VSe > 32)
+            & (corrected_taus.idDeepTau2017v2p1VSmu > 8)
+            & (decay_mode_mask)
+        )
+        # b-jets
         # break up selection for low and high pT jets
         low_pt_jets_mask = (
             (corrected_jets.pt > 20)
@@ -204,14 +246,12 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             & (corrected_jets.puId == 7)
             & (corrected_jets.btagDeepFlavB > self._btagDeepFlavB)
         )
-
         high_pt_jets_mask = (
             (corrected_jets.pt >= 50)
             & (np.abs(corrected_jets.eta) < 2.4)
             & (corrected_jets.jetId == 6)
             & (corrected_jets.btagDeepFlavB > self._btagDeepFlavB)
         )
-
         good_bjets = ak.where(
             (corrected_jets.pt > 20) & (corrected_jets.pt < 50),
             low_pt_jets_mask,
@@ -224,8 +264,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         )
         bjets = corrected_jets[good_bjets]
 
-        #candidatebjet = ak.firsts(events.Jet[good_bjets])
-
         # apply MET phi corrections
         met_pt, met_phi = met_phi_corrections(
             met_pt=met.pt,
@@ -237,23 +275,19 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             year_mod="",
         )
         met["pt"], met["phi"] = met_pt, met_phi
-        
+
         # --------------------
         # event weights vector
         # --------------------
+
         weights_container = Weights(len(events), storeIndividual=True)
         if self.is_mc:
             # add gen weigths
             weights_container.add("genweight", events.genWeight)
-
             # add l1prefiring weigths
             add_l1prefiring_weight(events, weights_container, self._year, "nominal")
-
             # add pileup weigths
-            add_pileup_weight(
-                events, weights_container, self._year, "", "nominal"
-            )
-
+            add_pileup_weight(events, weights_container, self._year, "", "nominal")
             # add pujetid weigths
             add_pujetid_weight(
                 jets=corrected_jets,
@@ -263,7 +297,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 working_point="M",
                 variation="nominal",
             )
-
             # b-tagging corrector
             btag_corrector = BTagCorrector(
                 jets=corrected_jets,
@@ -278,7 +311,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             )
             # add b-tagging weights
             btag_corrector.add_btag_weights(flavor="bc")
-
             # electron corrector
             electron_corrector = ElectronCorrector(
                 electrons=events.Electron,
@@ -288,7 +320,11 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 variation="nominal",
             )
             # add electron ID weights
-            electron_corrector.add_id_weight(id_working_point="wp80iso" if self._lepton_flavor == "ele" else "wp90iso")
+            electron_corrector.add_id_weight(
+                id_working_point=(
+                    "wp80iso" if self._lepton_flavor == "ele" else "wp90iso"
+                )
+            )
             # add electron reco weights
             electron_corrector.add_reco_weight()
 
@@ -304,14 +340,28 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             )
             # add muon ID weights
             muon_corrector.add_id_weight()
-
             # add muon iso weights
             muon_corrector.add_iso_weight()
 
             # add trigger weights
-            if self._lepton_flavor == "mu":
-                muon_corrector.add_triggeriso_weight()
+            if self._lepton_flavor == "ele":
+                muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
                 
+            # tau corrections
+            tau_corrector = TauCorrector(
+                taus=corrected_taus,
+                weights=weights_container,
+                year=self._year,
+                year_mod=self._yearmod,
+                tau_vs_jet="Tight",
+                tau_vs_ele="Tight",
+                tau_vs_mu="Tight",
+                variation="nominal",
+            )
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
+            
         # save sum of weights before selections
         output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
 
@@ -320,14 +370,14 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         # ---------------
         # make a PackedSelection object to store selection masks
         self.selections = PackedSelection()
-        
+
         # luminosity
         if not self.is_mc:
             lumi_mask = self._lumi_mask[self._year](events.run, events.luminosityBlock)
         else:
             lumi_mask = np.ones(len(events), dtype="bool")
         self.selections.add("lumi", lumi_mask)
-        
+
         # MET filters
         metfilters = np.ones(nevents, dtype="bool")
         metfilterkey = "mc" if self.is_mc else "data"
@@ -335,17 +385,9 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             if mf in events.Flag.fields:
                 metfilters = metfilters & events.Flag[mf]
         self.selections.add("metfilters", metfilters)
-        
-        # triggers
-        trigger = {}
-        for ch in ["ele", "mu"]:
-            trigger[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger[ch] = trigger[ch] | events.HLT[t]
-        self.selections.add("trigger_ele", trigger["ele"])
-        self.selections.add("trigger_mu", trigger["mu"])
-        
+
+        self.selections.add("trigger_ele", trigger_mask["ele"])
+        self.selections.add("trigger_mu", trigger_mask["mu"])
         self.selections.add("atleastone_bjet", ak.num(bjets) >= 1)
         self.selections.add("one_electron", ak.num(electrons) == 1)
         self.selections.add("one_muon", ak.num(muons) == 1)
@@ -415,7 +457,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             * met.pt
             * (ak.ones_like(met.pt) - np.cos(muons.delta_phi(met)))
         )
-
         # lepton-bJet-MET total transverse mass
         ele_total_transverse_mass = np.sqrt(
             (electrons.pt + ak.firsts(bjets).pt + met.pt) ** 2
@@ -425,7 +466,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             (muons.pt + ak.firsts(bjets).pt + met.pt) ** 2
             - (muons + ak.firsts(bjets) + met).pt ** 2
         )
-
         # filling histograms
         def fill(region: str):
             selections = regions[self._lepton_flavor][region]
@@ -444,7 +484,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 met_phi=normalize(met.phi[region_cut]),
                 weight=region_weight,
             )
-
             self.histograms["electron_kin"].fill(
                 region=region,
                 electron_pt=normalize(electrons.pt[region_cut]),
@@ -471,7 +510,9 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             )
             self.histograms["lep_met_kin"].fill(
                 region=region,
-                electron_met_transverse_mass=normalize(ele_met_tranverse_mass[region_cut]),
+                electron_met_transverse_mass=normalize(
+                    ele_met_tranverse_mass[region_cut]
+                ),
                 muon_met_transverse_mass=normalize(mu_met_transverse_mass[region_cut]),
                 weight=region_weight,
             )
@@ -480,7 +521,9 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 electron_total_transverse_mass=normalize(
                     ele_total_transverse_mass[region_cut]
                 ),
-                muon_total_transverse_mass=normalize(mu_total_transverse_mass[region_cut]),
+                muon_total_transverse_mass=normalize(
+                    mu_total_transverse_mass[region_cut]
+                ),
                 weight=region_weight,
             )
             """
@@ -497,12 +540,12 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 else:
                     self.histograms["cutflow"][region][selection] = np.sum(cutflow_cut)
             """
+
         for region in regions[self._lepton_flavor]:
             fill(region)
-        
-        output["metadata"].update({"events_before": nevents})
+        output["metadata"].update({"raw_initial_nevents": nevents})
         output["histograms"] = self.histograms
-        
+
         return {dataset: output}
 
     def postprocess(self, accumulator):

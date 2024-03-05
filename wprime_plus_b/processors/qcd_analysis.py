@@ -13,13 +13,19 @@ from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
+from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.selections.qcd.jet_selection import select_good_bjets
+from wprime_plus_b.corrections.lepton import (
+    ElectronCorrector,
+    MuonCorrector,
+    TauCorrector,
+)
 from wprime_plus_b.selections.qcd.config import (
     qcd_electron_selection,
     qcd_muon_selection,
     qcd_jet_selection,
+    qcd_tau_selection,
 )
 from wprime_plus_b.selections.qcd.lepton_selection import (
     select_good_electrons,
@@ -54,14 +60,12 @@ class QcdAnalysis(processor.ProcessorABC):
         lepton_flavor: str = "ele",
         year: str = "2017",
         yearmod: str = "",
-        syst: str = "nominal",
         output_type: str = "hist",
     ):
         self._channel = channel
         self._year = year
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
-        self._syst = syst
         self._output_type = output_type
 
         # initialize dictionary of hists for control regions
@@ -82,25 +86,50 @@ class QcdAnalysis(processor.ProcessorABC):
         # dictionary to store output data and metadata
         output = {}
         output["metadata"] = {}
-        
+
         # get dataset name
         dataset = events.metadata["dataset"]
 
         # get number of events before selection
         nevents = len(events)
+        output["metadata"].update({"raw_initial_nevents": nevents})
 
         # check if sample is MC
         self.is_mc = hasattr(events, "genWeight")
 
         # create copies of histogram objects
         hist_dict = copy.deepcopy(self.hist_dict)
-        
+
         # apply JEC/JER corrections to jets (in data, the corrections are already applied)
         if self.is_mc:
             corrected_jets, met = jet_corrections(events, self._year + self._yearmod)
         else:
             corrected_jets, met = events.Jet, events.MET
-            
+        # apply MET phi corrections
+        met_pt, met_phi = met_phi_corrections(
+            met_pt=met.pt,
+            met_phi=met.phi,
+            npvs=events.PV.npvs,
+            run=events.run,
+            is_mc=self.is_mc,
+            year=self._year,
+            year_mod=self._yearmod,
+        )
+        met["pt"], met["phi"] = met_pt, met_phi
+
+        # apply Tau energy corrections (only to MC)
+        corrected_taus = events.Tau
+        if self.is_mc:
+            # Data does not have corrections
+            corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
+                events, "2017", "", "DeepTau2017v2p1", "nom"
+            )
+            # Given the tau corrections. We need to recalculate the MET.
+            # https://github.com/columnflow/columnflow/blob/16d35bb2f25f62f9110a8f1089e8dc5c62b29825/columnflow/calibration/util.py#L42
+            # https://github.com/Katsch21/hh2bbtautau/blob/e268752454a0ce0089ff08cc6c373a353be77679/hbt/calibration/tau.py#L117
+            met["pt"], met["phi"] = met_corrected_tes(
+                old_taus=events.Tau, new_taus=corrected_taus, met=met
+            )
         # --------------------
         # event weights vector
         # --------------------
@@ -108,15 +137,12 @@ class QcdAnalysis(processor.ProcessorABC):
         if self.is_mc:
             # add gen weigths
             weights_container.add("genweight", events.genWeight)
-
             # add l1prefiring weigths
             add_l1prefiring_weight(events, weights_container, self._year, "nominal")
-
             # add pileup weigths
             add_pileup_weight(
                 events, weights_container, self._year, self._yearmod, "nominal"
             )
-
             # add pujetid weigths
             add_pujetid_weight(
                 jets=corrected_jets,
@@ -126,7 +152,6 @@ class QcdAnalysis(processor.ProcessorABC):
                 working_point="M",
                 variation="nominal",
             )
-
             # b-tagging corrector
             btag_corrector = BTagCorrector(
                 jets=corrected_jets,
@@ -141,7 +166,28 @@ class QcdAnalysis(processor.ProcessorABC):
             )
             # add b-tagging weights
             btag_corrector.add_btag_weights(flavor="bc")
-            
+
+            # tau corrections
+            tau_corrector = TauCorrector(
+                taus=corrected_taus,
+                weights=weights_container,
+                year=self._year,
+                year_mod=self._yearmod,
+                tau_vs_jet=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_jet"
+                ],
+                tau_vs_ele=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_ele"
+                ],
+                tau_vs_mu=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_mu"
+                ],
+                variation="nominal",
+            )
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
+            tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
+
             """
             # electron corrector
             electron_corrector = ElectronCorrector(
@@ -181,14 +227,11 @@ class QcdAnalysis(processor.ProcessorABC):
             """
         # save sum of weights before selections
         output["metadata"]["sumw"] = ak.sum(weights_container.weight())
-        
 
         for region in ["A", "B", "C", "D"]:
-            if region != self._channel: continue
+            if region != self._channel:
+                continue
             output["metadata"][region] = {}
-            # ------------------
-            # bject selection
-            # ------------------
             # ------------------
             # leptons
             # -------------------
@@ -210,12 +253,34 @@ class QcdAnalysis(processor.ProcessorABC):
             muons = events.Muon[good_muons]
 
             # select good taus
+            good_taus = select_good_taus(
+                taus=corrected_taus,
+                tau_pt_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_pt_threshold"
+                ],
+                tau_eta_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_eta_threshold"
+                ],
+                tau_dz_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_dz_threshold"
+                ],
+                tau_vs_jet=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_jet"
+                ],
+                tau_vs_ele=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_ele"
+                ],
+                tau_vs_mu=qcd_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_mu"
+                ],
+                prong=qcd_tau_selection[self._channel][self._lepton_flavor]["prongs"],
+            )
             good_taus = (
-                select_good_taus(events)
+                (good_taus)
                 & (delta_r_mask(events.Tau, electrons, threshold=0.4))
                 & (delta_r_mask(events.Tau, muons, threshold=0.4))
             )
-            taus = events.Tau[good_taus]
+            taus = corrected_taus[good_taus]
 
             # ------------------
             # jets
@@ -236,25 +301,12 @@ class QcdAnalysis(processor.ProcessorABC):
             )
             bjets = corrected_jets[good_bjets]
 
-            # apply MET phi corrections
-            met_pt, met_phi = met_phi_corrections(
-                met_pt=met.pt,
-                met_phi=met.phi,
-                npvs=events.PV.npvs,
-                run=events.run,
-                is_mc=self.is_mc,
-                year=self._year,
-                year_mod=self._yearmod,
-            )
-            met["pt"], met["phi"] = met_pt, met_phi
-
-    
             # ---------------
             # event selection
             # ---------------
             # make a PackedSelection object to store selection masks
             self.selections = PackedSelection()
-
+            
             # add luminosity calibration mask (only to data)
             with importlib.resources.path(
                 "wprime_plus_b.data", "lumi_masks.pkl"
@@ -428,7 +480,6 @@ class QcdAnalysis(processor.ProcessorABC):
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
                 region_met = met[region_selection]
-
                 # define region leptons
                 region_leptons = (
                     region_electrons if self._lepton_flavor == "ele" else region_muons
@@ -441,10 +492,8 @@ class QcdAnalysis(processor.ProcessorABC):
                 )
                 # leading bjets
                 leading_bjets = ak.firsts(region_bjets)
-
                 # lepton-bjet deltaR and invariant mass
                 lepton_bjet_mass = (region_leptons + leading_bjets).mass
-
                 # lepton-MET transverse mass and deltaPhi
                 lepton_met_mass = np.sqrt(
                     2.0
@@ -471,6 +520,7 @@ class QcdAnalysis(processor.ProcessorABC):
                 if self._output_type == "hist":
                     for kin in hist_dict:
                         # fill histograms
+
                         fill_args = {
                             feature: normalize(self.features[feature])
                             for feature in hist_dict[kin].axes.name[:-1]
@@ -481,10 +531,15 @@ class QcdAnalysis(processor.ProcessorABC):
                             weight=weights_container.weight()[region_selection],
                         )
             # save metadata
-            output["metadata"][region].update({"events_after": nevents_after})
-            output["metadata"][region].update({"events_after_weighted": ak.sum(weights_container.weight()[region_selection])})
+            output["metadata"][region].update({"raw_final_nevents": nevents_after})
+            output["metadata"][region].update(
+                {
+                    "weighted_final_nevents": ak.sum(
+                        weights_container.weight()[region_selection]
+                    )
+                }
+            )
         # define output dictionary accumulator
-        output["metadata"].update({"events_before": nevents})
         output["histograms"] = hist_dict
 
         return {dataset: output}
