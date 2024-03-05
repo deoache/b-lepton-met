@@ -2,11 +2,11 @@ import os
 import argparse
 import subprocess
 from pathlib import Path
-from utils import get_command, run_checker, build_filesets
+from utils import get_command, run_checker, build_filesets, manage_processor_args
 from wprime_plus_b.utils.load_config import load_dataset_config
 
 
-def move_X509():
+def move_X509() -> str:
     """move x509 proxy file from /tmp to /afs/private. Returns the afs path"""
     try:
         x509_localpath = (
@@ -26,16 +26,25 @@ def move_X509():
     subprocess.run(["cp", x509_localpath, x509_path])
     return x509_path
 
+def get_jobname(args: dict) -> str:
+    jobname = args["processor"]
+    if args["channel"]:
+        jobname += f'_{args["channel"]}'
+    if args["lepton_flavor"]:
+        jobname += f'_{args["lepton_flavor"]}'
+    jobname += f'_{args["sample"]}'
+    if args["nsample"]:
+        jobname += f'_{args["nsample"]}'
+    return jobname
 
-def submit_condor(args: dict, cmd:str, flavor: str):
+
+def submit_condor(args: dict, cmd:str, flavor: str) -> None:
     """build condor and executable files, and submit condor job"""
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
     
     # set jobname
-    jobname = f'{args["processor"]}_{args["channel"]}_{args["lepton_flavor"]}_{args["sample"]}'
-    if args["nsample"]:
-        jobname += f'_{args["nsample"]}'
+    jobname = get_jobname(args)
     
     # create logs and condor directories
     log_dir = Path(f"{str(condor_dir)}/logs/{args['processor']}/{args['year']}")
@@ -79,7 +88,7 @@ def submit_condor(args: dict, cmd:str, flavor: str):
 
 def main(args):
     build_filesets(facility="lxplus")
-    args = vars(args)
+    args =  manage_processor_args(vars(args))
     run_checker(args)
     dataset_config = load_dataset_config(config_name=args["sample"])
     if dataset_config.nsplit == 1:
@@ -101,7 +110,7 @@ if __name__ == "__main__":
         "--processor",
         dest="processor",
         type=str,
-        default="ttbar",
+        default="",
         help="processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)",
     )
     parser.add_argument(
@@ -109,27 +118,27 @@ if __name__ == "__main__":
         dest="channel",
         type=str,
         default="",
-        help="channel to be processed {'2b1l', '1b1e1mu', '1b1l'}",
+        help="channel to be processed",
     )
     parser.add_argument(
         "--lepton_flavor",
         dest="lepton_flavor",
         type=str,
-        default="mu",
+        default="",
         help="lepton flavor to be processed {'mu', 'ele'}",
     )
     parser.add_argument(
         "--sample",
         dest="sample",
         type=str,
-        default="all",
+        default="",
         help="sample key to be processed",
     )
     parser.add_argument(
         "--year",
         dest="year",
         type=str,
-        default="2017",
+        default="",
         help="year of the data {2016, 2017, 2018} (default 2017)",
     )
     parser.add_argument(
@@ -143,7 +152,7 @@ if __name__ == "__main__":
         "--executor",
         dest="executor",
         type=str,
-        default="iterative",
+        default="",
         help="executor to be used {iterative, futures, dask} (default iterative)",
     )
     parser.add_argument(
@@ -164,7 +173,7 @@ if __name__ == "__main__":
         "--output_type",
         dest="output_type",
         type=str,
-        default="hist",
+        default="",
         help="type of output {hist, array}",
     )
     parser.add_argument(
