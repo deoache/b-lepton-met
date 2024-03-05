@@ -67,7 +67,7 @@ class ElectronCorrector:
             get_pog_json(json_name="electron", year=year + year_mod)
         )
         self.year = year
-        self.year_mod = year_mod
+        self.year_mod = year_mod # 2018
         self.pog_year = pog_years[year + year_mod]
 
     def add_trigger_weight(self, trigger_mask):
@@ -86,14 +86,15 @@ class ElectronCorrector:
         electron_eta = ak.fill_none(in_electrons.eta, 0.0)
         
         # get eletron trigger correction
-        cset = correctionlib.CorrectionSet.from_file("wprime_plus_b/data/correction_electron_trigger_2017.json.gz")
+        cset = correctionlib.CorrectionSet.from_file(
+            f"wprime_plus_b/data/correction_electron_trigger_{self.year + self.year_mod}.json.gz"
+        )
         sf = cset["trigger_eff"].evaluate(electron_pt, electron_eta)
         nominal_sf = ak.where(in_electron_mask, sf, 1.)
         
         # replace zero-value SF for 1
         #zero_sf_mask = nominal_sf == 0.0
         #nominal_sf = ak.where(zero_sf_mask, 1., nominal_sf)
-        
         self.weights.add(
             name=f"ele_trigger",
             weight=nominal_sf,
