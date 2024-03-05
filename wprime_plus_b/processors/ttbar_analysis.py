@@ -294,7 +294,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 weights_container.add("genweight", events.genWeight)
 
                 # add l1prefiring weigths
-                #add_l1prefiring_weight(events, weights_container, self._year, syst_var)
+                add_l1prefiring_weight(events, weights_container, self._year, syst_var)
 
                 # add pileup weigths
                 add_pileup_weight(
