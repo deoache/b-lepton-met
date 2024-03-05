@@ -15,8 +15,12 @@ from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector, TauCorrector
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
+from wprime_plus_b.corrections.lepton import (
+    ElectronCorrector,
+    MuonCorrector,
+    TauCorrector,
+)
 from wprime_plus_b.selections.ttbar.config import (
     ttbar_electron_selection,
     ttbar_muon_selection,
@@ -70,7 +74,6 @@ class TtbarAnalysis(processor.ProcessorABC):
 
         # define region of the analysis
         self._region = f"{self._channel}_{self._lepton_flavor}"
-
         # initialize dictionary of hists for control regions
         self.hist_dict = {}
         self.hist_dict[self._region] = {
@@ -83,37 +86,31 @@ class TtbarAnalysis(processor.ProcessorABC):
         }
         # define dictionary to store analysis variables
         self.features = {}
-
         # initialize dictionary of arrays
         self.array_dict = {}
-                
+
     def add_feature(self, name: str, var: ak.Array) -> None:
         """add a variable array to the out dictionary"""
         self.features = {**self.features, name: var}
 
     def process(self, events):
-        # dictionary to store output data and metadata
-        output = {}
-
         # get dataset name
         dataset = events.metadata["dataset"]
-
         # get number of events before selection
         nevents = len(events)
-
         # check if sample is MC
         self.is_mc = hasattr(events, "genWeight")
-
         # create copies of histogram objects
         hist_dict = copy.deepcopy(self.hist_dict)
-
         # create copy of array dictionary
         array_dict = copy.deepcopy(self.array_dict)
+        # dictionary to store output data and metadata
+        output = {}
+        output["metadata"] = {}
+        output["metadata"].update({"raw_initial_nevents": nevents})
         
         # get triggers masks
-        with importlib.resources.path(
-            "wprime_plus_b.data", "triggers.json"
-        ) as path:
+        with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
             with open(path, "r") as handle:
                 self._triggers = json.load(handle)[self._year]
         trigger_mask = {}
@@ -122,7 +119,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             for t in self._triggers[ch]:
                 if t in events.HLT.fields:
                     trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-
+                    
         # define systematic variations
         syst_variations = ["nominal"]
         if self.is_mc:
@@ -167,7 +164,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     met = met.MET_UnclusteredEnergy.down
             else:
                 corrected_jets, met = events.Jet, events.MET
-                
             # apply MET phi corrections
             met_pt, met_phi = met_phi_corrections(
                 met_pt=met.pt,
@@ -179,7 +175,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 year_mod=self._yearmod,
             )
             met["pt"], met["phi"] = met_pt, met_phi
-            
             # apply Tau energy corrections (only to MC)
             corrected_taus = events.Tau
             if self.is_mc:
@@ -193,7 +188,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 met["pt"], met["phi"] = met_corrected_tes(
                     old_taus=events.Tau, new_taus=corrected_taus, met=met
                 )
-
             # ------------------
             # event preselection
             # ------------------
@@ -211,7 +205,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 ]["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
-
             # select good muons
             good_muons = select_good_muons(
                 events=events,
@@ -229,22 +222,27 @@ class TtbarAnalysis(processor.ProcessorABC):
                 delta_r_mask(events.Muon, electrons, threshold=0.4)
             )
             muons = events.Muon[good_muons]
-
             # select good taus
             good_taus = select_good_taus(
                 taus=corrected_taus,
-                tau_pt_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_pt_threshold"
+                tau_pt_threshold=ttbar_tau_selection[self._channel][
+                    self._lepton_flavor
+                ]["tau_pt_threshold"],
+                tau_eta_threshold=ttbar_tau_selection[self._channel][
+                    self._lepton_flavor
+                ]["tau_eta_threshold"],
+                tau_dz_threshold=ttbar_tau_selection[self._channel][
+                    self._lepton_flavor
+                ]["tau_dz_threshold"],
+                tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_jet"
                 ],
-                tau_eta_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_eta_threshold"
+                tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_ele"
                 ],
-                tau_dz_threshold=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_dz_threshold"
+                tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    "tau_vs_mu"
                 ],
-                tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_jet"],
-                tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_ele"],
-                tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_mu"],
                 prong=ttbar_tau_selection[self._channel][self._lepton_flavor]["prongs"],
             )
             good_taus = (
@@ -253,7 +251,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Tau, muons, threshold=0.4))
             )
             taus = corrected_taus[good_taus]
-
             # ------------------
             # jets
             # -------------------
@@ -281,7 +278,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(corrected_jets, taus, threshold=0.4))
             )
             bjets = corrected_jets[good_bjets]
-
             # --------------------
             # event weights vector
             # --------------------
@@ -292,15 +288,12 @@ class TtbarAnalysis(processor.ProcessorABC):
             if self.is_mc:
                 # add gen weigths
                 weights_container.add("genweight", events.genWeight)
-
                 # add l1prefiring weigths
                 add_l1prefiring_weight(events, weights_container, self._year, syst_var)
-
                 # add pileup weigths
                 add_pileup_weight(
                     events, weights_container, self._year, self._yearmod, syst_var
                 )
-
                 # add pujetid weigths
                 add_pujetid_weight(
                     jets=corrected_jets,
@@ -312,7 +305,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ]["btag_working_point"],
                     variation=syst_var,
                 )
-
                 # b-tagging corrector
                 btag_corrector = BTagCorrector(
                     jets=corrected_jets,
@@ -329,7 +321,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add b-tagging weights
                 btag_corrector.add_btag_weights(flavor="bc")
-
                 # electron corrector
                 electron_corrector = ElectronCorrector(
                     electrons=events.Electron,
@@ -346,7 +337,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
-                
                 # muon corrector
                 muon_corrector = MuonCorrector(
                     muons=events.Muon,
@@ -363,49 +353,61 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add muon ID weights
                 muon_corrector.add_id_weight()
-
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
-
                 # add trigger weights
                 if self._channel == "1b1e1mu":
                     if self._lepton_flavor == "ele":
-                        muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                        muon_corrector.add_triggeriso_weight(
+                            trigger_mask=trigger_mask["mu"]
+                        )
                     else:
-                        electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
+                        electron_corrector.add_trigger_weight(
+                            trigger_mask=trigger_mask["ele"]
+                        )
                 else:
                     if self._lepton_flavor == "mu":
-                        muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                        muon_corrector.add_triggeriso_weight(
+                            trigger_mask=trigger_mask["mu"]
+                        )
                     else:
-                        electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
-                        
+                        electron_corrector.add_trigger_weight(
+                            trigger_mask=trigger_mask["ele"]
+                        )
                 # tau corrections
                 tau_corrector = TauCorrector(
                     taus=corrected_taus,
                     weights=weights_container,
                     year=self._year,
                     year_mod=self._yearmod,
-                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_jet"],
-                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_ele"],
-                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor]["tau_vs_mu"],
+                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_jet"
+                    ],
+                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_ele"
+                    ],
+                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_mu"
+                    ],
                     variation=syst_var,
                 )
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-                        
-            # save sum of weights before selections
-            output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
-            # save weights statistics
-            output["metadata"].update({"weight_statistics": {}})
-            for weight, statistics in weights_container.weightStatistics.items():
-                output["metadata"]["weight_statistics"][weight] = statistics
+                
+            if syst_var == "nominal":
+                # save sum of weights before selections
+                output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
+                # save weights statistics
+                output["metadata"].update({"weight_statistics": {}})
+                for weight, statistics in weights_container.weightStatistics.items():
+                    output["metadata"]["weight_statistics"][weight] = statistics
             # ---------------
             # event selection
             # ---------------
             # make a PackedSelection object to store selection masks
             self.selections = PackedSelection()
-
+            
             # add luminosity calibration mask (only to data)
             with importlib.resources.path(
                 "wprime_plus_b.data", "lumi_masks.pkl"
@@ -425,7 +427,6 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("trigger_mu", trigger_mask["mu"])
 
             # add MET filters mask
-            # open and load met filters
             with importlib.resources.path(
                 "wprime_plus_b.data", "metfilters.json"
             ) as path:
@@ -531,15 +532,16 @@ class TtbarAnalysis(processor.ProcessorABC):
             # --------------
             # cutflow
             # --------------
-            cut_names = region_selection[self._channel][self._lepton_flavor]
-            output["metadata"].update({"cutflow": {}})
-            selections = []
-            for cut_name in cut_names:
-                selections.append(cut_name)
-                current_selection = self.selections.all(*selections)
-                output["metadata"]["cutflow"][cut_name] = ak.sum(
-                    weights_container.weight()[current_selection]
-                )
+            if syst_var == "nominal":
+                cut_names = region_selection[self._channel][self._lepton_flavor]
+                output["metadata"].update({"cutflow": {}})
+                selections = []
+                for cut_name in cut_names:
+                    selections.append(cut_name)
+                    current_selection = self.selections.all(*selections)
+                    output["metadata"]["cutflow"][cut_name] = ak.sum(
+                        weights_container.weight()[current_selection]
+                    )
             # ---------------
             # event variables
             # ---------------
@@ -550,7 +552,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 ),
             )
             region_selection = self.selections.all(self._region)
-
             # check that there are events left after selection
             nevents_after = ak.sum(region_selection)
             if nevents_after > 0:
@@ -559,7 +560,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
                 region_met = met[region_selection]
-
                 # define region leptons
                 region_leptons = (
                     region_electrons if self._lepton_flavor == "ele" else region_muons
@@ -572,11 +572,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # leading bjets
                 leading_bjets = ak.firsts(region_bjets)
-
                 # lepton-bjet deltaR and invariant mass
                 lepton_bjet_dr = leading_bjets.delta_r(region_leptons)
                 lepton_bjet_mass = (region_leptons + leading_bjets).mass
-
                 # lepton-MET transverse mass and deltaPhi
                 lepton_met_mass = np.sqrt(
                     2.0
@@ -588,7 +586,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     )
                 )
                 lepton_met_delta_phi = np.abs(region_leptons.delta_phi(region_met))
-
                 # lepton-bJet-MET total transverse mass
                 lepton_met_bjet_mass = np.sqrt(
                     (region_leptons.pt + leading_bjets.pt + region_met.pt) ** 2
@@ -609,6 +606,17 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.add_feature("lepton_met_delta_phi", lepton_met_delta_phi)
                 self.add_feature("lepton_met_bjet_mass", lepton_met_bjet_mass)
 
+                if syst_var == "nominal":
+                # save weighted events to metadata
+                    output["metadata"].update(
+                        {
+                            "weighted_final_nevents": ak.sum(
+                                weights_container.weight()[region_selection]
+                            ),
+
+                            "raw_final_nevents": nevents_after,
+                        }
+                    )
                 # ------------------
                 # histogram filling
                 # ------------------
@@ -645,9 +653,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self._region]:
                             # get filling arguments
+
                             fill_args = {
                                 feature: normalize(self.features[feature])
-                                for feature in hist_dict[self._region][kin].axes.name[:-1]
+                                for feature in hist_dict[self._region][kin].axes.name[
+                                    :-1
+                                ]
                                 if feature not in ["variation"]
                             }
                             # fill histograms
@@ -656,7 +667,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                                 variation=syst_var,
                                 weight=region_weight,
                             )
-                    
                     elif not self.is_mc and syst_var == "nominal":
                         # object-wise variations
                         region_weight = weights_container.weight()[region_selection]
@@ -664,7 +674,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                             # get filling arguments
                             fill_args = {
                                 feature: normalize(self.features[feature])
-                                for feature in hist_dict[self._region][kin].axes.name[:-1]
+                                for feature in hist_dict[self._region][kin].axes.name[
+                                    :-1
+                                ]
                                 if feature not in ["variation"]
                             }
                             # fill histograms
@@ -674,31 +686,27 @@ class TtbarAnalysis(processor.ProcessorABC):
                                 weight=region_weight,
                             )
                 elif self._output_type == "array":
-                    # uncoment next two lines to save individual weights
-                    # for weight in weights_container.weightStatistics:
-                    #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
+                    array_dict = {}
                     self.add_feature(
                         "weights", weights_container.weight()[region_selection]
                     )
-                    # select variables and put them in column accumulators
-                    array_dict = {
-                        feature_name: processor.column_accumulator(
-                            normalize(feature_array)
-                        )
-                        for feature_name, feature_array in self.features.items()
-                    }
+                    # uncoment next two lines to save individual weights
+                    # for weight in weights_container.weightStatistics:
+                    #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
+                    if syst_var == "nominal":
+                        # select variables and put them in column accumulators
+                        array_dict.update({
+                            feature_name: processor.column_accumulator(
+                                normalize(feature_array)
+                            )
+                            for feature_name, feature_array in self.features.items()
+                        })
         # define output dictionary accumulator
         if self._output_type == "hist":
             output["histograms"] = hist_dict[f"{self._channel}_{self._lepton_flavor}"]
         elif self._output_type == "array":
             output["arrays"] = array_dict
-        # save metadata
-        output["metadata"].update(
-            {
-                "events_before": nevents,
-                "events_after": nevents_after,
-            }
-        )
+            
         return {dataset: output}
 
     def postprocess(self, accumulator):

@@ -8,9 +8,9 @@ import numpy as np
 import wprime_plus_b.utils
 from pathlib import Path
 from coffea import processor
+from utils import get_filesets
 from dask.distributed import Client
 from humanfriendly import format_timespan
-from utils import run_checker, manage_args, get_filesets
 from distributed.diagnostics.plugin import UploadDirectory
 from wprime_plus_b.utils import paths
 from wprime_plus_b.utils.load_config import load_processor_config, load_dataset_config
@@ -25,6 +25,7 @@ from wprime_plus_b.selections.ttbar.config import (
     ttbar_electron_selection,
     ttbar_muon_selection,
     ttbar_jet_selection,
+    ttbar_tau_selection
 )
 from wprime_plus_b.selections.ztoll.config import (
     ztoll_electron_selection,
@@ -35,11 +36,12 @@ from wprime_plus_b.selections.qcd.config import (
     qcd_electron_selection,
     qcd_muon_selection,
     qcd_jet_selection,
+    qcd_tau_selection
 )
 
 
 def main(args):
-    args = manage_args(vars(args))
+    args = vars(args)
     # define processors and executors
     processors = {
         "ttbar": TtbarAnalysis,
@@ -138,7 +140,7 @@ def main(args):
         if "metadata" in out[sample]:
             output_metadata = out[sample]["metadata"]
             # save number of raw initial events
-            metadata.update({"events_before": float(output_metadata["events_before"])})
+            metadata.update({"raw_initial_nevents": float(output_metadata["raw_initial_nevents"])})
             # save number of weighted initial events
             metadata.update({"sumw": float(output_metadata["sumw"])})
             # save qcd metadata
@@ -146,16 +148,20 @@ def main(args):
                 metadata.update({"nevents": {}})
                 region = args["channel"]
                 metadata["nevents"].update({region: {}})
-                metadata["nevents"][region]["events_after"] = str(
-                    output_metadata[region]["events_after"]
+                metadata["nevents"][region]["raw_final_nevents"] = str(
+                    output_metadata[region]["raw_final_nevents"]
                 )
-                metadata["nevents"][region]["events_after_weighted"] = str(
-                    output_metadata[region]["events_after_weighted"]
+                metadata["nevents"][region]["weighted_final_nevents"] = str(
+                    output_metadata[region]["weighted_final_nevents"]
                 )
-            # save cutflow to metadata
+            # save ttbar and ztoll metadata
             if args["processor"] in ["ttbar", "ztoll"]:
+                # save raw and weighted number of events after selection
                 metadata.update(
-                    {"events_after": float(output_metadata["events_after"])}
+                    {"raw_final_nevents": float(output_metadata["raw_final_nevents"])}
+                )
+                metadata.update(
+                    {"weighted_final_nevents": float(output_metadata["weighted_final_nevents"])}
                 )
                 # save cutflow to metadata
                 for cut_selection, nevents in output_metadata["cutflow"].items():
@@ -180,6 +186,9 @@ def main(args):
                         "jet_selection": ttbar_jet_selection[args["channel"]][
                             args["lepton_flavor"]
                         ],
+                        "tau_selection": ttbar_tau_selection[args["channel"]][
+                            args["lepton_flavor"]
+                        ]
                     },
                 }
             elif args["processor"] == "ztoll":
@@ -196,6 +205,7 @@ def main(args):
                         "electron_selection": qcd_electron_selection,
                         "muon_selection": qcd_muon_selection,
                         "jet_selection": qcd_jet_selection,
+                        "tau_selection": qcd_tau_selection
                     },
                 }
             if args["processor"] in ["ttbar", "ztoll", "qcd"]:
@@ -211,6 +221,9 @@ def main(args):
                 )
                 metadata.update(
                     {"jet_selection": selections[args["processor"]]["jet_selection"]}
+                )
+                metadata.update(
+                    {"tau_selection": selections[args["processor"]]["tau_selection"]}
                 )
             # save args to metadata
             args_dict = args.copy()
@@ -233,7 +246,7 @@ if __name__ == "__main__":
         "--processor",
         dest="processor",
         type=str,
-        default="ttbar",
+        default="",
         help="processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)",
     )
     parser.add_argument(
@@ -241,7 +254,7 @@ if __name__ == "__main__":
         dest="channel",
         type=str,
         default="",
-        help="channel to be processed {'2b1l', '1b1e1mu', '1b1l'}",
+        help="channel to be processed",
     )
     parser.add_argument(
         "--lepton_flavor",
@@ -310,14 +323,14 @@ if __name__ == "__main__":
         "--output_type",
         dest="output_type",
         type=str,
-        default="hist",
+        default="",
         help="type of output {hist, array}",
     )
     parser.add_argument(
         "--syst",
         dest="syst",
         type=str,
-        default="nominal",
+        default="",
         help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
     )
     parser.add_argument(
