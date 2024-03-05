@@ -1,12 +1,12 @@
 import os
 import argparse
-from utils import build_filesets, get_command, run_checker
+from utils import build_filesets, get_command, run_checker, manage_processor_args
 
 
 def main(args):
-    args = vars(args)
-    run_checker(args)
     build_filesets(facility="coffea-casa")
+    args =  manage_processor_args(vars(args))
+    run_checker(args)
     cmd = get_command(args)
     cmd += " --facility coffea-casa"
     os.system(cmd)
