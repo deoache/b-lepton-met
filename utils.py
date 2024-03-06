@@ -21,8 +21,6 @@ def build_output_directories(args: dict) -> str:
         processor_channel=processor_config.channel,
         dataset_year=args["year"] + args["yearmod"],
         mkdir=True,
-        lxplus=True if args["facility"] == "lxplus" else False,
-        username=args["username"],
     )
     return processor_output_path
 
