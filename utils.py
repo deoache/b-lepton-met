@@ -7,7 +7,7 @@ from wprime_plus_b.utils import paths
 from wprime_plus_b.utils.load_config import load_dataset_config, load_processor_config
 
 
-def build_output_directories(args: dict, facility: str) -> str:
+def build_output_directories(args: dict) -> str:
     """builds output directories for data and metadata. Return output path"""
     # get processor config
     processor_config_name = "_".join(
@@ -21,7 +21,7 @@ def build_output_directories(args: dict, facility: str) -> str:
         processor_channel=processor_config.channel,
         dataset_year=args["year"] + args["yearmod"],
         mkdir=True,
-        lxplus=True if facility == "lxplus" else False,
+        lxplus=True if args["facility"] == "lxplus" else False,
         username=args["username"],
     )
     return processor_output_path
@@ -52,52 +52,51 @@ def divide_list(lst: list[str], n: int) -> list[list[str]]:
     return result
 
 
-def build_filesets(facility: str) -> None:
+def build_filesets(args: dict) -> None:
     """
     build filesets partitions for an specific facility
     """
     main_dir = Path.cwd()
     fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset")
     with open(f"{fileset_path}/das_datasets.json", "r") as f:
-        datasets = json.load(f)
-    for yreco in datasets:
-        year = yreco.replace("_UL", "")
-        # make output filesets directory
-        output_directory = Path(f"{fileset_path}/{year}/{facility}")
-        if output_directory.exists():
-            for file in output_directory.glob("*"):
-                if file.is_file():
-                    file.unlink()
-        else:
-            output_directory.mkdir(parents=True)
-        for sample in datasets[yreco]:
-            if facility == "lxplus":
-                json_file = f"{fileset_path}/fileset_{year}_UL_NANO_lxplus.json"
-            else:
-                json_file = f"{fileset_path}/fileset_{year}_UL_NANO.json"
-            with open(json_file, "r") as handle:
-                data = json.load(handle)
-            # split fileset and save filesets
-            filesets = {}
-            # load dataset config
-            dataset_config = load_dataset_config(config_name=sample)
-            if dataset_config.nsplit == 1:
-                filesets[sample] = f"{output_directory}/{sample}.json"
-                sample_data = {sample: data[sample]}
-                with open(f"{output_directory}/{sample}.json", "w") as json_file:
-                    json.dump(sample_data, json_file, indent=4, sort_keys=True)
-            else:
-                root_files_list = divide_list(data[sample], dataset_config.nsplit)
-                keys = ".".join(
-                    f"{sample}_{i}" for i in range(1, dataset_config.nsplit + 1)
-                ).split(".")
-                for key, value in zip(keys, root_files_list):
-                    sample_data = {}
-                    sample_data[key] = list(value)
+        datasets = json.load(f)[f"{args['year']}_UL"]
 
-                    filesets[key] = f"{output_directory}/{key}.json"
-                    with open(f"{output_directory}/{key}.json", "w") as json_file:
-                        json.dump(sample_data, json_file, indent=4, sort_keys=True)
+    # make output filesets directory
+    output_directory = Path(f"{fileset_path}/{args['year']}/{args['facility']}")
+    if output_directory.exists():
+        for file in output_directory.glob("*"):
+            if file.is_file():
+                file.unlink()
+    else:
+        output_directory.mkdir(parents=True)
+    for sample in datasets:
+        if args['facility'] == "lxplus":
+            json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO_lxplus.json"
+        else:
+            json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO.json"
+        with open(json_file, "r") as handle:
+            data = json.load(handle)
+        # split fileset and save filesets
+        filesets = {}
+        # load dataset config
+        dataset_config = load_dataset_config(config_name=sample)
+        if dataset_config.nsplit == 1:
+            filesets[sample] = f"{output_directory}/{sample}.json"
+            sample_data = {sample: data[sample]}
+            with open(f"{output_directory}/{sample}.json", "w") as json_file:
+                json.dump(sample_data, json_file, indent=4, sort_keys=True)
+        else:
+            root_files_list = divide_list(data[sample], dataset_config.nsplit)
+            keys = ".".join(
+                f"{sample}_{i}" for i in range(1, dataset_config.nsplit + 1)
+            ).split(".")
+            for key, value in zip(keys, root_files_list):
+                sample_data = {}
+                sample_data[key] = list(value)
+
+                filesets[key] = f"{output_directory}/{key}.json"
+                with open(f"{output_directory}/{key}.json", "w") as json_file:
+                    json.dump(sample_data, json_file, indent=4, sort_keys=True)
 
 
 def get_filesets(sample: str, year: str, facility: str) -> dict:
