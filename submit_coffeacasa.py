@@ -1,14 +1,18 @@
 import os
 import argparse
-from utils import build_filesets, get_command, run_checker, manage_processor_args
+from utils import build_filesets, get_command, run_checker, manage_processor_args, build_output_directories
 
 
 def main(args):
     build_filesets(facility="coffea-casa")
     args =  manage_processor_args(vars(args))
     run_checker(args)
+    # add username, facility and output path to args
+    args["username"] = os.environ['USER']
+    args["facility"] = "coffea-casa"
+    args["output_path"] = build_output_directories(args, facility="coffea-casa")
+    # run command
     cmd = get_command(args)
-    cmd += " --facility coffea-casa"
     os.system(cmd)
     
     
@@ -112,13 +116,6 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="tag to reference output files directory",
-    )
-    parser.add_argument(
-        "--username",
-        dest="username",
-        type=str,
-        default="",
-        help="cern username",
     )
     args = parser.parse_args()
     main(args)

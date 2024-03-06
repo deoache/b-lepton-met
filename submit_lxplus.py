@@ -2,8 +2,8 @@ import os
 import argparse
 import subprocess
 from pathlib import Path
-from utils import get_command, run_checker, build_filesets, manage_processor_args
 from wprime_plus_b.utils.load_config import load_dataset_config
+from utils import get_command, run_checker, build_filesets, manage_processor_args, build_output_directories
 
 
 def move_X509() -> str:
@@ -90,16 +90,20 @@ def main(args):
     build_filesets(facility="lxplus")
     args =  manage_processor_args(vars(args))
     run_checker(args)
+    # add username, facility and output path to args
+    args["username"] = os.environ['USER']
+    args["facility"] = "lxplus"
+    args["output_path"] = build_output_directories(args, facility="lxplus")
+    # get dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
+    # run job for each partition
     if dataset_config.nsplit == 1:
         cmd = get_command(args)
-        cmd += " --facility lxplus"
         submit_condor(args, cmd, flavor="microcentury")
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
-            cmd += " --facility lxplus"
             submit_condor(args, cmd, flavor="longlunch")
 
 
