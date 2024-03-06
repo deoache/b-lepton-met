@@ -44,8 +44,6 @@ class Paths:
         processor_channel: str = None,
         dataset_year: str = None,
         mkdir: bool = None,
-        lxplus: bool = False,
-        username: str = None,
     ):
         processor_path = "/".join(
             [
@@ -59,14 +57,9 @@ class Paths:
                 if elem is not None
             ]
         )
-        if lxplus:
-            eos_path = pathlib.Path(
-                f"/eos/user/{username[0]}/{username}/wprime_plus_b"
-            )
-        root_path = eos_path if lxplus else self.root_path
         # make output directory
         output_path = self.safe_return(
-            path=root_path / "outs" / processor_path,
+            path=self.root_path / "outs" / processor_path,
             path_type="directory",
             mkdir=mkdir,
         )
