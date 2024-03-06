@@ -157,12 +157,20 @@ def main(args):
             # save ttbar and ztoll metadata
             if args["processor"] in ["ttbar", "ztoll"]:
                 # save raw and weighted number of events after selection
-                metadata.update(
-                    {"raw_final_nevents": float(output_metadata["raw_final_nevents"])}
-                )
-                metadata.update(
-                    {"weighted_final_nevents": float(output_metadata["weighted_final_nevents"])}
-                )
+                if "raw_final_nevents" in output_metadata:
+                    metadata.update(
+                        {"raw_final_nevents": float(output_metadata["raw_final_nevents"])}
+                    )
+                    metadata.update(
+                        {"weighted_final_nevents": float(output_metadata["weighted_final_nevents"])}
+                    )
+                else:
+                    metadata.update(
+                        {"raw_final_nevents": 0.}
+                    )
+                    metadata.update(
+                        {"weighted_final_nevents": 0.}
+                    )
                 # save cutflow to metadata
                 for cut_selection, nevents in output_metadata["cutflow"].items():
                     output_metadata["cutflow"][cut_selection] = str(nevents)
