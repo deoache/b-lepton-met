@@ -64,8 +64,16 @@ class Paths:
                 f"/eos/user/{username[0]}/{username}/wprime_plus_b"
             )
         root_path = eos_path if lxplus else self.root_path
-        return self.safe_return(
+        # make output directory
+        output_path = self.safe_return(
             path=root_path / "outs" / processor_path,
             path_type="directory",
             mkdir=mkdir,
         )
+        # make output metadata directory 
+        self.safe_return(
+            path=output_path / "metadata",
+            path_type="directory",
+            mkdir=mkdir,
+        )
+        return output_path
