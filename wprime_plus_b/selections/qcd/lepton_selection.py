@@ -135,8 +135,8 @@ def select_good_taus(
     --------
         An Awkward Array mask containing the selected "good" taus that satisfy the specified criteria.
     """
-    with open(f"{Path.home()}/wprime_plus_b/wprime_plus_b/data/tau_wps.json", "r") as f:
-        taus_wps = json.load(f)
+    with importlib.resources.open_text("wprime_plus_b.data", "tau_wps.json") as file:
+        taus_wps = json.load(file)
     # The DM is defined using the "new" decay mode reconstruction, binned in DMs 0, 1, 10, and 11.
     # https://github.com/uhh-cms/hh2bbtautau/blob/78fb359ea275e4eb2bc4cafbe238efa052d6355f/hbt/production/tau.py#L83
     prong_to_modes = {
