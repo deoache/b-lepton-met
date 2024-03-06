@@ -87,13 +87,14 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
 
 
 def main(args):
-    build_filesets(facility="lxplus")
-    args =  manage_processor_args(vars(args))
+    args = manage_processor_args(vars(args))
     run_checker(args)
     # add username, facility and output path to args
     args["username"] = os.environ['USER']
     args["facility"] = "lxplus"
-    args["output_path"] = build_output_directories(args, facility="lxplus")
+    args["output_path"] = build_output_directories(args)
+    # build filesets
+    build_filesets(args)
     # get dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
     # run job for each partition

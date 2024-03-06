@@ -4,13 +4,14 @@ from utils import build_filesets, get_command, run_checker, manage_processor_arg
 
 
 def main(args):
-    build_filesets(facility="coffea-casa")
-    args =  manage_processor_args(vars(args))
+    args = manage_processor_args(vars(args))
     run_checker(args)
     # add username, facility and output path to args
     args["username"] = os.environ['USER']
     args["facility"] = "coffea-casa"
-    args["output_path"] = build_output_directories(args, facility="coffea-casa")
+    args["output_path"] = build_output_directories(args)
+    # build filesets
+    build_filesets(args)
     # run command
     cmd = get_command(args)
     os.system(cmd)
