@@ -3,7 +3,28 @@ import json
 import glob
 from pathlib import Path
 from collections import OrderedDict
-from wprime_plus_b.utils.load_config import load_dataset_config
+from wprime_plus_b.utils import paths
+from wprime_plus_b.utils.load_config import load_dataset_config, load_processor_config
+
+
+def build_output_directories(args: dict, facility: str) -> str:
+    """builds output directories for data and metadata. Return output path"""
+    # get processor config
+    processor_config_name = "_".join(
+        [i for i in [args["processor"], args["channel"], args["lepton_flavor"]] if i]
+    )
+    processor_config = load_processor_config(config_name=processor_config_name)
+    # get processor output path
+    processor_output_path = paths.processor_path(
+        processor_name=processor_config.name,
+        processor_lepton_flavour=processor_config.lepton_flavor,
+        processor_channel=processor_config.channel,
+        dataset_year=args["year"] + args["yearmod"],
+        mkdir=True,
+        lxplus=True if facility == "lxplus" else False,
+        username=args["username"],
+    )
+    return processor_output_path
 
 
 def get_command(args: dict) -> str:
@@ -12,7 +33,6 @@ def get_command(args: dict) -> str:
     for arg in args:
         if args[arg]:
             cmd += f" --{arg} {args[arg]}"
-    cmd += f" --username {os.environ['USER']}"
     return cmd
 
 
