@@ -13,7 +13,6 @@ from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
 from wprime_plus_b.utils import paths
-from wprime_plus_b.utils.load_config import load_processor_config, load_dataset_config
 from wprime_plus_b.processors.trigger_efficiency_processor import (
     TriggerEfficiencyProcessor,
 )
@@ -81,24 +80,6 @@ def main(args):
             print(f"Uploaded {Path.cwd()} succesfully")
         except OSError:
             print("Failed to upload the directory")
-    # get processor config
-    processor_config_name = "_".join(
-        [i for i in [args["processor"], args["channel"], args["lepton_flavor"]] if i]
-    )
-    processor_config = load_processor_config(config_name=processor_config_name)
-
-    # get processor output path
-    processor_output_path = paths.processor_path(
-        processor_name=processor_config.name,
-        processor_lepton_flavour=processor_config.lepton_flavor,
-        processor_channel=processor_config.channel,
-        dataset_year=args["year"] + args["yearmod"],
-        mkdir=True,
-        lxplus=True if args["facility"] == "lxplus" else False,
-        username=args["username"],
-    )
-    if args["tag"]:
-        processor_output_path = processor_output_path / args["tag"]
         
     # get .json filesets for sample
     filesets = get_filesets(
@@ -233,17 +214,13 @@ def main(args):
                 metadata.update(
                     {"tau_selection": selections[args["processor"]]["tau_selection"]}
                 )
-            # save args to metadata
-            args_dict = args.copy()
-            metadata.update(args_dict)
-            # save metadata
-            metadata_path = Path(f"{processor_output_path}/metadata")
-            if not metadata_path.exists():
-                metadata_path.mkdir(parents=True)
-            with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
-                f.write(json.dumps(metadata))
-        # save output
-        with open(f"{processor_output_path}/{sample}.pkl", "wb") as handle:
+        # save args to metadata
+        args_dict = args.copy()
+        metadata.update(args_dict)
+        # save output data and metadata
+        with open(f"{args['output_path']}/metadata/{sample}_metadata.json", "w") as f:
+            f.write(json.dumps(metadata))
+        with open(f"{args['output_path']}/{sample}.pkl", "wb") as handle:
             pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -361,6 +338,13 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="cern username",
+    )
+    parser.add_argument(
+        "--output_path",
+        dest="output_path",
+        type=str,
+        default="",
+        help="output path directory",
     )
     args = parser.parse_args()
     main(args)
