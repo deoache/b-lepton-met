@@ -89,8 +89,7 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
 def main(args):
     args = manage_processor_args(vars(args))
     run_checker(args)
-    # add username, facility and output path to args
-    args["username"] = os.environ['USER']
+    # add facility and output path to args
     args["facility"] = "lxplus"
     args["output_path"] = build_output_directories(args)
     # build filesets

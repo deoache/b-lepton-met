@@ -333,13 +333,6 @@ if __name__ == "__main__":
         help="tag to reference output files directory",
     )
     parser.add_argument(
-        "--username",
-        dest="username",
-        type=str,
-        default="",
-        help="cern username",
-    )
-    parser.add_argument(
         "--output_path",
         dest="output_path",
         type=str,
