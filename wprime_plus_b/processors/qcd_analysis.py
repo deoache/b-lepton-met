@@ -135,6 +135,8 @@ class QcdAnalysis(processor.ProcessorABC):
             if self._channel != "all":
                 if region != self._channel:
                     continue
+            if (region == "A") and (dataset == "SingleMuon"):
+                continue
             output["metadata"][region] = {}
             # --------------------
             # event weights vector
