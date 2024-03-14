@@ -130,108 +130,110 @@ class QcdAnalysis(processor.ProcessorABC):
             met["pt"], met["phi"] = met_corrected_tes(
                 old_taus=events.Tau, new_taus=corrected_taus, met=met
             )
-        # --------------------
-        # event weights vector
-        # --------------------
-        weights_container = Weights(len(events), storeIndividual=True)
-        if self.is_mc:
-            # add gen weigths
-            weights_container.add("genweight", events.genWeight)
-            # add l1prefiring weigths
-            add_l1prefiring_weight(events, weights_container, self._year, "nominal")
-            # add pileup weigths
-            add_pileup_weight(
-                events, weights_container, self._year, self._yearmod, "nominal"
-            )
-            # add pujetid weigths
-            add_pujetid_weight(
-                jets=corrected_jets,
-                weights=weights_container,
-                year=self._year,
-                year_mod=self._yearmod,
-                working_point="M",
-                variation="nominal",
-            )
-            # b-tagging corrector
-            btag_corrector = BTagCorrector(
-                jets=corrected_jets,
-                weights=weights_container,
-                sf_type="comb",
-                worging_point="M",
-                tagger="deepJet",
-                year=self._year,
-                year_mod=self._yearmod,
-                full_run=False,
-                variation="nominal",
-            )
-            # add b-tagging weights
-            btag_corrector.add_btag_weights(flavor="bc")
-
-            # tau corrections
-            tau_corrector = TauCorrector(
-                taus=corrected_taus,
-                weights=weights_container,
-                year=self._year,
-                year_mod=self._yearmod,
-                tau_vs_jet=qcd_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_vs_jet"
-                ],
-                tau_vs_ele=qcd_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_vs_ele"
-                ],
-                tau_vs_mu=qcd_tau_selection[self._channel][self._lepton_flavor][
-                    "tau_vs_mu"
-                ],
-                variation="nominal",
-            )
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-
-            """
-            # electron corrector
-            electron_corrector = ElectronCorrector(
-                electrons=events.Electron,
-                weights=weights_container,
-                year=self._year,
-                year_mod=self._yearmod,
-                variation="nominal",
-            )
-            # add electron ID weights
-            electron_corrector.add_id_weight(
-                id_working_point="wp90iso"
-            )
-            # add electron reco weights
-            electron_corrector.add_reco_weight()
-
-            # muon corrector
-            
-            muon_corrector = MuonCorrector(
-                muons=events.Muon,
-                weights=weights_container,
-                year=self._year,
-                year_mod=self._yearmod,
-                variation="nominal",
-                id_wp="tight",
-                iso_wp="tight"
-            )
-            # add muon ID weights
-            muon_corrector.add_id_weight()
-
-            # add muon iso weights
-            muon_corrector.add_iso_weight()
-
-            # add trigger weights
-            if self._lepton_flavor == "mu":
-                muon_corrector.add_triggeriso_weight()
-            """
-        # save sum of weights before selections
-        output["metadata"]["sumw"] = ak.sum(weights_container.weight())
-
+        
         for region in ["A", "B", "C", "D"]:
-            if region != self._channel:
-                continue
+            if self._channel != "all":
+                if region != self._channel:
+                    continue
             output["metadata"][region] = {}
+            # --------------------
+            # event weights vector
+            # --------------------
+            weights_container = Weights(len(events), storeIndividual=True)
+            if self.is_mc:
+                # add gen weigths
+                weights_container.add("genweight", events.genWeight)
+                # add l1prefiring weigths
+                add_l1prefiring_weight(events, weights_container, self._year, "nominal")
+                # add pileup weigths
+                add_pileup_weight(
+                    events, weights_container, self._year, self._yearmod, "nominal"
+                )
+                # add pujetid weigths
+                add_pujetid_weight(
+                    jets=corrected_jets,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    working_point="M",
+                    variation="nominal",
+                )
+                # b-tagging corrector
+                btag_corrector = BTagCorrector(
+                    jets=corrected_jets,
+                    weights=weights_container,
+                    sf_type="comb",
+                    worging_point="M",
+                    tagger="deepJet",
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    full_run=False,
+                    variation="nominal",
+                )
+                # add b-tagging weights
+                btag_corrector.add_btag_weights(flavor="bc")
+
+                # tau corrections
+                tau_corrector = TauCorrector(
+                    taus=corrected_taus,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    tau_vs_jet=qcd_tau_selection[region][self._lepton_flavor][
+                        "tau_vs_jet"
+                    ],
+                    tau_vs_ele=qcd_tau_selection[region][self._lepton_flavor][
+                        "tau_vs_ele"
+                    ],
+                    tau_vs_mu=qcd_tau_selection[region][self._lepton_flavor][
+                        "tau_vs_mu"
+                    ],
+                    variation="nominal",
+                )
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
+
+                """
+                # electron corrector
+                electron_corrector = ElectronCorrector(
+                    electrons=events.Electron,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation="nominal",
+                )
+                # add electron ID weights
+                electron_corrector.add_id_weight(
+                    id_working_point="wp90iso"
+                )
+                # add electron reco weights
+                electron_corrector.add_reco_weight()
+
+                # muon corrector
+
+                muon_corrector = MuonCorrector(
+                    muons=events.Muon,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation="nominal",
+                    id_wp="tight",
+                    iso_wp="tight"
+                )
+                # add muon ID weights
+                muon_corrector.add_id_weight()
+
+                # add muon iso weights
+                muon_corrector.add_iso_weight()
+
+                # add trigger weights
+                if self._lepton_flavor == "mu":
+                    muon_corrector.add_triggeriso_weight()
+                """
+            # save sum of weights before selections
+            output["metadata"][region]["sumw"] = ak.sum(weights_container.weight())
+        
             # ------------------
             # leptons
             # -------------------
@@ -255,25 +257,25 @@ class QcdAnalysis(processor.ProcessorABC):
             # select good taus
             good_taus = select_good_taus(
                 taus=corrected_taus,
-                tau_pt_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_pt_threshold=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_pt_threshold"
                 ],
-                tau_eta_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_eta_threshold=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_eta_threshold"
                 ],
-                tau_dz_threshold=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_dz_threshold=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_dz_threshold"
                 ],
-                tau_vs_jet=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_vs_jet=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_vs_jet"
                 ],
-                tau_vs_ele=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_vs_ele=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_vs_ele"
                 ],
-                tau_vs_mu=qcd_tau_selection[self._channel][self._lepton_flavor][
+                tau_vs_mu=qcd_tau_selection[region][self._lepton_flavor][
                     "tau_vs_mu"
                 ],
-                prong=qcd_tau_selection[self._channel][self._lepton_flavor]["prongs"],
+                prong=qcd_tau_selection[region][self._lepton_flavor]["prongs"],
             )
             good_taus = (
                 (good_taus)

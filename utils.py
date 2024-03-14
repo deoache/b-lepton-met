@@ -221,7 +221,7 @@ def run_checker(args: dict) -> None:
                 )
     if args["processor"] == "qcd":
         # check channel
-        available_channels = ["A", "B", "C", "D"]
+        available_channels = ["A", "B", "C", "D", "all"]
         if args["channel"] not in available_channels:
             raise ValueError(
                 f"Incorrect channel. Available channels are: {available_channels}"
