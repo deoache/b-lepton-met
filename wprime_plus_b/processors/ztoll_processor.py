@@ -5,7 +5,9 @@ import numpy as np
 import awkward as ak
 import importlib.resources
 from coffea import processor
+from coffea.nanoevents.methods import candidate
 from coffea.analysis_tools import Weights, PackedSelection
+from wprime_plus_b.processors.utils import histograms
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.btag import BTagCorrector
@@ -40,12 +42,12 @@ class ZToLLProcessor(processor.ProcessorABC):
         self._output_type = output_type
 
         # initialize output histogram
-        """
         self.hist_dict = {
-            "ptl1": utils.histograms.ptl1_histogram,
-            "ptl2": utils.histograms.ptl2_histogram,
+            "ptl1": histograms.ptl1_histogram,
+            "ptl2": histograms.ptl2_histogram,
+            "ptll": histograms.ptll_histogram,
+            "mll": histograms.mll_histogram,
         }
-        """
         # define dictionary to store analysis variables
         self.features = {}
         # initialize dictionary of arrays
@@ -69,51 +71,81 @@ class ZToLLProcessor(processor.ProcessorABC):
         nevents = len(events)
 
         # create copies of histogram objects
-        # hist_dict = copy.deepcopy(self.hist_dict)
+        hist_dict = copy.deepcopy(self.hist_dict)
         # create copy of array dictionary
         array_dict = copy.deepcopy(self.array_dict)
+        
+        # dictionary to store output data and metadata
+        output = {}
+        output["metadata"] = {}
+        output["metadata"].update({"raw_initial_nevents": nevents})
+        
+        # get triggers masks
+        with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+            with open(path, "r") as handle:
+                self._triggers = json.load(handle)[self._year]
+        trigger_mask = {}
+        for ch in ["ele", "mu"]:
+            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
+            for t in self._triggers[ch]:
+                if t in events.HLT.fields:
+                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
 
         # ------------------
         # event preselection
         # ------------------
-        # select good electrons
-        if self._lepton_flavor == "ele":
-            good_electrons = select_good_electrons(
-                events=events,
-                electron_pt_threshold=ztoll_electron_selection["electron_pt_threshold"],
-                electron_id_wp=ztoll_electron_selection["electron_id_wp"],
-                electron_iso_wp=ztoll_electron_selection["electron_iso_wp"],
-            )
-            electrons = events.Electron[good_electrons]
-        # select good muons
-        if self._lepton_flavor == "mu":
-            good_muons = select_good_muons(
-                events=events,
-                muon_pt_threshold=ztoll_muon_selection["muon_pt_threshold"],
-                muon_id_wp=ztoll_muon_selection["muon_id_wp"],
-                muon_iso_wp=ztoll_muon_selection["muon_iso_wp"],
-            )
-            muons = events.Muon[good_muons]
-        # define leptons collection
-        good_leptons = electrons if self._lepton_flavor == "ele" else muons
+        # select good leptons
+        good_electrons = select_good_electrons(
+            events=events,
+            electron_pt_threshold=ztoll_electron_selection["electron_pt_threshold"],
+            electron_id_wp=ztoll_electron_selection["electron_id_wp"],
+            electron_iso_wp=ztoll_electron_selection["electron_iso_wp"],
+        )
+        electrons = events.Electron[good_electrons]
+        
+        good_muons = select_good_muons(
+            events=events,
+            muon_pt_threshold=ztoll_muon_selection["muon_pt_threshold"],
+            muon_id_wp=ztoll_muon_selection["muon_id_wp"],
+            muon_iso_wp=ztoll_muon_selection["muon_iso_wp"],
+        )
+        good_muons = good_muons & delta_r_mask(events.Muon, electrons, threshold=0.4)
+        muons = events.Muon[good_muons]
+        
+        leptons = ak.concatenate([muons, electrons], axis=1)
+        leptons = leptons[ak.argsort(leptons.pt, ascending=False)]
+        leptons = ak.pad_none(leptons, 2)
+
+        leptons_4v = ak.zip(
+            {
+                "pt": leptons.pt,
+                "eta": leptons.eta,
+                "phi": leptons.phi,
+                "mass": leptons.mass,
+                "charge": leptons.charge,
+                "pdgId": leptons.pdgId,
+            },
+            with_name="PtEtaPhiMLorentzVector",
+            behavior=candidate.behavior,
+        )
 
         # apply JEC/JER corrections to MC jets (propagate corrections to MET)
         # in data, the corrections are already applied
         if self.is_mc:
-            jets, met = jet_corrections(events, self._year + self._yearmod)
+            corrected_jets, met = jet_corrections(events, self._year + self._yearmod)
         else:
-            jets, met = events.Jet, events.MET
+            corrected_jets, met = events.Jet, events.MET
             
         # select good bjets
         good_bjets = select_good_bjets(
-            jets=jets,
+            jets=corrected_jets,
             year=self._year + self._yearmod,
             jet_pt_threshold=ztoll_jet_selection["jet_pt_threshold"],
             jet_id=ztoll_jet_selection["jet_id"],
             jet_pileup_id=ztoll_jet_selection["jet_pileup_id"],
             btag_working_point=ztoll_jet_selection["btag_working_point"],
-        ) & (delta_r_mask(jets, good_leptons, threshold=0.4))
-        bjets = jets[good_bjets]
+        ) & (delta_r_mask(corrected_jets, leptons_4v, threshold=0.4))
+        bjets = corrected_jets[good_bjets]
 
         # apply MET phi corrections
         met_pt, met_phi = met_phi_corrections(
@@ -145,7 +177,7 @@ class ZToLLProcessor(processor.ProcessorABC):
 
             # add pujetid weigths
             add_pujetid_weight(
-                jets=jets,
+                jets=corrected_jets,
                 weights=weights_container,
                 year=self._year,
                 year_mod=self._yearmod,
@@ -155,7 +187,7 @@ class ZToLLProcessor(processor.ProcessorABC):
 
             # b-tagging corrector
             btag_corrector = BTagCorrector(
-                jets=jets,
+                jets=corrected_jets,
                 weights=weights_container,
                 sf_type="comb",
                 worging_point=ztoll_jet_selection["btag_working_point"],
@@ -182,6 +214,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
+                electron_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["ele"])
             else:
                 # muon corrector
                 muon_corrector = MuonCorrector(
@@ -198,49 +231,44 @@ class ZToLLProcessor(processor.ProcessorABC):
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add muons triggerIso weights
-                muon_corrector.add_triggeriso_weight()
-                
-        # get sum of weights before selections
-        output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
-        # save weight statistics
+                muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+            
+        # save sum of weights before selections
+        output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
+        # save weights statistics
         output["metadata"].update({"weight_statistics": {}})
         for weight, statistics in weights_container.weightStatistics.items():
             output["metadata"]["weight_statistics"][weight] = statistics
-        # ------------
-        # variables
-        # ------------
-        # leading leptons
-        leading_lepton = ak.firsts(good_leptons)
-        subleading_lepton = ak.pad_none(good_leptons, 2)[:, 1]
-        ptl1 = leading_lepton.pt
-        ptl2 = subleading_lepton.pt
-
-        # transverse momentum of the sum of the two leading lepton 4-momenta
-        leading_leptons = leading_lepton + subleading_lepton
-        ptll = leading_leptons.pt
+            
+            
+        # ---------------
+        # event selection
+        # ---------------
+        # leptons momentum
+        ptl1 = leptons_4v[:, 0].pt
+        ptl2 = leptons_4v[:, 1].pt
+        ptll = (leptons_4v[:, 0] + leptons_4v[:, 1]).pt
 
         # invariant mass of the sum of the two leading lepton 4-momenta
-        mll = leading_leptons.mass
+        mll = (leptons_4v[:, 0] + leptons_4v[:, 1]).mass
 
         # Δφ between the two leading leptons
-        dphill = leading_lepton.delta_phi(subleading_lepton)
+        dphill = leptons_4v[:, 0].delta_phi(leptons_4v[:, 1])
 
         # ΔR between the two leading leptons
-        drll = leading_lepton.delta_r(subleading_lepton)
+        drll = leptons_4v[:, 0].delta_r(leptons_4v[:, 1])
 
         # transverse mass of the candidate made by the two leading leptons and the MET
         mth = np.sqrt(
             2.0
-            * leading_leptons.pt
+            * leptons_4v[:, 0].pt
             * met.pt
-            * (ak.ones_like(met.pt) - np.cos(leading_leptons.delta_phi(met)))
+            * (ak.ones_like(met.pt) - np.cos(leptons_4v[:, 0].delta_phi(met)))
         )
         # number of primary vertex
         nvtx = events.PV.npvsGood
-
-        # ---------------
-        # event selection
-        # ---------------
+        
+        
         # make a PackedSelection object to manage selections
         self.selections = PackedSelection()
 
@@ -255,17 +283,8 @@ class ZToLLProcessor(processor.ProcessorABC):
         self.selections.add("lumi", lumi_mask)
 
         # add lepton triggers masks
-        with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
-            with open(path, "r") as handle:
-                self._triggers = json.load(handle)[self._year]
-        trigger = {}
-        for ch in ["ele", "mu"]:
-            trigger[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger[ch] = trigger[ch] | events.HLT[t]
-        self.selections.add("trigger_ele", trigger["ele"])
-        self.selections.add("trigger_mu", trigger["mu"])
+        self.selections.add("trigger_ele", trigger_mask["ele"])
+        self.selections.add("trigger_mu", trigger_mask["mu"])
 
         # add MET filters mask
         with importlib.resources.path("wprime_plus_b.data", "metfilters.json") as path:
@@ -281,21 +300,18 @@ class ZToLLProcessor(processor.ProcessorABC):
         # good vertices
         self.selections.add("goodvertex", events.PV.npvsGood > 0)
         # check that we have 2l events
-        self.selections.add("two_leptons", ak.num(good_leptons) == 2)
+        self.selections.add("two_leptons", ak.num(leptons_4v) == 2)
         # check that dilepton system is neutral
-        self.selections.add(
-            "neutral", leading_lepton.charge * subleading_lepton.charge < 0
-        )
+        self.selections.add("lep_opp_sign", ak.sum(leptons_4v.charge, axis=1) == 0)
         # check that dilepton invariant mass is between 60 and 120 GeV
         self.selections.add("mass_range", (mll > 60) & (mll < 120))
         # veto bjets
         self.selections.add("bjet_veto", ak.num(bjets) == 0)
         # transverse mass
         self.selections.add("mthlt60", mth < 60)
-
-        self.selections.add("ee", ak.prod(good_leptons.pdgId, axis=1) == -11 * 11)
-        self.selections.add("mumu", ak.prod(good_leptons.pdgId, axis=1) == -13 * 13)
-        self.selections.add("emu", ak.prod(good_leptons.pdgId, axis=1) == -11 * 13)
+        self.selections.add("ee", ak.prod(leptons_4v.pdgId, axis=1) == -11 * 11)
+        self.selections.add("mumu", ak.prod(leptons_4v.pdgId, axis=1) == -13 * 13)
+        self.selections.add("emu", ak.prod(leptons_4v.pdgId, axis=1) == -11 * 13)
 
         # define selection regions for each lepton_channel
         regions = {
@@ -306,7 +322,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 "metfilters",
                 "bjet_veto",
                 "two_leptons",
-                "neutral",
+                "lep_opp_sign",
                 "mass_range",
                 "mthlt60",
                 "ee",
@@ -318,7 +334,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 "metfilters",
                 "bjet_veto",
                 "two_leptons",
-                "neutral",
+                "lep_opp_sign",
                 "mass_range",
                 "mthlt60",
                 "mumu",
@@ -337,61 +353,57 @@ class ZToLLProcessor(processor.ProcessorABC):
             output["metadata"]["cutflow"][cut_name] = ak.sum(
                 weights_container.weight()[current_selection]
             )
-        # ---------------
-        # event variables
-        # ---------------
-        for lepton_flavor in regions:
-            if lepton_flavor != self._lepton_flavor:
-                continue
 
-            region_selection = self.selections.all(*regions[lepton_flavor])
-            # if there are no events left after selection cuts continue to the next .root file
-            nevents_after = ak.sum(region_selection)
-            if nevents_after == 0:
-                continue
+        # ------------
+        # event variables
+        # ------------
+        region_selection = self.selections.all(*regions[self._lepton_flavor])
+        # check that there are events left after selection
+        nevents_after = ak.sum(region_selection)
+        if nevents_after > 0:
             # select region objects
             self.add_feature("ptl1", ptl1[region_selection])
             self.add_feature("ptl2", ptl2[region_selection])
             self.add_feature("ptll", ptll[region_selection])
             self.add_feature("mll", mll[region_selection])
-            self.add_feature("dphill", dphill[region_selection])
-            self.add_feature("drll", drll[region_selection])
-            self.add_feature("mth", mth[region_selection])
-            self.add_feature("nvtx", nvtx[region_selection])
-
-            # -----------------------------
-            # fill histogram
-            # -----------------------------
-            """
+            #self.add_feature("dphill", dphill[region_selection])
+            #self.add_feature("drll", drll[region_selection])
+            #self.add_feature("mth", mth[region_selection])
+            #self.add_feature("nvtx", nvtx[region_selection])
+            
+            region_weight = weights_container.weight()[region_selection]
+            
+            # save number of events to metadata
+            output["metadata"].update(
+                {
+                    "weighted_final_nevents": ak.sum(region_weight),
+                    "raw_final_nevents": nevents_after,
+                }
+            )
+            # fill histograms or process arrays
             if self._output_type == "hist":
-                for kin in hist_dict:
-                    fill_args = {
-                        feature: utils.analysis_utils.normalize(self.features[feature])
-                        for feature in hist_dict[kin].axes.name
-                    }
-                    hist_dict[kin].fill(
-                        **fill_args,
-                        weight=region_weights,
-                    )
-            else:
-            """
-            region_weights = weights_container.weight()[region_selection]
-            self.add_feature("weights", region_weights)
+                for feature in hist_dict:
+                    hist_args = {feature: normalize(self.features[feature]), "weight": region_weight}
+                    hist_dict[feature].fill(**hist_args)
+                    #hist_dict[feature].fill(
+                    #    feature=normalize(self.features[feature]),
+                    #    weight=region_weight,
+                    #)
+                        
+            elif self._output_type == "array":
+                self.add_feature("weights", region_weight)
 
-            # select variables and put them in column accumulators
-            array_dict = {
-                feature_name: processor.column_accumulator(normalize(feature_array))
-                for feature_name, feature_array in self.features.items()
-            }
-        # define output dictionary accumulator
-        output["arrays"] = array_dict
-        # save metadata
-        output["metadata"].update(
-            {
-                "events_before": nevents,
-                "events_after": nevents_after,
-            }
-        )
+                # select variables and put them in column accumulators
+                array_dict = {
+                    feature_name: processor.column_accumulator(normalize(feature_array))
+                    for feature_name, feature_array in self.features.items()
+                }
+        
+        if self._output_type == "hist":
+            output["histograms"] = hist_dict
+        elif self._output_type == "array":
+            output["arrays"] = array_dict
+
         return {dataset: output}
 
     def postprocess(self, accumulator):

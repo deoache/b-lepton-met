@@ -123,6 +123,6 @@ def select_good_muons(
         if hasattr(events.Muon, "pfRelIso04_all")
         else events.Muon.pfRelIso03_all < 0.15,
     }
-    muon_iso_mask = id_wps[muon_iso_wp]
+    muon_iso_mask = iso_wps[muon_iso_wp]
 
     return (muon_pt_mask) & (muon_eta_mask) & (muon_id_mask) & (muon_iso_mask)

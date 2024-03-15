@@ -1,7 +1,7 @@
 ztoll_electron_selection = {
     "electron_pt_threshold": 55,
-    "electron_id_wp": "heep",
-    "electron_iso_wp": "tight",
+    "electron_id_wp": "wp90iso",
+    "electron_iso_wp": None,
 }
 
 ztoll_muon_selection = {
