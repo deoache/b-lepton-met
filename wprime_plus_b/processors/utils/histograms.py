@@ -166,6 +166,18 @@ ptll_axis = hist.axis.Regular(
     name="ptll", 
     label="$p_T(ll)$ [GeV]"
 )
+ptll_histogram = hist.Hist(
+    ptll_axis,
+    hist.storage.Weight(), 
+)
+
+mll_axis = hist.axis.Regular(
+    40, 30, 500.0, name="mll", label="$m_{ll}$ [GeV]"
+)
+mll_histogram = hist.Hist(
+    mll_axis,
+    hist.storage.Weight(), 
+)
 
 # ------------------------
 # qcd analysis histograms
