@@ -73,7 +73,7 @@ def select_good_electrons(
 
 
 def select_good_muons(
-    events: NanoEventsArray, muon_pt_threshold: int, muon_id_wp: str, muon_iso_wp: str
+    muons: ak.Array, muon_pt_threshold: int, muon_id_wp: str, muon_iso_wp: str
 ) -> ak.highlevel.Array:
     """
     Selects and filters "good" muons from a collection of events based on specified criteria.
@@ -97,31 +97,31 @@ def select_good_muons(
         An Awkward Array mask containing the selected "good" muons that satisfy the specified criteria.
     """
     # muon pT threshold
-    muon_pt_mask = events.Muon.pt >= muon_pt_threshold
+    muon_pt_mask = muons.pt >= muon_pt_threshold
 
     # electron pseudorapidity mask
-    muon_eta_mask = np.abs(events.Muon.eta) < 2.1
+    muon_eta_mask = np.abs(muons.eta) < 2.4
 
     # muon ID mask https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
     id_wps = {
         # cutbased ID working points 
-        "loose": events.Muon.looseId,
-        "medium": events.Muon.mediumId,
-        "tight": events.Muon.tightId,
+        "loose": muons.looseId,
+        "medium": muons.mediumId,
+        "tight": muons.tightId,
     }
     muon_id_mask = id_wps[muon_id_wp]
 
     # muon ID and Iso mask https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonSelection
     iso_wps = {
-        "loose": events.Muon.pfRelIso04_all < 0.25
-        if hasattr(events.Muon, "pfRelIso04_all")
-        else events.Muon.pfRelIso03_all < 0.25,
-        "medium": events.Muon.pfRelIso04_all < 0.20
-        if hasattr(events.Muon, "pfRelIso04_all")
-        else events.Muon.pfRelIso03_all < 0.20,
-        "tight": events.Muon.pfRelIso04_all < 0.15
-        if hasattr(events.Muon, "pfRelIso04_all")
-        else events.Muon.pfRelIso03_all < 0.15,
+        "loose": muons.pfRelIso04_all < 0.25
+        if hasattr(muons, "pfRelIso04_all")
+        else muons.pfRelIso03_all < 0.25,
+        "medium": muons.pfRelIso04_all < 0.20
+        if hasattr(muons, "pfRelIso04_all")
+        else muons.pfRelIso03_all < 0.20,
+        "tight": muons.pfRelIso04_all < 0.15
+        if hasattr(muons, "pfRelIso04_all")
+        else muons.pfRelIso03_all < 0.15,
     }
     muon_iso_mask = iso_wps[muon_iso_wp]
 

@@ -14,6 +14,7 @@ from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
+from wprime_plus_b.corrections.rochester import apply_rochester_corrections
 from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.selections.ztoll.jet_selection import select_good_bjets
@@ -26,6 +27,7 @@ from wprime_plus_b.selections.ztoll.lepton_selection import (
     select_good_electrons,
     select_good_muons,
 )
+
 
 
 class ZToLLProcessor(processor.ProcessorABC):
@@ -103,8 +105,15 @@ class ZToLLProcessor(processor.ProcessorABC):
         )
         electrons = events.Electron[good_electrons]
         
+        # correct muons
+        corrected_muons = events.Muon 
+        muon_pt = apply_rochester_corrections(
+            corrected_muons, self.is_mc, self._year + self._yearmod
+        )
+        corrected_muons["pt"] = muon_pt
+        
         good_muons = select_good_muons(
-            events=events,
+            muons=corrected_muons,
             muon_pt_threshold=ztoll_muon_selection["muon_pt_threshold"],
             muon_id_wp=ztoll_muon_selection["muon_id_wp"],
             muon_iso_wp=ztoll_muon_selection["muon_iso_wp"],
@@ -231,7 +240,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add muons triggerIso weights
-                muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                #muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
             
         # save sum of weights before selections
         output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
