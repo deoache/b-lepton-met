@@ -33,6 +33,7 @@ from wprime_plus_b.selections.ttbar.lepton_selection import (
     select_good_taus,
 )
 
+from wprime_plus_b.corrections.rochester import apply_rochester_corrections
 
 class TtbarAnalysis(processor.ProcessorABC):
     """
@@ -205,9 +206,17 @@ class TtbarAnalysis(processor.ProcessorABC):
                 ]["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
+            
+            # correct muons
+            corrected_muons = events.Muon 
+            muon_pt = apply_rochester_corrections(
+                corrected_muons, self.is_mc, self._year + self._yearmod
+            )
+            corrected_muons["pt"] = muon_pt
+            
             # select good muons
             good_muons = select_good_muons(
-                events=events,
+                muons=corrected_muons,
                 muon_pt_threshold=ttbar_muon_selection[self._channel][
                     self._lepton_flavor
                 ]["muon_pt_threshold"],
