@@ -214,7 +214,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
-                electron_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["ele"])
+                electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
             else:
                 # muon corrector
                 muon_corrector = MuonCorrector(
