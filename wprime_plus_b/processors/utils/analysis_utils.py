@@ -4,10 +4,33 @@ import numpy as np
 import pandas as pd
 import awkward as ak
 import pyarrow as pa
+import importlib.resources
 import pyarrow.parquet as pq
 from datetime import datetime
 from typing import List, Union
 from coffea.nanoevents.methods import candidate, vector
+
+
+def get_triggers_mask(events, muon_id_wp: str, year: str):
+    """return the trigger mask array"""
+    with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+        with open(path, "r") as handle:
+            _triggers = json.load(handle)[year]
+    trigger_mask = {}
+    for ch in ["ele", "mu"]:
+        trigger_mask[ch] = np.zeros(len(events), dtype="bool")
+        if ch == "mu":
+            if muon_id_wp == "highpt":
+                triggers = _triggers[ch]["highpt"]
+            else:
+                triggers = _triggers[ch]["mediumpt"]
+        else:
+            triggers = _triggers[ch]
+        for t in triggers:
+            if t in events.HLT.fields:
+                trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+                
+    return trigger_mask
 
 
 def normalize(var: ak.Array, cut: ak.Array = None) -> ak.Array:
