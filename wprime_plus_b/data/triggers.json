@@ -5,7 +5,7 @@
     }, 
     "2017": {
         "ele": ["Ele35_WPTight_Gsf"], 
-        "mu": ["IsoMu27"]
+        "mu": {"highpt": ["Mu50","OldMu100", "TkMu100"], "mediumpt": ["IsoMu27"]}
     }, 
     "2018": {
         "ele": ["Ele32_WPTight_Gsf"], 
