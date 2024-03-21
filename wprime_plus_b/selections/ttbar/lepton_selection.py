@@ -107,6 +107,7 @@ def select_good_muons(
 
     # muon ID mask https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedElectronIdentificationRun2
     id_wps = {
+        "highpt": muons.highPtId == 2,
         # cutbased ID working points 
         "loose": muons.looseId,
         "medium": muons.mediumId,
