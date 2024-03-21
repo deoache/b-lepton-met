@@ -15,8 +15,9 @@ from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.rochester import apply_rochester_corrections
-from wprime_plus_b.corrections.lepton import ElectronCorrector, MuonCorrector
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
+from wprime_plus_b.corrections.electron import ElectronCorrector
+from wprime_plus_b.corrections.muon_z import MuonZCorrector
+from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, get_triggers_mask
 from wprime_plus_b.selections.ztoll.jet_selection import select_good_bjets
 from wprime_plus_b.selections.ztoll.config import (
     ztoll_electron_selection,
@@ -83,15 +84,11 @@ class ZToLLProcessor(processor.ProcessorABC):
         output["metadata"].update({"raw_initial_nevents": nevents})
         
         # get triggers masks
-        with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
-            with open(path, "r") as handle:
-                self._triggers = json.load(handle)[self._year]
-        trigger_mask = {}
-        for ch in ["ele", "mu"]:
-            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+        trigger_mask = get_triggers_mask(
+            events=events,
+            muon_id_wp=ztoll_muon_selection["muon_id_wp"],
+            year=self._year + self._yearmod
+        )
 
         # ------------------
         # event preselection
@@ -226,7 +223,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
             else:
                 # muon corrector
-                muon_corrector = MuonCorrector(
+                muon_corrector = MuonZCorrector(
                     muons=events.Muon,
                     weights=weights_container,
                     year=self._year,
@@ -240,7 +237,7 @@ class ZToLLProcessor(processor.ProcessorABC):
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add muons triggerIso weights
-                #muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+                muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
             
         # save sum of weights before selections
         output["metadata"].update({"sumw": ak.sum(weights_container.weight())})

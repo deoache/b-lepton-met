@@ -7,18 +7,16 @@ import awkward as ak
 from typing import List
 from coffea import processor
 from coffea.analysis_tools import Weights, PackedSelection
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
+from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, get_triggers_mask
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import (
-    ElectronCorrector,
-    MuonCorrector,
-    TauCorrector,
-)
+from wprime_plus_b.corrections.electron import ElectronCorrector
+from wprime_plus_b.corrections.muon_z import MuonZCorrector
+from wprime_plus_b.corrections.tau import TauCorrector
 from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
 
 
@@ -34,9 +32,6 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
 
-        # open triggers
-        with open("wprime_plus_b/data/triggers.json", "r") as f:
-            self._triggers = json.load(f)[self._year]
         # open btagDeepFlavB
         with open("wprime_plus_b/data/btagDeepFlavB.json", "r") as f:
             self._btagDeepFlavB = json.load(f)[self._year]
@@ -161,12 +156,11 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         output = {}
 
         # get triggers masks
-        trigger_mask = {}
-        for ch in ["ele", "mu"]:
-            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+        trigger_mask = get_triggers_mask(
+            events=events,
+            muon_id_wp="tight",
+            year=self._year + self._yearmod
+        )
                     
         # apply corrections to jet/met
         if self.is_mc:
@@ -333,7 +327,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             electron_corrector.add_reco_weight()
 
             # muon corrector
-            muon_corrector = MuonCorrector(
+            muon_corrector = MuonZCorrector(
                 muons=events.Muon,
                 weights=weights_container,
                 year=self._year,
@@ -350,6 +344,8 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             # add trigger weights
             if self._lepton_flavor == "ele":
                 muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
+            else:
+                electron_corrector.add_trigger_weight(trigger_mask=trigger_mask["ele"])
                 
             # tau corrections
             tau_corrector = TauCorrector(

@@ -16,11 +16,9 @@ from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.selections.qcd.jet_selection import select_good_bjets
-from wprime_plus_b.corrections.lepton import (
-    ElectronCorrector,
-    MuonCorrector,
-    TauCorrector,
-)
+from wprime_plus_b.corrections.electron import ElectronCorrector
+from wprime_plus_b.corrections.muon_z import MuonZCorrector
+from wprime_plus_b.corrections.tau import TauCorrector
 from wprime_plus_b.selections.qcd.config import (
     qcd_electron_selection,
     qcd_muon_selection,
@@ -214,7 +212,7 @@ class QcdAnalysis(processor.ProcessorABC):
 
                 # muon corrector
 
-                muon_corrector = MuonCorrector(
+                muon_corrector = MuonZCorrector(
                     muons=events.Muon,
                     weights=weights_container,
                     year=self._year,
