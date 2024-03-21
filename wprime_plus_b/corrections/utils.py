@@ -17,7 +17,8 @@ POG_CORRECTION_PATH = "/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration"
 
 # summary of pog scale factors: https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/
 POG_JSONS = {
-    "muon": ["MUO", "muon_Z.json.gz"],
+    "muon_z": ["MUO", "muon_Z.json.gz"],
+    "muon_highpt": ["MUO", "muon_HighPt.json.gz"],
     "electron": ["EGM", "electron.json.gz"],
     "tau": ["TAU", "tau.json.gz"],
     "pileup": ["LUM", "puWeights.json.gz"],
