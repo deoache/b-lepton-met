@@ -226,10 +226,12 @@ def main(args):
                             "tau_selection": qcd_tau_selection[r][args["lepton_flavor"]],
                         }
                         metadata.update({"selections": selections})
+            # delete output metadata
+            del out[sample]["metadata"]
+            
         # save args to metadata
         args_dict = args.copy()
         metadata.update(args_dict)
-        del out[sample]["metadata"]
         # save output data and metadata
         with open(f"{args['output_path']}/metadata/{sample}_metadata.json", "w") as f:
             f.write(json.dumps(metadata))
