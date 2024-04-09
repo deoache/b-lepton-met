@@ -78,6 +78,7 @@ class TtbarAnalysis(processor.ProcessorABC):
         # initialize dictionary of hists for control regions
         self.hist_dict = {}
         self.hist_dict[self._region] = {
+            "n_kin": histograms.ttbar_n_hist,
             "jet_kin": histograms.ttbar_jet_hist,
             "met_kin": histograms.ttbar_met_hist,
             "lepton_kin": histograms.ttbar_lepton_hist,
@@ -573,6 +574,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
                 region_met = met[region_selection]
+                
                 # define region leptons
                 region_leptons = (
                     region_electrons if self._lepton_flavor == "ele" else region_muons
@@ -618,6 +620,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.add_feature("lepton_met_mass", lepton_met_mass)
                 self.add_feature("lepton_met_delta_phi", lepton_met_delta_phi)
                 self.add_feature("lepton_met_bjet_mass", lepton_met_bjet_mass)
+                self.add_feature("njets", ak.num(corrected_jets)[region_selection])
+                self.add_feature("npvs", events.PV.npvsGood[region_selection])
 
                 if syst_var == "nominal":
                 # save weighted events to metadata

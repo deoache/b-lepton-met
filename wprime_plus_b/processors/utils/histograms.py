@@ -133,6 +133,25 @@ ttbar_lepton_met_bjet_hist = hist.Hist(
     hist.storage.Weight(),
 )
 
+# number of jets and primary vertices
+n_jets_axis = hist.axis.Regular(
+    bins=15,
+    start=0,
+    stop=15,
+    name="njets",
+)
+n_vertices_axis = hist.axis.Regular(
+    bins=60,
+    start=0,
+    stop=60,
+    name="npvs",
+)
+ttbar_n_hist = hist.Hist(
+    n_jets_axis,
+    n_vertices_axis,
+    syst_axis,
+    hist.storage.Weight(),
+)
 
 # -------------------------------
 # ztoll control region histogram
