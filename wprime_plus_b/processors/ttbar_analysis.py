@@ -207,12 +207,15 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             electrons = events.Electron[good_electrons]
             
-            # correct muons
+            # apply rochester corretions to muons
             corrected_muons = events.Muon 
             muon_pt = apply_rochester_corrections(
                 corrected_muons, self.is_mc, self._year + self._yearmod
             )
             corrected_muons["pt"] = muon_pt
+            met["pt"], met["phi"] = met_corrected_tes(
+                events.Muon, corrected_muons, met
+            )
             
             # select good muons
             good_muons = select_good_muons(
