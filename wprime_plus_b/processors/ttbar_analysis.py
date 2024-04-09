@@ -306,12 +306,13 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # add pujetid weigths
                 add_pujetid_weight(
                     jets=corrected_jets,
+                    genjets=events.GenJet,
                     weights=weights_container,
                     year=self._year,
                     year_mod=self._yearmod,
                     working_point=ttbar_jet_selection[self._channel][
                         self._lepton_flavor
-                    ]["btag_working_point"],
+                    ]["jet_pileup_id"],
                     variation=syst_var,
                 )
                 # b-tagging corrector
@@ -403,7 +404,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-                
+
             if syst_var == "nominal":
                 # save sum of weights before selections
                 output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
@@ -622,7 +623,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                             "weighted_final_nevents": ak.sum(
                                 weights_container.weight()[region_selection]
                             ),
-
                             "raw_final_nevents": nevents_after,
                         }
                     )
