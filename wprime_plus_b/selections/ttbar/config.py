@@ -145,13 +145,13 @@ ttbar_jet_selection = {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
     },
     "2b1l": {
@@ -159,13 +159,13 @@ ttbar_jet_selection = {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
     },
     "1b1l": {
@@ -173,13 +173,13 @@ ttbar_jet_selection = {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
             "jet_id": 6,
-            "jet_pileup_id": 7
+            "jet_pileup_id": "T"
         },
     },
 }

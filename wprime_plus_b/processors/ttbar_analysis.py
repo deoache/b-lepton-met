@@ -78,6 +78,7 @@ class TtbarAnalysis(processor.ProcessorABC):
         # initialize dictionary of hists for control regions
         self.hist_dict = {}
         self.hist_dict[self._region] = {
+            "n_kin": histograms.ttbar_n_hist,
             "jet_kin": histograms.ttbar_jet_hist,
             "met_kin": histograms.ttbar_met_hist,
             "lepton_kin": histograms.ttbar_lepton_hist,
@@ -207,12 +208,15 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             electrons = events.Electron[good_electrons]
             
-            # correct muons
+            # apply rochester corretions to muons
             corrected_muons = events.Muon 
             muon_pt = apply_rochester_corrections(
                 corrected_muons, self.is_mc, self._year + self._yearmod
             )
             corrected_muons["pt"] = muon_pt
+            met["pt"], met["phi"] = met_corrected_tes(
+                events.Muon, corrected_muons, met
+            )
             
             # select good muons
             good_muons = select_good_muons(
@@ -306,12 +310,13 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # add pujetid weigths
                 add_pujetid_weight(
                     jets=corrected_jets,
+                    genjets=events.GenJet,
                     weights=weights_container,
                     year=self._year,
                     year_mod=self._yearmod,
                     working_point=ttbar_jet_selection[self._channel][
                         self._lepton_flavor
-                    ]["btag_working_point"],
+                    ]["jet_pileup_id"],
                     variation=syst_var,
                 )
                 # b-tagging corrector
@@ -403,7 +408,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-                
+
             if syst_var == "nominal":
                 # save sum of weights before selections
                 output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
@@ -569,6 +574,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
                 region_met = met[region_selection]
+                
                 # define region leptons
                 region_leptons = (
                     region_electrons if self._lepton_flavor == "ele" else region_muons
@@ -614,6 +620,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.add_feature("lepton_met_mass", lepton_met_mass)
                 self.add_feature("lepton_met_delta_phi", lepton_met_delta_phi)
                 self.add_feature("lepton_met_bjet_mass", lepton_met_bjet_mass)
+                self.add_feature("njets", ak.num(corrected_jets)[region_selection])
+                self.add_feature("npvs", events.PV.npvsGood[region_selection])
 
                 if syst_var == "nominal":
                 # save weighted events to metadata
@@ -622,7 +630,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                             "weighted_final_nevents": ak.sum(
                                 weights_container.weight()[region_selection]
                             ),
-
                             "raw_final_nevents": nevents_after,
                         }
                     )

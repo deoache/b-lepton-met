@@ -9,6 +9,7 @@ from wprime_plus_b.corrections.utils import get_pog_json
 
 def add_pujetid_weight(
     jets: ak.Array,
+    genjets: ak.Array,
     weights: Type[Weights],
     year: str = "2017",
     year_mod: str = "",
@@ -22,6 +23,8 @@ def add_pujetid_weight(
     -----------
         jets:
             Jet collection
+        genjets:
+            GenJet colletion
         weights:
             Weights object from coffea.analysis_tools
         year:
@@ -34,17 +37,24 @@ def add_pujetid_weight(
             if 'nominal' (default) add 'nominal', 'up' and 'down'
             variations to weights container. else, add only 'nominal' weights.
     """
+    puid_wps = {
+        "L": 4,
+        "M": 6,
+        "T": 7,
+    }
     # flat jets array since correction function works only on flat arrays
     j, n = ak.flatten(jets), ak.num(jets)
 
     # get 'in-limits' jets
-    jet_pt_mask = (j.pt > 15) & (j.pt < 50)
-    jet_eta_mask = np.abs(j.eta) < 5.83
-    in_jet_mask = jet_pt_mask & jet_eta_mask
+    jet_pt_mask = (j.pt > 20) & (j.pt < 50)
+    jet_eta_mask = np.abs(j.eta) < 5.
+    jet_puid_mask = j.puId == puid_wps[working_point]
+    genjet_match_mask = ak.flatten(ak.any(jets.metric_table(genjets) < 0.4, axis=-1))
+    in_jet_mask = jet_pt_mask & jet_eta_mask & jet_puid_mask & genjet_match_mask
     in_jets = j.mask[in_jet_mask]
 
     # get jet transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
-    jets_pt = ak.fill_none(in_jets.pt, 15.0)
+    jets_pt = ak.fill_none(in_jets.pt, 20.0)
     jets_eta = ak.fill_none(in_jets.eta, 0.0)
 
     # define correction set
@@ -59,7 +69,6 @@ def add_pujetid_weight(
         in_jet_mask,
         n,
     )
-
     if variation == "nominal":
         # get 'up' and 'down' variations
         up_sf = unflat_sf(
@@ -72,7 +81,6 @@ def add_pujetid_weight(
             in_jet_mask,
             n,
         )
-
         # add nominal, up and down scale factors to weights container
         weights.add(
             name="pujetid",
