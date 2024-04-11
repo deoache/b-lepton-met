@@ -39,6 +39,11 @@ def get_jobpath(args: dict) -> str:
 
 def get_jobname(args: dict) -> str:
     jobname = args["processor"]
+    if args["channel"]:
+        jobname += f'_{args["channel"]}'
+    if args["lepton_flavor"]:
+        jobname += f'_{args["lepton_flavor"]}'
+    jobname += f'_{args["sample"]}'
     if args["nsample"]:
         jobname += f'_{args["nsample"]}'
     return jobname
