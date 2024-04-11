@@ -26,13 +26,19 @@ def move_X509() -> str:
     subprocess.run(["cp", x509_localpath, x509_path])
     return x509_path
 
+
+def get_jobpath(args: dict) -> str:
+    path = args["processor"]
+    if args["channel"]:
+        path += f'/{args["channel"]}'
+    if args["lepton_flavor"]:
+        path += f'/{args["lepton_flavor"]}'
+    path += f'/{args["year"] + args["yearmod"]}'
+    path += f'/{args["sample"]}'
+    return path
+
 def get_jobname(args: dict) -> str:
     jobname = args["processor"]
-    if args["channel"]:
-        jobname += f'_{args["channel"]}'
-    if args["lepton_flavor"]:
-        jobname += f'_{args["lepton_flavor"]}'
-    jobname += f'_{args["sample"]}'
     if args["nsample"]:
         jobname += f'_{args["nsample"]}'
     return jobname
@@ -43,14 +49,15 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
     
-    # set jobname
+    # set path and jobname
+    jobpath = get_jobpath(args)
     jobname = get_jobname(args)
     
     # create logs and condor directories
-    log_dir = Path(f"{str(condor_dir)}/logs/{args['processor']}/{args['year']}")
+    log_dir = Path(f"{str(condor_dir)}/logs/{jobpath}")
     if not log_dir.exists():
         log_dir.mkdir(parents=True)
-    local_condor_path = Path(f"{condor_dir}/{args['processor']}/{args['year']}")
+    local_condor_path = Path(f"{condor_dir}/{jobpath}/")
     if not local_condor_path.exists():
         local_condor_path.mkdir(parents=True)                        
     local_condor = f"{local_condor_path}/{jobname}.sub"
@@ -60,6 +67,7 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
     condor_file = open(local_condor, "w")
     for line in condor_template_file:
         line = line.replace("DIRECTORY", str(condor_dir))
+        line = line.replace("JOBPATH", jobpath)
         line = line.replace("JOBNAME", jobname)
         line = line.replace("PROCESSOR", args["processor"])
         line = line.replace("YEAR", args["year"])
