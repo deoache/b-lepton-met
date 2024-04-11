@@ -34,7 +34,7 @@ def get_command(args: dict) -> str:
     return cmd
 
 
-def divide_list(lst: list[str], n: int) -> list[list[str]]:
+def divide_list(lst: list, n: int) -> list:
     """Divide a list into n sublists"""
     size = len(lst) // n
     remainder = len(lst) % n
