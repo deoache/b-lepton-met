@@ -7,7 +7,6 @@ import importlib.resources
 from coffea import processor
 from coffea.analysis_tools import PackedSelection, Weights
 from wprime_plus_b.processors.utils import histograms
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
 from wprime_plus_b.corrections.jec import jet_corrections
 from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.btag import BTagCorrector
@@ -15,6 +14,7 @@ from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
 from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
+from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, trigger_match
 from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
 from wprime_plus_b.corrections.lepton import (
     ElectronCorrector,
@@ -111,16 +111,6 @@ class TtbarAnalysis(processor.ProcessorABC):
         output["metadata"] = {}
         output["metadata"].update({"raw_initial_nevents": nevents})
         
-        # get triggers masks
-        with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
-            with open(path, "r") as handle:
-                self._triggers = json.load(handle)[self._year]
-        trigger_mask = {}
-        for ch in ["ele", "mu"]:
-            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
                     
         # define systematic variations
         syst_variations = ["nominal"]
@@ -144,6 +134,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(met_obj_syst_variations)
                 
         for syst_var in syst_variations:
+            # ------------------------
+            # object corrections
+            # ------------------------
             # apply JEC/JER corrections to jets (in data, the corrections are already applied)
             # and propagate to MET
             if self.is_mc:
@@ -177,6 +170,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 year_mod=self._yearmod,
             )
             met["pt"], met["phi"] = met_pt, met_phi
+            
             # apply Tau energy corrections (only to MC)
             corrected_taus = events.Tau
             if self.is_mc:
@@ -190,6 +184,16 @@ class TtbarAnalysis(processor.ProcessorABC):
                 met["pt"], met["phi"] = met_corrected_tes(
                     old_taus=events.Tau, new_taus=corrected_taus, met=met
                 )
+                
+            # apply rochester corretions to muons
+            corrected_muons = events.Muon 
+            muon_pt = apply_rochester_corrections(
+                corrected_muons, self.is_mc, self._year + self._yearmod
+            )
+            corrected_muons["pt"] = muon_pt
+            met["pt"], met["phi"] = met_corrected_tes(
+                events.Muon, corrected_muons, met
+            )
             # ------------------
             # event preselection
             # ------------------
@@ -207,16 +211,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 ]["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
-            
-            # apply rochester corretions to muons
-            corrected_muons = events.Muon 
-            muon_pt = apply_rochester_corrections(
-                corrected_muons, self.is_mc, self._year + self._yearmod
-            )
-            corrected_muons["pt"] = muon_pt
-            met["pt"], met["phi"] = met_corrected_tes(
-                events.Muon, corrected_muons, met
-            )
             
             # select good muons
             good_muons = select_good_muons(
@@ -291,9 +285,28 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(corrected_jets, taus, threshold=0.4))
             )
             bjets = corrected_jets[good_bjets]
+            
+            
+
             # --------------------
             # event weights vector
             # --------------------
+            # get triggers masks and DeltaR matched trigger objects (needed to compute Trigger SF's)
+            with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+                with open(path, "r") as handle:
+                    self._triggers = json.load(handle)[self._year]
+            trigger_mask = {}
+            for ch in ["ele", "mu"]:
+                trigger_mask[ch] = np.zeros(nevents, dtype="bool")
+                for t in self._triggers[ch]:
+                    if t in events.HLT.fields:
+                        trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+
+            trigger_match_mask = trigger_match(
+                leptons=corrected_muons if self._lepton_flavor == "mu" else electrons,
+                trigobjs=events.TrigObj,
+                trigger_path=self._triggers[self._lepton_flavor][0]
+            )
             # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
             # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
             # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso
@@ -353,7 +366,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 electron_corrector.add_reco_weight()
                 # muon corrector
                 muon_corrector = MuonCorrector(
-                    muons=events.Muon,
+                    muons=corrected_muons,
                     weights=weights_container,
                     year=self._year,
                     year_mod=self._yearmod,
@@ -373,7 +386,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 if self._channel == "1b1e1mu":
                     if self._lepton_flavor == "ele":
                         muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"]
+                            trigger_mask=trigger_mask["mu"],
+                            trigger_match_mask=trigger_match_mask
                         )
                     else:
                         electron_corrector.add_trigger_weight(
@@ -382,7 +396,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 else:
                     if self._lepton_flavor == "mu":
                         muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"]
+                            trigger_mask=trigger_mask["mu"],
+                            trigger_match_mask=trigger_match_mask
                         )
                     else:
                         electron_corrector.add_trigger_weight(
@@ -467,6 +482,9 @@ class TtbarAnalysis(processor.ProcessorABC):
 
             # good vertices
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
+            
+            # select events with at least one matched trigger object
+            self.selections.add("trigger_match", ak.sum(trigger_match_mask, axis=-1) >= 1)
 
             # define selection regions for each channel
             region_selection = {
@@ -475,6 +493,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_ele",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "two_bjets",
@@ -486,6 +505,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_mu",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "two_bjets",
@@ -499,6 +519,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_mu",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "one_bjet",
@@ -510,6 +531,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_ele",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "one_bjet",
@@ -523,6 +545,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_ele",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "one_bjet",
@@ -534,6 +557,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "goodvertex",
                         "lumi",
                         "trigger_mu",
+                        "trigger_match",
                         "metfilters",
                         "met_pt",
                         "one_bjet",
