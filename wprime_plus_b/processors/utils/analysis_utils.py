@@ -193,3 +193,37 @@ def delta_r_mask(first: ak.Array, second: ak.Array, threshold: float) -> ak.Arra
     """
     mval = first.metric_table(second)
     return ak.all(mval > threshold, axis=-1)
+
+
+def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27"):
+    """
+    Returns trigger objects matched
+    
+    leptons:
+        electrons or muons arrays
+    trigobjs:
+        trigger objects array
+    trigger_path:
+        trigger to match {IsoMu27}
+    """
+    match_configs = {
+        "IsoMu27": {
+            "pt": trigobjs.pt > 25,
+            "filterbit": trigobjs.filterBits & 8,
+            "id": abs(trigobjs.id) == 13
+        },
+        "Ele35_WPTight_Gsf": {
+            "pt": trigobjs.pt > 30,
+            "filterbit": trigobjs.filterBits & 1024,
+            "id": abs(trigobjs.id) == 1
+        }
+    }
+    pass_pt = match_configs[trigger_path]["pt"]
+    pass_id = match_configs[trigger_path]["id"]
+    pass_filterbit = match_configs[trigger_path]["filterbit"]
+    trigger_cands = trigobjs[pass_pt & pass_id & pass_filterbit]
+    delta_r = leptons.metric_table(trigger_cands)
+    pass_delta_r = delta_r < 0.1
+    n_of_trigger_matches = ak.sum(pass_delta_r, axis=2)
+    trig_matched_locs = n_of_trigger_matches >= 1
+    return trig_matched_locs
