@@ -69,17 +69,24 @@ class ElectronCorrector:
         self.year_mod = year_mod  # 2018
         self.pog_year = pog_years[year + year_mod]
 
-    def add_trigger_weight(self, trigger_mask):
-        """trigger weights are computed from only leading Electrons"""
-        # get leading electrons
-        le = ak.firsts(self.electrons)
+    def add_trigger_weight(self, trigger_mask, trigger_match_mask):
+        """
+        add electron Trigger weights 
         
+        trigger_mask:
+            mask array of events passing the analysis trigger
+        trigger_match_mask:
+            mask array of DeltaR matched trigger objects
+        """
         # get 'in-limits' electrons
-        electron_pt_mask = (le.pt > 10.0) & (le.pt < 499.999)
-        electron_eta_mask = np.abs(le.eta) < 2.4
-        in_electron_mask = electron_pt_mask & electron_eta_mask & trigger_mask
-        in_electrons = le.mask[in_electron_mask]
-
+        electron_pt_mask = (self.e.pt > 10.0) & (self.e.pt < 499.999)
+        electron_eta_mask = np.abs(self.e.eta) < 2.4
+        trigger_mask = ak.flatten(ak.ones_like(self.electrons.pt) * trigger_mask) > 0
+        trigger_match_mask = ak.flatten(trigger_match_mask)
+        
+        in_electron_mask = electron_pt_mask & electron_eta_mask & trigger_mask & trigger_match_mask
+        in_electrons = self.e.mask[in_electron_mask]
+        
         # get electrons transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
         electron_pt = ak.fill_none(in_electrons.pt, 10.0)
         electron_eta = ak.fill_none(in_electrons.eta, 0.0)
@@ -88,13 +95,11 @@ class ElectronCorrector:
         cset = correctionlib.CorrectionSet.from_file(
             f"wprime_plus_b/data/correction_electron_trigger_{self.year + self.year_mod}.json.gz"
         )
-        sf = cset["trigger_eff"].evaluate(electron_pt, electron_eta)
-        nominal_sf = ak.where(in_electron_mask, sf, 1.0)
-
-        # replace zero-value SF for 1
-        # zero_sf_mask = nominal_sf == 0.0
-        # nominal_sf = ak.where(zero_sf_mask, 1., nominal_sf)
-
+        nominal_sf = unflat_sf(
+            cset["trigger_eff"].evaluate(electron_pt, electron_eta),
+            in_electron_mask,
+            self.n,
+        )
         self.weights.add(
             name=f"ele_trigger",
             weight=nominal_sf,
@@ -469,8 +474,7 @@ class MuonCorrector:
 
     def add_triggeriso_weight(self, trigger_mask, trigger_match_mask) -> None:
         """
-        add muon Trigger Iso (IsoMu24 or IsoMu27) scale factors.
-        trigger weights are computed from only leading Muons
+        add muon Trigger Iso (IsoMu24 or IsoMu27) weights
         
         trigger_mask:
             mask array of events passing the analysis trigger
