@@ -43,7 +43,7 @@ def select_good_electrons(
         (np.abs(events.Electron.eta) < 1.44) | (np.abs(events.Electron.eta) > 1.57)
     )
 
-    # electron ID and Iso mask
+    # electron ID and Iso masks
     id_wps = {
         # mva ID working points https://twiki.cern.ch/twiki/bin/view/CMS/MultivariateElectronIdentificationRun2
         "wp80iso": events.Electron.mvaFall17V2Iso_WP80,
@@ -55,6 +55,8 @@ def select_good_electrons(
         "medium": events.Electron.cutBased == 3,
         "tight": events.Electron.cutBased == 4,
     }
+    electron_id_mask = id_wps[electron_id_wp]
+    
     iso_wps = {
         # https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonSelection
         "loose": events.Electron.pfRelIso04_all < 0.25
@@ -67,12 +69,9 @@ def select_good_electrons(
         if hasattr(events.Electron, "pfRelIso04_all")
         else events.Electron.pfRelIso03_all < 0.15,
     }
-    if electron_id_wp in ["wp80iso", "wp90iso"]:
-        electron_id_mask = id_wps[electron_id_wp]
-    else:
-        electron_id_mask = (id_wps[electron_id_wp]) & (iso_wps[electron_iso_wp])
+    electron_iso_mask = iso_wps[electron_iso_wp]
 
-    return (electron_pt_mask) & (electron_eta_mask) & (electron_id_mask)
+    return electron_pt_mask & electron_eta_mask & electron_id_mask & electron_iso_mask
 
 
 def select_good_muons(

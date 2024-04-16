@@ -2,37 +2,37 @@ ttbar_electron_selection = {
     "1b1e1mu": {
         "ele": {
             "electron_pt_threshold": 30,
-            "electron_id_wp": "wp80iso",
-            "electron_iso_wp": None,
+            "electron_id_wp": "wp90iso",
+            "electron_iso_wp": "tight",
         },
         "mu": {
             "electron_pt_threshold": 55,
             "electron_id_wp": "wp90iso",
-            "electron_iso_wp": None,
+            "electron_iso_wp": "tight",
         },
     },
     "2b1l": {
         "ele": {
             "electron_pt_threshold": 55,
-            "electron_id_wp": "wp80iso",
-            "electron_iso_wp": None,
+            "electron_id_wp": "wp90iso",
+            "electron_iso_wp": "tight",
         },
         "mu": {
             "electron_pt_threshold": 30,
             "electron_id_wp": "wp90iso",
-            "electron_iso_wp": None,
+            "electron_iso_wp": "tight",
         },
     },
     "1b1l": {
         "ele": {
             "electron_pt_threshold": 55,
-            "electron_id_wp": "wp80iso",
-            "electron_iso_wp": None,
+            "electron_id_wp": "wp90iso",
+            "electron_iso_wp": "tight",
         },
         "mu": {
             "electron_pt_threshold": 50,
             "electron_id_wp": "wp90iso",
-            "electron_iso_wp": None,
+            "electron_iso_wp": "tight",
         },
     },
 }
@@ -80,7 +80,7 @@ ttbar_tau_selection = {
     "2b1l": {
         "mu": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
@@ -89,7 +89,7 @@ ttbar_tau_selection = {
         },        
         "ele": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
@@ -100,7 +100,7 @@ ttbar_tau_selection = {
     "1b1e1mu": {
         "mu": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
@@ -109,7 +109,7 @@ ttbar_tau_selection = {
         },        
         "ele": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
@@ -120,7 +120,7 @@ ttbar_tau_selection = {
     "1b1l": {
         "mu": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
@@ -129,7 +129,7 @@ ttbar_tau_selection = {
         },        
         "ele": {
             "tau_pt_threshold": 20,  
-            "tau_eta_threshold": 2.1, 
+            "tau_eta_threshold": 2.3, 
             "tau_dz_threshold": 0.2, 
             "tau_vs_jet": "Loose",
             "tau_vs_ele": "VVLoose", 
