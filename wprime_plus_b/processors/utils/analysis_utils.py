@@ -195,9 +195,9 @@ def delta_r_mask(first: ak.Array, second: ak.Array, threshold: float) -> ak.Arra
     return ak.all(mval > threshold, axis=-1)
 
 
-def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27"):
+def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
     """
-    Returns trigger objects matched
+    Returns DeltaR matched trigger objects 
     
     leptons:
         electrons or muons arrays
@@ -205,6 +205,8 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27")
         trigger objects array
     trigger_path:
         trigger to match {IsoMu27, Ele35_WPTight_Gsf}
+        
+    https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaNanoAOD#Trigger_bits_how_to
     """
     match_configs = {
         "IsoMu27": {
@@ -213,8 +215,8 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27")
             "id": abs(trigobjs.id) == 13
         },
         "Ele35_WPTight_Gsf": {
-            "pt": trigobjs.pt > 30,
-            "filterbit": trigobjs.filterBits & 1024,
+            "pt": trigobjs.pt > 33,
+            "filterbit": trigobjs.filterBits & 2,
             "id": abs(trigobjs.id) == 11
         }
     }
