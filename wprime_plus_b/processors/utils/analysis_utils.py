@@ -204,7 +204,7 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27")
     trigobjs:
         trigger objects array
     trigger_path:
-        trigger to match {IsoMu27}
+        trigger to match {IsoMu27, Ele35_WPTight_Gsf}
     """
     match_configs = {
         "IsoMu27": {
@@ -215,7 +215,7 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path="IsoMu27")
         "Ele35_WPTight_Gsf": {
             "pt": trigobjs.pt > 30,
             "filterbit": trigobjs.filterBits & 1024,
-            "id": abs(trigobjs.id) == 1
+            "id": abs(trigobjs.id) == 11
         }
     }
     pass_pt = match_configs[trigger_path]["pt"]
