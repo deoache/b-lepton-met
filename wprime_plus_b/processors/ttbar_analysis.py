@@ -193,6 +193,189 @@ class TtbarAnalysis(processor.ProcessorABC):
                 events.Muon, corrected_muons, met
             )
             
+            # -------------------------------------------------------------  
+            # event SF/weights computation
+            # -------------------------------------------------------------  
+            # get triggers masks 
+            with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+                with open(path, "r") as handle:
+                    self._triggers = json.load(handle)[self._year]
+            trigger_mask = {}
+            for ch in ["ele", "mu"]:
+                trigger_mask[ch] = np.zeros(nevents, dtype="bool")
+                for t in self._triggers[ch]:
+                    if t in events.HLT.fields:
+                        trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
+        
+            # get DeltaR matched trigger objects mask
+            trigger_path = {
+                "1b1l": {
+                    "ele": self._triggers["ele"][0],
+                    "mu": self._triggers["mu"][0],
+                },
+                "2b1l": {
+                    "ele": self._triggers["ele"][0],
+                    "mu": self._triggers["mu"][0],
+                },
+                "1b1e1mu": {
+                    "ele": self._triggers["mu"][0],
+                    "mu": self._triggers["ele"][0],
+                }
+            }
+            trigger_leptons = {
+                "1b1l": {
+                    "ele": events.Electron,
+                    "mu": corrected_muons,
+                },
+                "2b1l": {
+                    "ele": events.Electron,
+                    "mu": corrected_muons,
+                },
+                "1b1e1mu": {
+                    "ele": corrected_muons,
+                    "mu": events.Electron,
+                }
+            }
+            trigger_match_mask = trigger_match(
+                leptons=trigger_leptons[self._channel][self._lepton_flavor],
+                trigobjs=events.TrigObj,
+                trigger_path=trigger_path[self._channel][self._lepton_flavor],
+            )
+            # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
+            # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
+            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso
+            weights_container = Weights(len(events), storeIndividual=True)
+            if self.is_mc:
+                # add gen weigths
+                weights_container.add("genweight", events.genWeight)
+                # add l1prefiring weigths
+                add_l1prefiring_weight(events, weights_container, self._year, syst_var)
+                # add pileup weigths
+                add_pileup_weight(
+                    events, weights_container, self._year, self._yearmod, syst_var
+                )
+                # add pujetid weigths
+                add_pujetid_weight(
+                    jets=corrected_jets,
+                    genjets=events.GenJet,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    working_point=ttbar_jet_selection[self._channel][
+                        self._lepton_flavor
+                    ]["jet_pileup_id"],
+                    variation=syst_var,
+                )
+                # b-tagging corrector
+                btag_corrector = BTagCorrector(
+                    jets=corrected_jets,
+                    weights=weights_container,
+                    sf_type="comb",
+                    worging_point=ttbar_jet_selection[self._channel][
+                        self._lepton_flavor
+                    ]["btag_working_point"],
+                    tagger="deepJet",
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    full_run=False,
+                    variation=syst_var,
+                )
+                # add b-tagging weights
+                btag_corrector.add_btag_weights(flavor="bc")
+                # electron corrector
+                electron_corrector = ElectronCorrector(
+                    electrons=events.Electron,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation=syst_var,
+                )
+                # add electron ID weights
+                electron_corrector.add_id_weight(
+                    id_working_point=ttbar_electron_selection[self._channel][
+                        self._lepton_flavor
+                    ]["electron_id_wp"]
+                )
+                # add electron reco weights
+                electron_corrector.add_reco_weight()
+                # muon corrector
+                muon_corrector = MuonCorrector(
+                    muons=corrected_muons,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    variation=syst_var,
+                    id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                        "muon_id_wp"
+                    ],
+                    iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                        "muon_iso_wp"
+                    ],
+                )
+                # add muon ID weights
+                muon_corrector.add_id_weight()
+                # add muon iso weights
+                muon_corrector.add_iso_weight()
+                
+                # add trigger weights
+                if self._channel == "1b1e1mu":
+                    if self._lepton_flavor == "ele":
+                        muon_corrector.add_triggeriso_weight(
+                            trigger_mask=trigger_mask["mu"],
+                            trigger_match_mask=trigger_match_mask
+                        )
+                    else:
+                        pass
+                        """
+                        electron_corrector.add_trigger_weight(
+                            trigger_mask=trigger_mask["ele"],
+                            trigger_match_mask=trigger_match_mask
+                        )
+                        """
+                else:
+                    if self._lepton_flavor == "mu":
+                        muon_corrector.add_triggeriso_weight(
+                            trigger_mask=trigger_mask["mu"],
+                            trigger_match_mask=trigger_match_mask
+                        )
+                    else:
+                        pass
+                        """
+                        electron_corrector.add_trigger_weight(
+                            trigger_mask=trigger_mask["ele"],
+                            trigger_match_mask=trigger_match_mask
+                        )
+                        """
+                # add tau weights
+                tau_corrector = TauCorrector(
+                    taus=corrected_taus,
+                    weights=weights_container,
+                    year=self._year,
+                    year_mod=self._yearmod,
+                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_jet"
+                    ],
+                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_ele"
+                    ],
+                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                        "tau_vs_mu"
+                    ],
+                    variation=syst_var,
+                )
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
+                tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
+
+            if syst_var == "nominal":
+                # save sum of weights before selections
+                output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
+                # save weights statistics
+                output["metadata"].update({"weight_statistics": {}})
+                for weight, statistics in weights_container.weightStatistics.items():
+                    output["metadata"]["weight_statistics"][weight] = statistics
+                    
+                    
             # -------------------------------------------------------------
             # object selection
             # -------------------------------------------------------------         
@@ -284,155 +467,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             bjets = corrected_jets[good_bjets]
             
-            # -------------------------------------------------------------  
-            # event SF/weights computation
-            # -------------------------------------------------------------  
-            # get triggers masks and DeltaR matched trigger objects (needed to compute Trigger SF's)
-            with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
-                with open(path, "r") as handle:
-                    self._triggers = json.load(handle)[self._year]
-            trigger_mask = {}
-            for ch in ["ele", "mu"]:
-                trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-                for t in self._triggers[ch]:
-                    if t in events.HLT.fields:
-                        trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-
-            trigger_match_mask = trigger_match(
-                leptons=(
-                    corrected_muons if self._lepton_flavor == "mu" else events.Electron
-                ),
-                trigobjs=events.TrigObj,
-                trigger_path=self._triggers[self._lepton_flavor][0],
-            )
-            # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
-            # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
-            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso
-            weights_container = Weights(len(events), storeIndividual=True)
-            if self.is_mc:
-                # add gen weigths
-                weights_container.add("genweight", events.genWeight)
-                # add l1prefiring weigths
-                add_l1prefiring_weight(events, weights_container, self._year, syst_var)
-                # add pileup weigths
-                add_pileup_weight(
-                    events, weights_container, self._year, self._yearmod, syst_var
-                )
-                # add pujetid weigths
-                add_pujetid_weight(
-                    jets=corrected_jets,
-                    genjets=events.GenJet,
-                    weights=weights_container,
-                    year=self._year,
-                    year_mod=self._yearmod,
-                    working_point=ttbar_jet_selection[self._channel][
-                        self._lepton_flavor
-                    ]["jet_pileup_id"],
-                    variation=syst_var,
-                )
-                # b-tagging corrector
-                btag_corrector = BTagCorrector(
-                    jets=corrected_jets,
-                    weights=weights_container,
-                    sf_type="comb",
-                    worging_point=ttbar_jet_selection[self._channel][
-                        self._lepton_flavor
-                    ]["btag_working_point"],
-                    tagger="deepJet",
-                    year=self._year,
-                    year_mod=self._yearmod,
-                    full_run=False,
-                    variation=syst_var,
-                )
-                # add b-tagging weights
-                btag_corrector.add_btag_weights(flavor="bc")
-                # electron corrector
-                electron_corrector = ElectronCorrector(
-                    electrons=events.Electron,
-                    weights=weights_container,
-                    year=self._year,
-                    year_mod=self._yearmod,
-                    variation=syst_var,
-                )
-                # add electron ID weights
-                electron_corrector.add_id_weight(
-                    id_working_point=ttbar_electron_selection[self._channel][
-                        self._lepton_flavor
-                    ]["electron_id_wp"]
-                )
-                # add electron reco weights
-                electron_corrector.add_reco_weight()
-                # muon corrector
-                muon_corrector = MuonCorrector(
-                    muons=corrected_muons,
-                    weights=weights_container,
-                    year=self._year,
-                    year_mod=self._yearmod,
-                    variation=syst_var,
-                    id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
-                        "muon_id_wp"
-                    ],
-                    iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
-                        "muon_iso_wp"
-                    ],
-                )
-                # add muon ID weights
-                muon_corrector.add_id_weight()
-                # add muon iso weights
-                muon_corrector.add_iso_weight()
-                
-                # add trigger weights
-                if self._channel == "1b1e1mu":
-                    if self._lepton_flavor == "ele":
-                        muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                    else:
-                        electron_corrector.add_trigger_weight(
-                            trigger_mask=trigger_mask["ele"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                else:
-                    if self._lepton_flavor == "mu":
-                        muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                    else:
-                        electron_corrector.add_trigger_weight(
-                            trigger_mask=trigger_mask["ele"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                # add tau weights
-                tau_corrector = TauCorrector(
-                    taus=corrected_taus,
-                    weights=weights_container,
-                    year=self._year,
-                    year_mod=self._yearmod,
-                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                        "tau_vs_jet"
-                    ],
-                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                        "tau_vs_ele"
-                    ],
-                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
-                        "tau_vs_mu"
-                    ],
-                    variation=syst_var,
-                )
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-
-            if syst_var == "nominal":
-                # save sum of weights before selections
-                output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
-                # save weights statistics
-                output["metadata"].update({"weight_statistics": {}})
-                for weight, statistics in weights_container.weightStatistics.items():
-                    output["metadata"]["weight_statistics"][weight] = statistics
-                    
+            
             # -------------------------------------------------------------  
             # event selection
             # -------------------------------------------------------------  
@@ -482,7 +517,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
 
-            # good vertices
+            # select events with at least one good vertex
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
             
             # select events with at least one matched trigger object
