@@ -211,12 +211,12 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
     match_configs = {
         "IsoMu27": {
             "pt": trigobjs.pt > 25,
-            "filterbit": trigobjs.filterBits & 8,
+            "filterbit": (trigobjs.filterBits & 8) > 0,
             "id": abs(trigobjs.id) == 13
         },
         "Ele35_WPTight_Gsf": {
             "pt": trigobjs.pt > 33,
-            "filterbit": trigobjs.filterBits & 2,
+            "filterbit": (trigobjs.filterBits & 2) > 0,
             "id": abs(trigobjs.id) == 11
         }
     }
