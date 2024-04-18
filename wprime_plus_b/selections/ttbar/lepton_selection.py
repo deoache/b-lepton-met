@@ -37,12 +37,10 @@ def select_good_electrons(
     """
     # electron pT threshold
     electron_pt_mask = events.Electron.pt >= electron_pt_threshold
-
     # electron pseudorapidity mask
     electron_eta_mask = (np.abs(events.Electron.eta) < 2.4) & (
         (np.abs(events.Electron.eta) < 1.44) | (np.abs(events.Electron.eta) > 1.57)
     )
-
     # electron ID and Iso masks
     id_wps = {
         # mva ID working points https://twiki.cern.ch/twiki/bin/view/CMS/MultivariateElectronIdentificationRun2
@@ -55,8 +53,6 @@ def select_good_electrons(
         "medium": events.Electron.cutBased == 3,
         "tight": events.Electron.cutBased == 4,
     }
-    electron_id_mask = id_wps[electron_id_wp]
-    
     iso_wps = {
         # https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonSelection
         "loose": events.Electron.pfRelIso04_all < 0.25
@@ -69,9 +65,12 @@ def select_good_electrons(
         if hasattr(events.Electron, "pfRelIso04_all")
         else events.Electron.pfRelIso03_all < 0.15,
     }
-    electron_iso_mask = iso_wps[electron_iso_wp]
+    if electron_id_wp in ["wp80iso", "wp90iso"]:
+        electron_id_iso_mask = id_wps[electron_id_wp]
+    else:
+        electron_id_iso_mask = (id_wps[electron_id_wp]) & (iso_wps[electron_iso_wp])
 
-    return electron_pt_mask & electron_eta_mask & electron_id_mask & electron_iso_mask
+    return electron_pt_mask & electron_eta_mask & electron_id_iso_mask
 
 
 def select_good_muons(
