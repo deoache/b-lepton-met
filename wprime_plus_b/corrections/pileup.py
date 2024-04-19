@@ -28,27 +28,26 @@ def add_pileup_weight(
         variation:
             if 'nominal' (default) add 'nominal', 'up' and 'down'
             variations to weights container. else, add only 'nominal' weights.
+            
+    https://cms-nanoaod-integration.web.cern.ch/commonJSONSFs/summaries/LUM_2017_UL_puWeights.html
     """
-    # define correction set
+    # define correction set and goldenJSON file names
     cset = correctionlib.CorrectionSet.from_file(
         get_pog_json(json_name="pileup", year=year + year_mod)
     )
-    # define goldenJSON file names
     year_to_corr = {
         "2016": "Collisions16_UltraLegacy_goldenJSON",
         "2017": "Collisions17_UltraLegacy_goldenJSON",
         "2018": "Collisions18_UltraLegacy_goldenJSON",
     }
+    # get number of true interactions
+    nti = events.Pileup.nTrueInt
     # get nominal scale factors
-    nominal_sf = cset[year_to_corr[year]].evaluate(
-        ak.to_numpy(events.Pileup.nPU), "nominal"
-    )
+    nominal_sf = cset[year_to_corr[year]].evaluate(ak.to_numpy(nti), "nominal")
     if variation == "nominal":
         # get up and down variations
-        up_sf = cset[year_to_corr[year]].evaluate(ak.to_numpy(events.Pileup.nPU), "up")
-        down_sf = cset[year_to_corr[year]].evaluate(
-            ak.to_numpy(events.Pileup.nPU), "down"
-        )
+        up_sf = cset[year_to_corr[year]].evaluate(ak.to_numpy(nti), "up")
+        down_sf = cset[year_to_corr[year]].evaluate(ak.to_numpy(nti), "down")
         # add pileup scale factors to weights container
         weights_container.add(
             name="pileup",
