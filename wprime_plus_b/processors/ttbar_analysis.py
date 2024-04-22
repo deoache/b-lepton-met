@@ -408,7 +408,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 ],
             )
             good_muons = (good_muons) & (
-                delta_r_mask(events.Muon, electrons, threshold=0.4)
+                delta_r_mask(corrected_muons, electrons, threshold=0.4)
             )
             muons = corrected_muons[good_muons]
             
@@ -437,8 +437,8 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             good_taus = (
                 (good_taus)
-                & (delta_r_mask(events.Tau, electrons, threshold=0.4))
-                & (delta_r_mask(events.Tau, muons, threshold=0.4))
+                & (delta_r_mask(corrected_taus, electrons, threshold=0.4))
+                & (delta_r_mask(corrected_taus, muons, threshold=0.4))
             )
             taus = corrected_taus[good_taus]
             
