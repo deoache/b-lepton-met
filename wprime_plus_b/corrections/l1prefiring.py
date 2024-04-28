@@ -21,7 +21,7 @@ def add_l1prefiring_weight(
             variations to weights container. else, add only 'nominal' weights.
     """
     # add L1prefiring weights
-    if year in ("2016", "2017"):
+    if year in ("2016", "2016APV", "2017"):
         if variation == "nominal":
             weights_container.add(
                 "L1Prefiring",
