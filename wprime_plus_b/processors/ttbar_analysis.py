@@ -7,32 +7,27 @@ import importlib.resources
 from coffea import processor
 from coffea.analysis_tools import PackedSelection, Weights
 from wprime_plus_b.processors.utils import histograms
-from wprime_plus_b.corrections.jec import jet_corrections
-from wprime_plus_b.corrections.met import met_phi_corrections
-from wprime_plus_b.corrections.btag import BTagCorrector
+from wprime_plus_b.corrections.jec import apply_jet_corrections
+from wprime_plus_b.corrections.met import apply_met_phi_corrections
+from wprime_plus_b.corrections.rochester import apply_rochester_corrections
+from wprime_plus_b.corrections.tau_energy import apply_tau_energy_scale_corrections
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
+from wprime_plus_b.corrections.btag import BTagCorrector
+from wprime_plus_b.corrections.muon import MuonCorrector
+from wprime_plus_b.corrections.muon_highpt import MuonHighPtCorrector
+from wprime_plus_b.corrections.tau import TauCorrector
+from wprime_plus_b.corrections.electron import ElectronCorrector
+from wprime_plus_b.selections.ttbar.electron_config import ttbar_electron_config
+from wprime_plus_b.selections.ttbar.muon_config import ttbar_muon_config
+from wprime_plus_b.selections.ttbar.tau_config import ttbar_tau_config
+from wprime_plus_b.selections.ttbar.bjet_config import ttbar_bjet_config
+from wprime_plus_b.selections.ttbar.electron_selection import select_good_electrons
+from wprime_plus_b.selections.ttbar.muon_selection import select_good_muons
+from wprime_plus_b.selections.ttbar.tau_selection import select_good_taus
+from wprime_plus_b.selections.ttbar.bjet_selection import select_good_bjets
 from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, trigger_match
-from wprime_plus_b.selections.ttbar.jet_selection import select_good_bjets
-from wprime_plus_b.corrections.rochester import apply_rochester_corrections
-from wprime_plus_b.corrections.lepton import (
-    ElectronCorrector,
-    MuonCorrector,
-    TauCorrector,
-)
-from wprime_plus_b.selections.ttbar.config import (
-    ttbar_electron_selection,
-    ttbar_muon_selection,
-    ttbar_tau_selection,
-    ttbar_jet_selection,
-)
-from wprime_plus_b.selections.ttbar.lepton_selection import (
-    select_good_electrons,
-    select_good_muons,
-    select_good_taus,
-)
 
 
 class TtbarAnalysis(processor.ProcessorABC):
@@ -47,10 +42,10 @@ class TtbarAnalysis(processor.ProcessorABC):
         lepton flavor {'ele', 'mu'}
     year:
         year of the dataset {"2017"}
-    year_mode:
-        year modifier {""}
     syst:
-        systematics to apply {"nominal", "jec", "jer", "jet", "met", "full"} 
+        systematics to apply {"nominal", "jes", "jer", "jet", "met", "full"}
+        jet = jes + jer
+        full = jes + jer + met
     output_type:
         output object type {'hist', 'array'}
     """
@@ -60,12 +55,10 @@ class TtbarAnalysis(processor.ProcessorABC):
         channel: str = "2b1l",
         lepton_flavor: str = "ele",
         year: str = "2017",
-        yearmod: str = "",
         syst: str = "nominal",
         output_type: str = "hist",
     ):
         self._year = year
-        self._yearmod = yearmod
         self._lepton_flavor = lepton_flavor
         self._channel = channel
         self._syst = syst
@@ -105,99 +98,73 @@ class TtbarAnalysis(processor.ProcessorABC):
         # create copy of array dictionary
         array_dict = copy.deepcopy(self.array_dict)
         # dictionary to store output data and metadata
+
         output = {}
         output["metadata"] = {}
         output["metadata"].update({"raw_initial_nevents": nevents})
-                    
+
         # define systematic variations shifts
         syst_variations = ["nominal"]
         if self.is_mc:
-            jet_jec_syst_variations = ["JESUp", "JESDown"]
-            jet_jer_syst_variations = ["JERUp", "JERDown"]
-            met_obj_syst_variations = ["UEUp", "UEDown"]
+            jes_syst_variations = ["JESUp", "JESDown"]
+            jer_syst_variations = ["JERUp", "JERDown"]
+            met_syst_variations = ["UEUp", "UEDown"]
 
-            if self._syst == "jec":
-                syst_variations.extend(jet_jec_syst_variations)
+            if self._syst == "jes":
+                syst_variations.extend(jes_syst_variations)
             elif self._syst == "jer":
-                syst_variations.extend(jet_jer_syst_variations)
-            elif self._syst == "jet":
-                syst_variations.extend(jet_jec_syst_variations)
-                syst_variations.extend(jet_jer_syst_variations)
+                syst_variations.extend(jer_syst_variations)
             elif self._syst == "met":
-                syst_variations.extend(met_obj_syst_variations)
+                syst_variations.extend(met_syst_variations)
             elif self._syst == "full":
-                syst_variations.extend(jet_jec_syst_variations)
-                syst_variations.extend(jet_jer_syst_variations)
-                syst_variations.extend(met_obj_syst_variations)
+                syst_variations.extend(jes_syst_variations)
+                syst_variations.extend(jer_syst_variations)
+                syst_variations.extend(met_syst_variations)
                 
         for syst_var in syst_variations:
-            
-            # -------------------------------------------------------------  
+            # -------------------------------------------------------------
             # object corrections
-            # -------------------------------------------------------------  
+            # -------------------------------------------------------------
             # apply JEC/JER corrections to jets (in data, the corrections are already applied)
             if self.is_mc:
-                corrected_jets, met = jet_corrections(
-                    events, self._year + self._yearmod
-                )
+                apply_jet_corrections(events, self._year)
                 # jet JEC/JER shift
                 if syst_var == "JESUp":
-                    corrected_jets = corrected_jets.JES_Total.up
+                    events["Jet"] = events.Jet.JES_Total.up
                 elif syst_var == "JESDown":
-                    corrected_jets = corrected_jets.JES_Total.down
+                    events["Jet"] = events.Jet.JES_Total.down
                 elif syst_var == "JERUp":
-                    corrected_jets = corrected_jets.JER.up
+                    events["Jet"] = events.Jet.JER.up
                 elif syst_var == "JERDown":
-                    corrected_jets = corrected_jets.JER.down
+                    events["Jet"] = events.Jet.JER.down
                 # MET UnclusteredEnergy shift
                 elif syst_var == "UEUp":
-                    met = met.MET_UnclusteredEnergy.up
+                    events["MET"] = events.MET.MET_UnclusteredEnergy.up
                 elif syst_var == "UEDown":
-                    met = met.MET_UnclusteredEnergy.down
-            else:
-                corrected_jets, met = events.Jet, events.MET
+                    events["MET"] = events.MET.MET_UnclusteredEnergy.down
                 
-            # apply MET phi corrections
-            met_pt, met_phi = met_phi_corrections(
-                met_pt=met.pt,
-                met_phi=met.phi,
-                npvs=events.PV.npvsGood,
-                run=events.run,
+            # apply energy corrections to taus (only to MC)
+            if self.is_mc:
+                apply_tau_energy_scale_corrections(
+                    events, "2017", "DeepTau2017v2p1", "nom"
+                )
+            # apply rochester corretions to muons
+            apply_rochester_corrections(events, self.is_mc, self._year)
+            
+            # apply MET phi modulation corrections
+            apply_met_phi_corrections(
+                events=events,
                 is_mc=self.is_mc,
                 year=self._year,
-                year_mod=self._yearmod,
             )
-            met["pt"], met["phi"] = met_pt, met_phi
-            
-            # apply Tau energy corrections (only to MC)
-            corrected_taus = events.Tau
-            if self.is_mc:
-                # Data does not have corrections
-                corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
-                    events, "2017", "", "DeepTau2017v2p1", "nom"
-                )
-                # Given the tau corrections. We need to recalculate the MET.
-                # https://github.com/columnflow/columnflow/blob/16d35bb2f25f62f9110a8f1089e8dc5c62b29825/columnflow/calibration/util.py#L42
-                # https://github.com/Katsch21/hh2bbtautau/blob/e268752454a0ce0089ff08cc6c373a353be77679/hbt/calibration/tau.py#L117
-                met["pt"], met["phi"] = met_corrected_tes(
-                    old_taus=events.Tau, new_taus=corrected_taus, met=met
-                )
-                
-            # apply rochester corretions to muons
-            corrected_muons = events.Muon 
-            muon_pt = apply_rochester_corrections(
-                corrected_muons, self.is_mc, self._year + self._yearmod
-            )
-            corrected_muons["pt"] = muon_pt
-            met["pt"], met["phi"] = met_corrected_tes(
-                events.Muon, corrected_muons, met
-            )
-            
-            # -------------------------------------------------------------  
+
+            # -------------------------------------------------------------
             # event SF/weights computation
-            # -------------------------------------------------------------  
-            # get triggers masks 
-            with importlib.resources.path("wprime_plus_b.data", "triggers.json") as path:
+            # -------------------------------------------------------------
+            # get triggers masks
+            with importlib.resources.path(
+                "wprime_plus_b.data", "triggers.json"
+            ) as path:
                 with open(path, "r") as handle:
                     self._triggers = json.load(handle)[self._year]
             trigger_mask = {}
@@ -206,44 +173,46 @@ class TtbarAnalysis(processor.ProcessorABC):
                 for t in self._triggers[ch]:
                     if t in events.HLT.fields:
                         trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-        
+                        
             # get DeltaR matched trigger objects mask
-            trigger_path = {
+            trigger_paths = {
                 "1b1l": {
-                    "ele": self._triggers["ele"][0],
-                    "mu": self._triggers["mu"][0],
+                    "ele": self._triggers["ele"],
+                    "mu": self._triggers["mu"],
                 },
                 "2b1l": {
-                    "ele": self._triggers["ele"][0],
-                    "mu": self._triggers["mu"][0],
+                    "ele": self._triggers["ele"],
+                    "mu": self._triggers["mu"],
                 },
                 "1b1e1mu": {
-                    "ele": self._triggers["mu"][0],
-                    "mu": self._triggers["ele"][0],
-                }
+                    "ele": self._triggers["mu"],
+                    "mu": self._triggers["ele"],
+                },
             }
             trigger_leptons = {
                 "1b1l": {
                     "ele": events.Electron,
-                    "mu": corrected_muons,
+                    "mu": events.Muon,
                 },
                 "2b1l": {
                     "ele": events.Electron,
-                    "mu": corrected_muons,
+                    "mu": events.Muon,
                 },
                 "1b1e1mu": {
-                    "ele": corrected_muons,
+                    "ele": events.Muon,
                     "mu": events.Electron,
-                }
+                },
             }
-            trigger_match_mask = trigger_match(
-                leptons=trigger_leptons[self._channel][self._lepton_flavor],
-                trigobjs=events.TrigObj,
-                trigger_path=trigger_path[self._channel][self._lepton_flavor],
-            )
-            # weights (for all channels): genweight, pileup, l1prefiring, pujetid, b-tagging
-            # electron weights (for 2b1e, 1b1e or 1b1e1mu): electronId, electronReco
-            # muon weights (for 2b1mu, 1b1mu, or 1b1e1mu): muonId, muonIso, muonTriggerIso
+            trigger_match_mask = np.zeros(nevents, dtype="bool")
+            for trigger_path in trigger_paths[self._channel][self._lepton_flavor]:
+                trig_match = trigger_match(
+                    leptons=trigger_leptons[self._channel][self._lepton_flavor],
+                    trigobjs=events.TrigObj,
+                    trigger_path=trigger_path,
+                )
+                trigger_match_mask = trigger_match_mask | trig_match
+                
+            # set weights container
             weights_container = Weights(len(events), storeIndividual=True)
             if self.is_mc:
                 # add gen weigths
@@ -251,32 +220,27 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # add l1prefiring weigths
                 add_l1prefiring_weight(events, weights_container, self._year, syst_var)
                 # add pileup weigths
-                add_pileup_weight(
-                    events, weights_container, self._year, self._yearmod, syst_var
-                )
+                add_pileup_weight(events, weights_container, self._year, syst_var)
                 # add pujetid weigths
                 add_pujetid_weight(
-                    jets=corrected_jets,
-                    genjets=events.GenJet,
+                    jets=events.Jet,
                     weights=weights_container,
                     year=self._year,
-                    year_mod=self._yearmod,
-                    working_point=ttbar_jet_selection[self._channel][
-                        self._lepton_flavor
-                    ]["jet_pileup_id"],
+                    working_point=ttbar_bjet_config[self._channel][self._lepton_flavor][
+                        "jet_pileup_id"
+                    ],
                     variation=syst_var,
                 )
                 # b-tagging corrector
                 btag_corrector = BTagCorrector(
-                    jets=corrected_jets,
+                    jets=events.Jet,
                     weights=weights_container,
                     sf_type="comb",
-                    worging_point=ttbar_jet_selection[self._channel][
-                        self._lepton_flavor
-                    ]["btag_working_point"],
+                    worging_point=ttbar_bjet_config[self._channel][self._lepton_flavor][
+                        "btag_working_point"
+                    ],
                     tagger="deepJet",
                     year=self._year,
-                    year_mod=self._yearmod,
                     full_run=False,
                     variation=syst_var,
                 )
@@ -287,28 +251,32 @@ class TtbarAnalysis(processor.ProcessorABC):
                     electrons=events.Electron,
                     weights=weights_container,
                     year=self._year,
-                    year_mod=self._yearmod,
-                    variation=syst_var,
                 )
                 # add electron ID weights
                 electron_corrector.add_id_weight(
-                    id_working_point=ttbar_electron_selection[self._channel][
+                    id_working_point=ttbar_electron_config[self._channel][
                         self._lepton_flavor
                     ]["electron_id_wp"]
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
                 # muon corrector
-                muon_corrector = MuonCorrector(
-                    muons=corrected_muons,
+                if (
+                    ttbar_muon_config[self._channel][self._lepton_flavor]["muon_id_wp"]
+                    == "highpt"
+                ):
+                    mu_corrector = MuonHighPtCorrector
+                else:
+                    mu_corrector = MuonCorrector
+                muon_corrector = mu_corrector(
+                    muons=events.Muon,
                     weights=weights_container,
                     year=self._year,
-                    year_mod=self._yearmod,
                     variation=syst_var,
-                    id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                    id_wp=ttbar_muon_config[self._channel][self._lepton_flavor][
                         "muon_id_wp"
                     ],
-                    iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                    iso_wp=ttbar_muon_config[self._channel][self._lepton_flavor][
                         "muon_iso_wp"
                     ],
                 )
@@ -316,13 +284,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                 muon_corrector.add_id_weight()
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
-                
                 # add trigger weights
                 if self._channel == "1b1e1mu":
                     if self._lepton_flavor == "ele":
                         muon_corrector.add_triggeriso_weight(
                             trigger_mask=trigger_mask["mu"],
-                            trigger_match_mask=trigger_match_mask
+                            trigger_match_mask=trigger_match_mask,
                         )
                     else:
                         pass
@@ -336,7 +303,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     if self._lepton_flavor == "mu":
                         muon_corrector.add_triggeriso_weight(
                             trigger_mask=trigger_mask["mu"],
-                            trigger_match_mask=trigger_match_mask
+                            trigger_match_mask=trigger_match_mask,
                         )
                     else:
                         pass
@@ -348,17 +315,16 @@ class TtbarAnalysis(processor.ProcessorABC):
                         """
                 # add tau weights
                 tau_corrector = TauCorrector(
-                    taus=corrected_taus,
+                    taus=events.Tau,
                     weights=weights_container,
                     year=self._year,
-                    year_mod=self._yearmod,
-                    tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    tau_vs_jet=ttbar_tau_config[self._channel][self._lepton_flavor][
                         "tau_vs_jet"
                     ],
-                    tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    tau_vs_ele=ttbar_tau_config[self._channel][self._lepton_flavor][
                         "tau_vs_ele"
                     ],
-                    tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                    tau_vs_mu=ttbar_tau_config[self._channel][self._lepton_flavor][
                         "tau_vs_mu"
                     ],
                     variation=syst_var,
@@ -366,7 +332,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
                 tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-
+                
             if syst_var == "nominal":
                 # save sum of weights before selections
                 output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
@@ -375,105 +341,100 @@ class TtbarAnalysis(processor.ProcessorABC):
                 for weight, statistics in weights_container.weightStatistics.items():
                     output["metadata"]["weight_statistics"][weight] = statistics
                     
-                    
             # -------------------------------------------------------------
             # object selection
-            # -------------------------------------------------------------         
+            # -------------------------------------------------------------
             # select good electrons
             good_electrons = select_good_electrons(
                 events=events,
-                electron_pt_threshold=ttbar_electron_selection[self._channel][
+                electron_pt_threshold=ttbar_electron_config[self._channel][
                     self._lepton_flavor
                 ]["electron_pt_threshold"],
-                electron_id_wp=ttbar_electron_selection[self._channel][
+                electron_id_wp=ttbar_electron_config[self._channel][
                     self._lepton_flavor
                 ]["electron_id_wp"],
-                electron_iso_wp=ttbar_electron_selection[self._channel][
+                electron_iso_wp=ttbar_electron_config[self._channel][
                     self._lepton_flavor
                 ]["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
-            
+
             # select good muons
             good_muons = select_good_muons(
-                muons=corrected_muons,
-                muon_pt_threshold=ttbar_muon_selection[self._channel][
-                    self._lepton_flavor
-                ]["muon_pt_threshold"],
-                muon_id_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                events=events,
+                muon_pt_threshold=ttbar_muon_config[self._channel][self._lepton_flavor][
+                    "muon_pt_threshold"
+                ],
+                muon_id_wp=ttbar_muon_config[self._channel][self._lepton_flavor][
                     "muon_id_wp"
                 ],
-                muon_iso_wp=ttbar_muon_selection[self._channel][self._lepton_flavor][
+                muon_iso_wp=ttbar_muon_config[self._channel][self._lepton_flavor][
                     "muon_iso_wp"
                 ],
             )
             good_muons = (good_muons) & (
-                delta_r_mask(corrected_muons, electrons, threshold=0.4)
+                delta_r_mask(events.Muon, electrons, threshold=0.4)
             )
-            muons = corrected_muons[good_muons]
-            
+            muons = events.Muon[good_muons]
+
             # select good taus
             good_taus = select_good_taus(
-                taus=corrected_taus,
-                tau_pt_threshold=ttbar_tau_selection[self._channel][
-                    self._lepton_flavor
-                ]["tau_pt_threshold"],
-                tau_eta_threshold=ttbar_tau_selection[self._channel][
-                    self._lepton_flavor
-                ]["tau_eta_threshold"],
-                tau_dz_threshold=ttbar_tau_selection[self._channel][
-                    self._lepton_flavor
-                ]["tau_dz_threshold"],
-                tau_vs_jet=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                events=events,
+                tau_pt_threshold=ttbar_tau_config[self._channel][self._lepton_flavor][
+                    "tau_pt_threshold"
+                ],
+                tau_eta_threshold=ttbar_tau_config[self._channel][self._lepton_flavor][
+                    "tau_eta_threshold"
+                ],
+                tau_dz_threshold=ttbar_tau_config[self._channel][self._lepton_flavor][
+                    "tau_dz_threshold"
+                ],
+                tau_vs_jet=ttbar_tau_config[self._channel][self._lepton_flavor][
                     "tau_vs_jet"
                 ],
-                tau_vs_ele=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                tau_vs_ele=ttbar_tau_config[self._channel][self._lepton_flavor][
                     "tau_vs_ele"
                 ],
-                tau_vs_mu=ttbar_tau_selection[self._channel][self._lepton_flavor][
+                tau_vs_mu=ttbar_tau_config[self._channel][self._lepton_flavor][
                     "tau_vs_mu"
                 ],
-                prong=ttbar_tau_selection[self._channel][self._lepton_flavor]["prongs"],
+                prong=ttbar_tau_config[self._channel][self._lepton_flavor]["prongs"],
             )
             good_taus = (
                 (good_taus)
-                & (delta_r_mask(corrected_taus, electrons, threshold=0.4))
-                & (delta_r_mask(corrected_taus, muons, threshold=0.4))
+                & (delta_r_mask(events.Tau, electrons, threshold=0.4))
+                & (delta_r_mask(events.Tau, muons, threshold=0.4))
             )
-            taus = corrected_taus[good_taus]
-            
+            taus = events.Tau[good_taus]
+
             # select good bjets
             good_bjets = select_good_bjets(
-                jets=corrected_jets,
+                jets=events.Jet,
                 year=self._year,
-                btag_working_point=ttbar_jet_selection[self._channel][
+                btag_working_point=ttbar_bjet_config[self._channel][
                     self._lepton_flavor
                 ]["btag_working_point"],
-                jet_pt_threshold=ttbar_jet_selection[self._channel][
-                    self._lepton_flavor
-                ]["jet_pt_threshold"],
-                jet_id=ttbar_jet_selection[self._channel][self._lepton_flavor][
-                    "jet_id"
+                jet_pt_threshold=ttbar_bjet_config[self._channel][self._lepton_flavor][
+                    "jet_pt_threshold"
                 ],
-                jet_pileup_id=ttbar_jet_selection[self._channel][self._lepton_flavor][
+                jet_id=ttbar_bjet_config[self._channel][self._lepton_flavor]["jet_id"],
+                jet_pileup_id=ttbar_bjet_config[self._channel][self._lepton_flavor][
                     "jet_pileup_id"
                 ],
             )
             good_bjets = (
                 good_bjets
-                & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
-                & (delta_r_mask(corrected_jets, muons, threshold=0.4))
-                & (delta_r_mask(corrected_jets, taus, threshold=0.4))
+                & (delta_r_mask(events.Jet, electrons, threshold=0.4))
+                & (delta_r_mask(events.Jet, muons, threshold=0.4))
+                & (delta_r_mask(events.Jet, taus, threshold=0.4))
             )
-            bjets = corrected_jets[good_bjets]
-            
-            
-            # -------------------------------------------------------------  
+            bjets = events.Jet[good_bjets]
+
+            # -------------------------------------------------------------
             # event selection
-            # -------------------------------------------------------------  
+            # -------------------------------------------------------------
             # make a PackedSelection object to store selection masks
             self.selections = PackedSelection()
-            
             # add luminosity calibration mask (only to data)
             with importlib.resources.path(
                 "wprime_plus_b.data", "lumi_masks.pkl"
@@ -506,7 +467,15 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("metfilters", metfilters)
 
             # check that there be a minimum MET greater than 50 GeV
-            self.selections.add("met_pt", met.pt > 50)
+            self.selections.add("met_pt", events.MET.pt > 50)
+            
+            # select events with at least one good vertex
+            self.selections.add("goodvertex", events.PV.npvsGood > 0)
+
+            # select events with at least one matched trigger object
+            self.selections.add(
+                "trigger_match", ak.sum(trigger_match_mask, axis=-1) > 0
+            )
 
             # add number of leptons and jets
             self.selections.add("one_electron", ak.num(electrons) == 1)
@@ -516,12 +485,6 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
-
-            # select events with at least one good vertex
-            self.selections.add("goodvertex", events.PV.npvsGood > 0)
-            
-            # select events with at least one matched trigger object
-            self.selections.add("trigger_match", ak.sum(trigger_match_mask, axis=-1) > 0)
 
             # define selection regions for each channel
             region_selection = {
@@ -615,10 +578,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                     output["metadata"]["cutflow"][cut_name] = ak.sum(
                         weights_container.weight()[current_selection]
                     )
-                    
-            # -------------------------------------------------------------  
+            # -------------------------------------------------------------
             # event variables
-            # -------------------------------------------------------------  
+            # -------------------------------------------------------------
             self.selections.add(
                 self._region,
                 self.selections.all(
@@ -633,7 +595,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_bjets = bjets[region_selection]
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
-                region_met = met[region_selection]
+                region_met = events.MET[region_selection]
                 
                 # define region leptons
                 region_leptons = (
@@ -666,7 +628,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                     (region_leptons.pt + leading_bjets.pt + region_met.pt) ** 2
                     - (region_leptons + leading_bjets + region_met).pt ** 2
                 )
-
                 self.add_feature("lepton_pt", region_leptons.pt)
                 self.add_feature("lepton_eta", region_leptons.eta)
                 self.add_feature("lepton_phi", region_leptons.phi)
@@ -680,11 +641,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.add_feature("lepton_met_mass", lepton_met_mass)
                 self.add_feature("lepton_met_delta_phi", lepton_met_delta_phi)
                 self.add_feature("lepton_met_bjet_mass", lepton_met_bjet_mass)
-                self.add_feature("njets", ak.num(corrected_jets)[region_selection])
+                self.add_feature("njets", ak.num(events.Jet)[region_selection])
                 self.add_feature("npvs", events.PV.npvsGood[region_selection])
 
                 if syst_var == "nominal":
-                # save weighted events to metadata
+                    # save weighted events to metadata
                     output["metadata"].update(
                         {
                             "weighted_final_nevents": ak.sum(
@@ -693,10 +654,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                             "raw_final_nevents": nevents_after,
                         }
                     )
-                    
-                # -------------------------------------------------------------  
+                # -------------------------------------------------------------
                 # histogram filling
-                # -------------------------------------------------------------  
+                # -------------------------------------------------------------
                 if self._output_type == "hist":
                     # break up the histogram filling for event-wise variations and object-wise variations
                     # apply event-wise variations only for nominal
@@ -730,7 +690,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self._region]:
                             # get filling arguments
-
                             fill_args = {
                                 feature: normalize(self.features[feature])
                                 for feature in hist_dict[self._region][kin].axes.name[
@@ -772,18 +731,19 @@ class TtbarAnalysis(processor.ProcessorABC):
                     #    self.add_feature(weight, weights_container.partial_weight(include=[weight]))
                     if syst_var == "nominal":
                         # select variables and put them in column accumulators
-                        array_dict.update({
-                            feature_name: processor.column_accumulator(
-                                normalize(feature_array)
-                            )
-                            for feature_name, feature_array in self.features.items()
-                        })
+                        array_dict.update(
+                            {
+                                feature_name: processor.column_accumulator(
+                                    normalize(feature_array)
+                                )
+                                for feature_name, feature_array in self.features.items()
+                            }
+                        )
         # define output dictionary accumulator
         if self._output_type == "hist":
-            output["histograms"] = hist_dict[f"{self._channel}_{self._lepton_flavor}"]
+            output["histograms"] = hist_dict[self._region]
         elif self._output_type == "array":
             output["arrays"] = array_dict
-            
         return {dataset: output}
 
     def postprocess(self, accumulator):
