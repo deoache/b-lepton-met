@@ -19,7 +19,7 @@ def build_output_directories(args: dict) -> str:
         processor_name=processor_config.name,
         processor_lepton_flavour=processor_config.lepton_flavor,
         processor_channel=processor_config.channel,
-        dataset_year=args["year"] + args["yearmod"],
+        dataset_year=args["year"],
         mkdir=True,
     )
     return processor_output_path
@@ -144,14 +144,10 @@ def run_checker(args: dict) -> None:
             f"Incorrect executor. Available executors are: {available_executors}"
         )
     # check years
-    available_years = ["2016", "2017", "2018"]
+    available_years = ["2016APV", "2016", "2017", "2018"]
     if args["year"] not in available_years:
         raise ValueError(f"Incorrect year. Available years are: {available_years}")
-    available_yearmods = ["APV", ""]
-    if args["yearmod"] not in available_yearmods:
-        raise ValueError(
-            f"Incorrect year modifier. Available year modifiers are: {available_yearmods}"
-        )
+    
     # check output type
     available_output_types = ["hist", "array"]
     if args["output_type"] not in available_output_types:
@@ -161,7 +157,7 @@ def run_checker(args: dict) -> None:
     # check sample
     fileset_path = Path(f"{Path.cwd()}/wprime_plus_b/fileset")
     with open(f"{fileset_path}/das_datasets.json", "r") as f:
-        datasets = json.load(f)[args["year"] + args["yearmod"] + "_UL"]
+        datasets = json.load(f)[args["year"] + "_UL"]
     available_samples = list(datasets.keys())
     if args["sample"] not in available_samples:
         raise ValueError(
