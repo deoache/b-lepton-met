@@ -56,13 +56,11 @@ class BTagCorrector:
         worging_point: str = "M",
         tagger: str = "deepJet",
         year: str = "2017",
-        year_mod: str = "",
         variation: str = "nominal",
         full_run: bool = False,
     ) -> None:
         self._sf = sf_type
         self._year = year
-        self._yearmod = year_mod
         self._tagger = tagger
         self._wp = worging_point
         self._weights = weights
@@ -80,11 +78,11 @@ class BTagCorrector:
         with importlib.resources.path("wprime_plus_b.data", "btagWPs.json") as path:
             with open(path, "r") as handle:
                 btag_working_points = json.load(handle)
-        self._btagwp = btag_working_points[tagger][year + year_mod][worging_point]
+        self._btagwp = btag_working_points[tagger][year][worging_point]
 
         # define correction set
         self._cset = correctionlib.CorrectionSet.from_file(
-            get_pog_json(json_name="btag", year=year + year_mod)
+            get_pog_json(json_name="btag", year=year)
         )
 
         # bc and light jets

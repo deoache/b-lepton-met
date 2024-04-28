@@ -9,7 +9,6 @@ def add_pileup_weight(
     events,
     weights_container: Type[Weights],
     year: str,
-    year_mod: str,
     variation: str = "nominal",
 ) -> None:
     """
@@ -23,8 +22,6 @@ def add_pileup_weight(
             Weight object from coffea.analysis_tools
         year:
             dataset year {'2016', '2017', '2018'}
-        year_mod:
-            year modifier {"", "APV"}
         variation:
             if 'nominal' (default) add 'nominal', 'up' and 'down'
             variations to weights container. else, add only 'nominal' weights.
@@ -33,7 +30,7 @@ def add_pileup_weight(
     """
     # define correction set and goldenJSON file names
     cset = correctionlib.CorrectionSet.from_file(
-        get_pog_json(json_name="pileup", year=year + year_mod)
+        get_pog_json(json_name="pileup", year=year)
     )
     year_to_corr = {
         "2016": "Collisions16_UltraLegacy_goldenJSON",
