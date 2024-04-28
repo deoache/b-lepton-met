@@ -13,19 +13,15 @@ from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
 from wprime_plus_b.utils import paths
-from wprime_plus_b.processors.trigger_efficiency_processor import (
-    TriggerEfficiencyProcessor,
-)
-from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
-from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
-from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
-from wprime_plus_b.selections.ttbar.config import (
-    ttbar_electron_selection,
-    ttbar_muon_selection,
-    ttbar_jet_selection,
-    ttbar_tau_selection
-)
+#from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
+#from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
+#from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
+#from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
+from wprime_plus_b.selections.ttbar.electron_config import ttbar_electron_config
+from wprime_plus_b.selections.ttbar.muon_config import ttbar_muon_config
+from wprime_plus_b.selections.ttbar.tau_config import ttbar_tau_config
+from wprime_plus_b.selections.ttbar.bjet_config import ttbar_bjet_config
 from wprime_plus_b.selections.ztoll.config import (
     ztoll_electron_selection,
     ztoll_muon_selection,
@@ -44,14 +40,13 @@ def main(args):
     # define processors and executors
     processors = {
         "ttbar": TtbarAnalysis,
-        "ztoll": ZToLLProcessor,
-        "qcd": QcdAnalysis,
-        "btag_eff": BTagEfficiencyProcessor,
-        "trigger_eff": TriggerEfficiencyProcessor,
+        #"ztoll": ZToLLProcessor,
+        #"qcd": QcdAnalysis,
+        #"btag_eff": BTagEfficiencyProcessor,
+        #"trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_args = [
         "year",
-        "yearmod",
         "channel",
         "lepton_flavor",
         "output_type",
@@ -84,7 +79,7 @@ def main(args):
     # get .json filesets for sample
     filesets = get_filesets(
         sample=args["sample"],
-        year=args["year"] + args["yearmod"],
+        year=args["year"],
         facility=args["facility"],
     )
     for sample, fileset_path in filesets.items():
@@ -185,16 +180,16 @@ def main(args):
             # save selectios to metadata
             if args["processor"] == "ttbar": 
                 selections = {
-                    "electron_selection": ttbar_electron_selection[args["channel"]][
+                    "electron_selection": ttbar_electron_config[args["channel"]][
                         args["lepton_flavor"]
                     ],
-                    "muon_selection": ttbar_muon_selection[args["channel"]][
+                    "muon_selection": ttbar_muon_config[args["channel"]][
                         args["lepton_flavor"]
                     ],
-                    "jet_selection": ttbar_jet_selection[args["channel"]][
+                    "jet_selection": ttbar_bjet_config[args["channel"]][
                         args["lepton_flavor"]
                     ],
-                    "tau_selection": ttbar_tau_selection[args["channel"]][
+                    "tau_selection": ttbar_tau_config[args["channel"]][
                         args["lepton_flavor"]
                     ]
                 }
@@ -274,13 +269,6 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="year of the data {2016, 2017, 2018} (default 2017)",
-    )
-    parser.add_argument(
-        "--yearmod",
-        dest="yearmod",
-        type=str,
-        default="",
-        help="year modifier {'', 'APV'} (default '')",
     )
     parser.add_argument(
         "--executor",
