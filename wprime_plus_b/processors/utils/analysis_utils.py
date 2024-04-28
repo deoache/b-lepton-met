@@ -204,7 +204,7 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
     trigobjs:
         trigger objects array
     trigger_path:
-        trigger to match {IsoMu27, Ele35_WPTight_Gsf}
+        trigger to match {IsoMu27, Ele35_WPTight_Gsf, Mu50, Mu100}
         
     https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaNanoAOD#Trigger_bits_how_to
     """
@@ -214,11 +214,28 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
             "filterbit": (trigobjs.filterBits & 8) > 0,
             "id": abs(trigobjs.id) == 13
         },
+        "Mu50": {
+            "pt": trigobjs.pt > 45,
+            "filterbit": (trigobjs.filterBits & 1024) > 0,
+            "id": abs(trigobjs.id) == 13
+        },
+        "OldMu100": {
+            "pt": trigobjs.pt > 95,
+            "filterbit": (trigobjs.filterBits & 2048) > 0,
+            "id": abs(trigobjs.id) == 13
+        },
+        # same as OldMu100?
+        # https://github.com/cms-sw/cmssw/blob/CMSSW_10_6_X/PhysicsTools/NanoAOD/python/triggerObjects_cff.py#L79
+        "TkMu100": {
+            "pt": trigobjs.pt > 95,
+            "filterbit": (trigobjs.filterBits & 2048) > 0,
+            "id": abs(trigobjs.id) == 13
+        },
         "Ele35_WPTight_Gsf": {
             "pt": trigobjs.pt > 33,
             "filterbit": (trigobjs.filterBits & 2) > 0,
             "id": abs(trigobjs.id) == 11
-        }
+        },
     }
     pass_pt = match_configs[trigger_path]["pt"]
     pass_id = match_configs[trigger_path]["id"]
