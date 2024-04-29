@@ -27,12 +27,12 @@ ttbar_electron_selection = {
         "ele": {
             "electron_pt_threshold": 55,
             "electron_id_wp": "wp90iso",
-            "electron_iso_wp": "tight",
+            "electron_iso_wp": None,
         },
         "mu": {
             "electron_pt_threshold": 50,
             "electron_id_wp": "wp90iso",
-            "electron_iso_wp": "tight",
+            "electron_iso_wp": None,
         },
     },
 }
