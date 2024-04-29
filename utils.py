@@ -1,6 +1,7 @@
 import os
 import json
 import glob
+import yaml
 from pathlib import Path
 from collections import OrderedDict
 from wprime_plus_b.utils import paths
@@ -56,8 +57,12 @@ def build_filesets(args: dict) -> None:
     """
     main_dir = Path.cwd()
     fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset")
-    with open(f"{fileset_path}/das_datasets.json", "r") as f:
-        datasets = json.load(f)[f"{args['year']}_UL"]
+    if args['sample'].startswith("Signal"):
+        with open(f"{fileset_path}/signal_{args['year']}.json", "r") as f:
+            datasets = json.load(f)
+    else:
+        with open(f"{fileset_path}/das_datasets.json", "r") as f:
+            datasets = json.load(f)[f"{args['year']}_UL"]
 
     # make output filesets directory
     output_directory = Path(f"{fileset_path}/{args['year']}/{args['facility']}")
@@ -67,11 +72,18 @@ def build_filesets(args: dict) -> None:
                 file.unlink()
     else:
         output_directory.mkdir(parents=True)
+        
     for sample in datasets:
-        if args['facility'] == "lxplus":
+        if sample != args['sample']: 
+            continue
+            
+        if args['sample'].startswith("Signal"):            
+            json_file = f"{fileset_path}/signal_{args['year']}.json"
+        elif args['facility'] == "lxplus":
             json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO_lxplus.json"
         else:
             json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO.json"
+            
         with open(json_file, "r") as handle:
             data = json.load(handle)
         # split fileset and save filesets
@@ -159,10 +171,10 @@ def run_checker(args: dict) -> None:
             f"Incorrect output_type. Available output_types are: {available_output_types}"
         )
     # check sample
-    fileset_path = Path(f"{Path.cwd()}/wprime_plus_b/fileset")
-    with open(f"{fileset_path}/das_datasets.json", "r") as f:
-        datasets = json.load(f)[args["year"] + args["yearmod"] + "_UL"]
-    available_samples = list(datasets.keys())
+    configs_path = f"{Path.cwd()}/wprime_plus_b/configs/dataset/datasets_configs.yaml"
+    with open(configs_path, "r") as stream:
+        configs = yaml.safe_load(stream)
+    available_samples = list(configs.keys())
     if args["sample"] not in available_samples:
         raise ValueError(
             f"Incorrect sample. Available samples are: {available_samples}"
