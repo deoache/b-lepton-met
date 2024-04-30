@@ -73,9 +73,6 @@ def build_filesets(args: dict) -> None:
     else:
         output_directory.mkdir(parents=True)
     for sample in datasets:
-        if sample != args['sample']: 
-            continue
-
         if args['sample'].startswith("Signal"):            
             json_file = f"{fileset_path}/signal_{args['year']}.json"
         elif args['facility'] == "lxplus":
