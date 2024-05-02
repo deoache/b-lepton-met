@@ -99,7 +99,7 @@ class MuonHighPtCorrector:
             "2016APV": {},
             "2016": {},
             "2017": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
-            "2018": {},
+            "2018": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
         }
 
         # get nominal scale factors
@@ -163,7 +163,11 @@ class MuonHighPtCorrector:
                 "medium": None,
                 "tight": "NUM_probe_TightRelTkIso_DEN_HighPtProbes",
             },
-            "2018": {},
+            "2018": {
+                "loose": "NUM_probe_LooseRelTkIso_DEN_HighPtProbes",
+                "medium": None,
+                "tight": "NUM_probe_TightRelTkIso_DEN_HighPtProbes",
+            },
         }
 
         correction_name = iso_corrections[self.year][self.iso_wp]
@@ -238,7 +242,7 @@ class MuonHighPtCorrector:
             "2016APV": None,
             "2016": None,
             "2017": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
-            "2018": None,
+            "2018": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
         }
         # get nominal scale factors
         sf = self.cset[sfs_keys[self.year]].evaluate(
