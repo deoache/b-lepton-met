@@ -497,10 +497,25 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
             
-             # hem-cleaning selection
+            # hem-cleaning selection
+            # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
             if self._year == "2018":
                 hem_veto = ak.any(
-                    ((bjets.eta > -3.2) & (bjets.eta < -1.3) & (bjets.phi > -1.57) & (bjets.phi < -0.87)),
+                    (
+                        (bjets.eta > -3.2)
+                        & (bjets.eta < -1.3)
+                        & (bjets.phi > -1.57)
+                        & (bjets.phi < -0.87)
+                    ),
+                    -1,
+                ) | ak.any(
+                    (
+                        (electrons.pt > 30)
+                        & (electrons.eta > -3.2)
+                        & (electrons.eta < -1.3)
+                        & (electrons.phi > -1.57)
+                        & (electrons.phi < -0.87)
+                    ),
                     -1,
                 )
                 hem_cleaning = (
@@ -512,6 +527,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.selections.add("HEMCleaning", ~hem_cleaning)
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
+
 
             # define selection regions for each channel
             region_selection = {
