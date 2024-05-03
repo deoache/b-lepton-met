@@ -209,6 +209,11 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
     https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaNanoAOD#Trigger_bits_how_to
     """
     match_configs = {
+        "IsoMu24": {
+            "pt": trigobjs.pt > 22,
+            "filterbit": (trigobjs.filterBits & 8) > 0,
+            "id": abs(trigobjs.id) == 13
+        },
         "IsoMu27": {
             "pt": trigobjs.pt > 25,
             "filterbit": (trigobjs.filterBits & 8) > 0,
