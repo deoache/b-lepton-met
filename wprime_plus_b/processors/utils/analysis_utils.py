@@ -236,6 +236,11 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
             "filterbit": (trigobjs.filterBits & 2) > 0,
             "id": abs(trigobjs.id) == 11
         },
+        "Ele32_WPTight_Gsf": {
+            "pt": trigobjs.pt > 30,
+            "filterbit": (trigobjs.filterBits & 2) > 0,
+            "id": abs(trigobjs.id) == 11
+        },
     }
     pass_pt = match_configs[trigger_path]["pt"]
     pass_id = match_configs[trigger_path]["id"]
