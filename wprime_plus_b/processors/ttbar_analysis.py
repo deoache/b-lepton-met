@@ -173,7 +173,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 for t in self._triggers[ch]:
                     if t in events.HLT.fields:
                         trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-                        
+            
             # get DeltaR matched trigger objects mask
             trigger_paths = {
                 "1b1l": {
@@ -485,6 +485,22 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
+            
+             # hem-cleaning selection
+            if self._year == "2018":
+                hem_veto = ak.any(
+                    ((bjets.eta > -3.2) & (bjets.eta < -1.3) & (bjets.phi > -1.57) & (bjets.phi < -0.87)),
+                    -1,
+                )
+                hem_cleaning = (
+                    ((events.run >= 319077) & (not self.is_mc))  # if data check if in Runs C or D
+                    # else for MC randomly cut based on lumi fraction of C&D
+                    | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
+                ) & (hem_veto)
+
+                self.selections.add("HEMCleaning", ~hem_cleaning)
+            else:
+                self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
 
             # define selection regions for each channel
             region_selection = {
@@ -495,6 +511,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_ele",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -507,6 +524,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_mu",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -521,6 +539,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_mu",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -533,6 +552,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_ele",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -547,6 +567,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_ele",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -559,6 +580,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_mu",
                         "trigger_match",
                         "metfilters",
+                        "HEMCleaning",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
