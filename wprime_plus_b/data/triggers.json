@@ -9,6 +9,6 @@
     }, 
     "2018": {
         "ele": ["Ele32_WPTight_Gsf"], 
-        "mu": ["IsoMu24"]
+        "mu": ["Mu50", "OldMu100", "TkMu100"]
     }
 }
