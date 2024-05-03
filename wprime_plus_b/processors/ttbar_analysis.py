@@ -146,7 +146,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             # apply energy corrections to taus (only to MC)
             if self.is_mc:
                 apply_tau_energy_scale_corrections(
-                    events, "2017", "DeepTau2017v2p1", "nom"
+                    events, self._year, "DeepTau2017v2p1", "nom"
                 )
             # apply rochester corretions to muons
             apply_rochester_corrections(events, self.is_mc, self._year)
