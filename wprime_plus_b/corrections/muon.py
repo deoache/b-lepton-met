@@ -116,13 +116,17 @@ class MuonCorrector:
                 "medium": "NUM_MediumID_DEN_TrackerMuons",
                 "tight": "NUM_TightID_DEN_TrackerMuons",
             },
-            "2018": {},
+            "2018": {
+                "loose": "NUM_LooseID_DEN_TrackerMuons",
+                "medium": "NUM_MediumID_DEN_TrackerMuons",
+                "tight": "NUM_TightID_DEN_TrackerMuons",
+            },
         }
 
         # get nominal scale factors
         nominal_sf = unflat_sf(
             self.cset[id_corrections[self.year][self.id_wp]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "sf"
+                muon_eta, muon_pt, "nominal"
             ),
             in_muon_mask,
             self.n,
@@ -132,14 +136,14 @@ class MuonCorrector:
             up_sf = unflat_sf(
                 self.cset[
                     id_corrections[self.year][self.id_wp]
-                ].evaluate(self.pog_year, muon_eta, muon_pt, "systup"),
+                ].evaluate(muon_eta, muon_pt, "systup"),
                 in_muon_mask,
                 self.n,
             )
             down_sf = unflat_sf(
                 self.cset[
                     id_corrections[self.year][self.id_wp]
-                ].evaluate(self.pog_year, muon_eta, muon_pt, "systdown"),
+                ].evaluate(muon_eta, muon_pt, "systdown"),
                 in_muon_mask,
                 self.n,
             )
@@ -192,7 +196,23 @@ class MuonCorrector:
                     "tight": "NUM_TightRelIso_DEN_TightIDandIPCut",
                 },
             },
-            "2018": {},
+            "2018": {
+                "loose": {
+                    "loose": "NUM_LooseRelIso_DEN_LooseID",
+                    "medium": None,
+                    "tight": None,
+                },
+                "medium": {
+                    "loose": "NUM_LooseRelIso_DEN_MediumID",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_MediumID",
+                },
+                "tight": {
+                    "loose": "NUM_LooseRelIso_DEN_TightIDandIPCut",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_TightIDandIPCut",
+                },
+            },
         }
 
         correction_name = iso_corrections[self.year][self.id_wp][
@@ -202,7 +222,7 @@ class MuonCorrector:
 
         # get nominal scale factors
         nominal_sf = unflat_sf(
-            self.cset[correction_name].evaluate(self.pog_year, muon_eta, muon_pt, "sf"),
+            self.cset[correction_name].evaluate(muon_eta, muon_pt, "nominal"),
             in_muon_mask,
             self.n,
         )
@@ -210,14 +230,14 @@ class MuonCorrector:
             # get 'up' and 'down' scale factors
             up_sf = unflat_sf(
                 self.cset[correction_name].evaluate(
-                    self.pog_year, muon_eta, muon_pt, "systup"
+                    muon_eta, muon_pt, "systup"
                 ),
                 in_muon_mask,
                 self.n,
             )
             down_sf = unflat_sf(
                 self.cset[correction_name].evaluate(
-                    self.pog_year, muon_eta, muon_pt, "systdown"
+                    muon_eta, muon_pt, "systdown"
                 ),
                 in_muon_mask,
                 self.n,
@@ -275,7 +295,7 @@ class MuonCorrector:
         }
         # get nominal scale factors
         sf = self.cset[sfs_keys[self.year]].evaluate(
-            self.pog_year, muon_eta, muon_pt, "sf"
+            muon_eta, muon_pt, "nominal"
         )
         nominal_sf = unflat_sf(
             sf,
@@ -285,7 +305,7 @@ class MuonCorrector:
         if self.variation == "nominal":
             # get 'up' and 'down' scale factors
             up_sf = self.cset[sfs_keys[self.year]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systup"
+                muon_eta, muon_pt, "systup"
             )
             up_sf = unflat_sf(
                 up_sf,
@@ -293,7 +313,7 @@ class MuonCorrector:
                 self.n,
             )
             down_sf = self.cset[sfs_keys[self.year]].evaluate(
-                self.pog_year, muon_eta, muon_pt, "systdown"
+                muon_eta, muon_pt, "systdown"
             )
             down_sf = unflat_sf(
                 down_sf,
