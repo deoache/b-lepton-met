@@ -161,34 +161,46 @@ class TtbarAnalysis(processor.ProcessorABC):
             # -------------------------------------------------------------
             # event SF/weights computation
             # -------------------------------------------------------------
-            # get triggers masks
+            # get trigger mask
             with importlib.resources.path(
                 "wprime_plus_b.data", "triggers.json"
             ) as path:
                 with open(path, "r") as handle:
                     self._triggers = json.load(handle)[self._year]
-            trigger_mask = {}
-            for ch in ["ele", "mu"]:
-                trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-                for t in self._triggers[ch]:
-                    if t in events.HLT.fields:
-                        trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-            
-            # get DeltaR matched trigger objects mask
-            trigger_paths = {
+                    
+            trigger_paths_configs = {
                 "1b1l": {
-                    "ele": self._triggers["ele"],
-                    "mu": self._triggers["mu"],
+                    "ele": self._triggers["ele"][
+                        ttbar_electron_config[self._channel][self._lepton_flavor]["electron_id_wp"]
+                    ],
+                    "mu": self._triggers["mu"][
+                        ttbar_muon_config[self._channel][self._lepton_flavor]["muon_id_wp"]
+                    ],
                 },
                 "2b1l": {
-                    "ele": self._triggers["ele"],
-                    "mu": self._triggers["mu"],
+                    "ele": self._triggers["ele"][
+                        ttbar_electron_config[self._channel][self._lepton_flavor]["electron_id_wp"]
+                    ],
+                    "mu": self._triggers["mu"][
+                        ttbar_muon_config[self._channel][self._lepton_flavor]["muon_id_wp"]
+                    ],
                 },
                 "1b1e1mu": {
-                    "ele": self._triggers["mu"],
-                    "mu": self._triggers["ele"],
+                    "ele": self._triggers["mu"][
+                        ttbar_muon_config[self._channel][self._lepton_flavor]["muon_id_wp"]
+                    ],
+                    "mu": self._triggers["ele"][
+                        ttbar_electron_config[self._channel][self._lepton_flavor]["electron_id_wp"]
+                    ],
                 },
             }
+            trigger_paths = trigger_paths_configs[self._channel][self._lepton_flavor]
+            trigger_mask = np.zeros(nevents, dtype="bool")
+            for tp in trigger_paths:
+                if tp in events.HLT.fields:
+                    trigger_mask = trigger_mask | events.HLT[tp]
+
+            # get DeltaR matched trigger objects mask
             trigger_leptons = {
                 "1b1l": {
                     "ele": events.Electron,
@@ -204,7 +216,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 },
             }
             trigger_match_mask = np.zeros(nevents, dtype="bool")
-            for trigger_path in trigger_paths[self._channel][self._lepton_flavor]:
+            for trigger_path in trigger_paths:
                 trig_match = trigger_match(
                     leptons=trigger_leptons[self._channel][self._lepton_flavor],
                     trigobjs=events.TrigObj,
@@ -288,7 +300,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 if self._channel == "1b1e1mu":
                     if self._lepton_flavor == "ele":
                         muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"],
+                            trigger_mask=trigger_mask,
                             trigger_match_mask=trigger_match_mask,
                         )
                     else:
@@ -302,7 +314,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 else:
                     if self._lepton_flavor == "mu":
                         muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask["mu"],
+                            trigger_mask=trigger_mask,
                             trigger_match_mask=trigger_match_mask,
                         )
                     else:
@@ -450,8 +462,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("lumi", lumi_mask)
 
             # add lepton triggers masks
-            self.selections.add("trigger_ele", trigger_mask["ele"])
-            self.selections.add("trigger_mu", trigger_mask["mu"])
+            self.selections.add("trigger", trigger_mask)
 
             # add MET filters mask
             with importlib.resources.path(
@@ -508,7 +519,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "ele": [
                         "goodvertex",
                         "lumi",
-                        "trigger_ele",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
@@ -521,7 +532,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "mu": [
                         "goodvertex",
                         "lumi",
-                        "trigger_mu",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
@@ -536,7 +547,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "ele": [
                         "goodvertex",
                         "lumi",
-                        "trigger_mu",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
@@ -549,7 +560,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "mu": [
                         "goodvertex",
                         "lumi",
-                        "trigger_ele",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
@@ -564,7 +575,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "ele": [
                         "goodvertex",
                         "lumi",
-                        "trigger_ele",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
@@ -577,7 +588,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     "mu": [
                         "goodvertex",
                         "lumi",
-                        "trigger_mu",
+                        "trigger",
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",

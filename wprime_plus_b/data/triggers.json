@@ -1,14 +1,57 @@
 {
-    "2016": {
-        "ele": ["Ele27_WPTight_Gsf"], 
-        "mu": ["IsoMu24"]
-    }, 
-    "2017": {
-        "ele": ["Ele35_WPTight_Gsf"], 
-        "mu": ["Mu50", "OldMu100", "TkMu100"]
-    }, 
-    "2018": {
-        "ele": ["Ele32_WPTight_Gsf"], 
-        "mu": ["Mu50", "OldMu100", "TkMu100"]
-    }
+   "2016":{
+      "ele":{
+         "wp80iso":[
+            "Ele27_WPTight_Gsf"
+         ],
+          "wp90iso":[
+            "Ele27_WPTight_Gsf"
+         ]
+      },
+      "mu":{
+         "tight":[
+            "IsoMu24"
+         ]
+      }
+   },
+   "2017":{
+      "ele":{
+         "wp80iso":[
+            "Ele35_WPTight_Gsf"
+         ],
+         "wp90iso":[
+            "Ele35_WPTight_Gsf"
+         ]
+      },
+      "mu":{
+         "tight":[
+            "IsoMu27"
+         ],
+         "highpt":[
+            "Mu50",
+            "OldMu100",
+            "TkMu100"
+         ]
+      }
+   },
+   "2018":{
+      "ele":{
+         "wp80iso":[
+            "Ele32_WPTight_Gsf"
+         ],
+         "wp90iso":[
+            "Ele32_WPTight_Gsf"
+         ]
+      },
+      "mu":{
+         "tight":[
+            "IsoMu24"
+         ],
+         "highpt":[
+            "Mu50",
+            "OldMu100",
+            "TkMu100"
+         ]
+      }
+   }
 }
