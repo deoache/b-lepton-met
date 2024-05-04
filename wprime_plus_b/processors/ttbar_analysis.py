@@ -44,9 +44,7 @@ class TtbarAnalysis(processor.ProcessorABC):
     year:
         year of the dataset {"2017"}
     syst:
-        systematics to apply {"nominal", "jes", "jer", "jet", "met", "full"}
-        jet = jes + jer
-        full = jes + jer + met
+        systematics to apply {"nominal", "jes", "jer", "met", "tau", "rochester", "full"}
     output_type:
         output object type {'hist', 'array'}
     """
@@ -111,6 +109,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             jer_syst_variations = ["JERUp", "JERDown"]
             met_syst_variations = ["UEUp", "UEDown"]
             tau_syst_variations = ["tau_up", "tau_down"]
+            rochester_syst_variations = ["rochester_up", "rochester_down"]
 
             if self.syst == "jes":
                 syst_variations.extend(jes_syst_variations)
@@ -120,11 +119,14 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(met_syst_variations)
             elif self.syst == "tau":
                 syst_variations.extend(tau_syst_variations)
+            elif self.syst == "rochester":
+                syst_variations.extend(rochester_syst_variations)
             elif self.syst == "full":
                 syst_variations.extend(jes_syst_variations)
                 syst_variations.extend(jer_syst_variations)
                 syst_variations.extend(met_syst_variations)
                 syst_variations.extend(tau_syst_variations)
+                syst_variations.extend(rochester_syst_variations)
                 
         for syst_var in syst_variations:
             # -------------------------------------------------------------
@@ -159,7 +161,8 @@ class TtbarAnalysis(processor.ProcessorABC):
             apply_rochester_corrections(
                 events=events, 
                 is_mc=self.is_mc, 
-                year=self.year
+                year=self.year,
+                variation=syst_var
             )
             # apply MET phi modulation corrections
             apply_met_phi_corrections(
