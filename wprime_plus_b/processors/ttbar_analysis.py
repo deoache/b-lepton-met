@@ -452,6 +452,10 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
             )
+            if self.year in ["2016APV", "2016", "2018"]:
+                vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
+                good_bjets = good_bjets & vetomask
+                
             bjets = events.Jet[good_bjets]
 
             # -------------------------------------------------------------

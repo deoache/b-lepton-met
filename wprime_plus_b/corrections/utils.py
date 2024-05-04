@@ -25,6 +25,7 @@ POG_JSONS = {
     "btag": ["BTV", "btagging.json.gz"],
     "met": ["JME", "met.json.gz"],
     "pujetid": ["JME", "jmar.json.gz"],
+    "jetvetomaps": ["JME", "jetvetomaps.json.gz"]
 }
 
 pog_years = {
