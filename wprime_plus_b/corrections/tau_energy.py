@@ -42,40 +42,45 @@ def mask_energy_corrections(tau):
 def apply_tau_energy_scale_corrections(
     events: ak.Array,
     year: str = "2017",
-    tau_id: str = "DeepTau2017v2p1",
-    sys: str = "nom",
+    variation: str = "nominal",
 ):
     # define tau pt_raw field
     events["Tau", "pt_raw"] = ak.ones_like(events.Tau.pt) * events.Tau.pt
 
-    # Corrections works with flatten values
+    # corrections works with flatten values
     ntaus = ak.num(copy.deepcopy(events.Tau))
     taus_flatten = ak.flatten(copy.deepcopy(events.Tau))
-    
-    # It is defined the taus will be corrected with the energy scale factor: Only a subset of the initial taus.
+
+    # it is defined the taus will be corrected with the energy scale factor: Only a subset of the initial taus.
     mask = mask_energy_corrections(taus_flatten)
     taus_filter = taus_flatten.mask[mask]
-    
-    # We fill the None values with valid entries
+
+    # fill None values with valid entries
     pt = ak.fill_none(taus_filter.pt, 0)
     eta = ak.fill_none(taus_filter.eta, 0)
     dm = ak.fill_none(taus_filter.decayMode, 0)
     genmatch = ak.fill_none(taus_filter.genPartFlav, 2)
-    
-    # Define correction set_id
+
+    # define correction set
     cset = correctionlib.CorrectionSet.from_file(
         get_pog_json(json_name="tau", year=year)
     )
-    sf = cset["tau_energy_scale"].evaluate(pt, eta, dm, genmatch, tau_id, sys)
+    # define shifts
+    shifts = {"nominal": "nom", "tau_up": "up", "tau_down": "down"}
+    # get scale factor
+    sf = cset["tau_energy_scale"].evaluate(
+        pt, eta, dm, genmatch, "DeepTau2017v2p1", shifts[variation]
+    )
+    # get new (pT, mass) values using the scale factor
     taus_new_pt = taus_filter.pt * sf
     taus_new_mass = taus_filter.mass * sf
     new_tau_pt = ak.where(mask, taus_new_pt, taus_flatten.pt)
     new_tau_mass = ak.where(mask, taus_new_mass, taus_flatten.mass)
-    
-    # We have to unflatten the taus
+
+    # unflatten
     tau_pt = ak.unflatten(new_tau_pt, ntaus)
     tau_mass = ak.unflatten(new_tau_mass, ntaus)
-    
+
     # update tau pt and mass fields
     events["Tau", "pt"] = tau_pt
     events["Tau", "mass"] = tau_mass
