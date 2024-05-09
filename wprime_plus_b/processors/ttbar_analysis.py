@@ -178,35 +178,13 @@ class TtbarAnalysis(processor.ProcessorABC):
                 "wprime_plus_b.data", "triggers.json"
             ) as path:
                 with open(path, "r") as handle:
-                    self._triggers = json.load(handle)[self.year]
-                    
-            trigger_paths_configs = {
-                "1b1l": {
-                    "ele": self._triggers["ele"][
-                        ttbar_electron_config[self.channel][self.lepton_flavor]["electron_id_wp"]
-                    ],
-                    "mu": self._triggers["mu"][
-                        ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
-                    ],
-                },
-                "2b1l": {
-                    "ele": self._triggers["ele"][
-                        ttbar_electron_config[self.channel][self.lepton_flavor]["electron_id_wp"]
-                    ],
-                    "mu": self._triggers["mu"][
-                        ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
-                    ],
-                },
-                "1b1e1mu": {
-                    "ele": self._triggers["mu"][
-                        ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
-                    ],
-                    "mu": self._triggers["ele"][
-                        ttbar_electron_config[self.channel][self.lepton_flavor]["electron_id_wp"]
-                    ],
-                },
-            }
-            trigger_paths = trigger_paths_configs[self.channel][self.lepton_flavor]
+                    self._triggers = json.load(handle)[self.year][self.lepton_flavor]
+            
+            lepton_id_config = {
+                "ele": ttbar_electron_config[self.channel][self.lepton_flavor]["electron_id_wp"],
+                "mu": ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
+            } 
+            trigger_paths = self._triggers[lepton_id_config[self.lepton_flavor]]
             trigger_mask = np.zeros(nevents, dtype="bool")
             for tp in trigger_paths:
                 if tp in events.HLT.fields:
@@ -214,23 +192,13 @@ class TtbarAnalysis(processor.ProcessorABC):
 
             # get DeltaR matched trigger objects mask
             trigger_leptons = {
-                "1b1l": {
-                    "ele": events.Electron,
-                    "mu": events.Muon,
-                },
-                "2b1l": {
-                    "ele": events.Electron,
-                    "mu": events.Muon,
-                },
-                "1b1e1mu": {
-                    "ele": events.Muon,
-                    "mu": events.Electron,
-                },
+                "ele": events.Electron,
+                "mu": events.Muon,
             }
             trigger_match_mask = np.zeros(nevents, dtype="bool")
             for trigger_path in trigger_paths:
                 trig_match = trigger_match(
-                    leptons=trigger_leptons[self.channel][self.lepton_flavor],
+                    leptons=trigger_leptons[self.lepton_flavor],
                     trigobjs=events.TrigObj,
                     trigger_path=trigger_path,
                 )
@@ -284,6 +252,16 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
+                # add trigger weights
+                if self.lepton_flavor == "ele":
+                    """
+                    electron_corrector.add_trigger_weight(
+                        trigger_mask=trigger_mask["ele"],
+                        trigger_match_mask=trigger_match_mask
+                    )
+                    """
+                    pass
+                
                 # muon corrector
                 if (
                     ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
@@ -309,34 +287,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add trigger weights
-                if self.channel == "1b1e1mu":
-                    if self.lepton_flavor == "ele":
-                        muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask,
-                            trigger_match_mask=trigger_match_mask,
-                        )
-                    else:
-                        pass
-                        """
-                        electron_corrector.add_trigger_weight(
-                            trigger_mask=trigger_mask["ele"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                        """
-                else:
-                    if self.lepton_flavor == "mu":
-                        muon_corrector.add_triggeriso_weight(
-                            trigger_mask=trigger_mask,
-                            trigger_match_mask=trigger_match_mask,
-                        )
-                    else:
-                        pass
-                        """
-                        electron_corrector.add_trigger_weight(
-                            trigger_mask=trigger_mask["ele"],
-                            trigger_match_mask=trigger_match_mask
-                        )
-                        """
+                if self.lepton_flavor == "mu":
+                    muon_corrector.add_triggeriso_weight(
+                        trigger_mask=trigger_mask,
+                        trigger_match_mask=trigger_match_mask,
+                    )
+                
                 # add tau weights
                 tau_corrector = TauCorrector(
                     taus=events.Tau,
@@ -513,9 +469,12 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
             
-            # hem-cleaning selection
-            # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
+            
             if self.year == "2018":
+                # hem-cleaning selection
+                # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
+                # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the 
+                # region -3 < eta <-1.3 and -1.57 < phi < -0.87 to remove fake MET
                 hem_veto = ak.any(
                     (
                         (bjets.eta > -3.2)
@@ -543,8 +502,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 self.selections.add("HEMCleaning", ~hem_cleaning)
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
-
-
+            
             # define selection regions for each channel
             region_selection = {
                 "2b1l": {
