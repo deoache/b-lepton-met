@@ -194,30 +194,18 @@ def run_checker(args: dict) -> None:
                 f"Incorrect lepton flavor. Available lepton flavors are: {available_lepton_flavors}"
             )
         # check Data sample
-        if args["channel"] == "1b1e1mu":
-            if args["lepton_flavor"] == "mu":
-                if args["sample"] == "SingleMuon":
+        if args["lepton_flavor"] == "mu":
+            if args["sample"] == "SingleElectron":
                     raise ValueError(
-                        "1b1e1mu muon channel should be run with SingleElectron dataset"
-                    )
-            else:
-                if args["sample"] == "SingleElectron":
-                    raise ValueError(
-                        "1b1e1mu electron channel should be run with SingleMuon dataset"
+                        "muon channel should be run with SingleElectron dataset"
                     )
         else:
-            if args["lepton_flavor"] == "mu":
-                if args["sample"] == "SingleElectron":
+            if args["sample"] == "SingleMuon":
                     raise ValueError(
-                        "2b1l muon channel should be run with SingleMuon dataset"
+                        "electron channel should be run with SingleElectron dataset"
                     )
-            else:
-                if args["sample"] == "SingleMuon":
-                    raise ValueError(
-                        "2b1l electron channel should be run with SingleElectron dataset"
-                    )
+        # check systematics
         if args["output_type"] == "hist":
-            # check systematics
             available_systs = ["nominal", "jet", "met", "tau", "rochester", "full"]
             if args["syst"] not in available_systs:
                 raise ValueError(
