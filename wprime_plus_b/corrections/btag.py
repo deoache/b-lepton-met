@@ -181,7 +181,9 @@ class BTagCorrector:
         # get jet transverse momentum, abs pseudorapidity and hadron flavour (replace None values with some 'in-limit' value)
         jets_pt = ak.fill_none(in_jets.pt, 0.0)
         jets_eta = ak.fill_none(np.abs(in_jets.eta), 0.0)
-        jets_hadron_flavour = ak.fill_none(in_jets.hadronFlavour, 5)
+        jets_hadron_flavour = ak.fill_none(
+            in_jets.hadronFlavour, 5 if flavor == "bc" else 0
+        )
 
         sf = self._cset[cset_keys[flavor]].evaluate(
             syst,
