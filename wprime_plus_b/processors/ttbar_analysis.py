@@ -238,6 +238,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 )
                 # add b-tagging weights
                 btag_corrector.add_btag_weights(flavor="bc")
+                btag_corrector.add_btag_weights(flavor="light")
                 # electron corrector
                 electron_corrector = ElectronCorrector(
                     electrons=events.Electron,
