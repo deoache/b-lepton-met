@@ -411,7 +411,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             )
             if self.year in ["2016APV", "2016", "2018"]:
                 vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
-                good_bjets = good_bjets & vetomask
+                #good_bjets = good_bjets & vetomask
                 
             bjets = events.Jet[good_bjets]
 
@@ -500,7 +500,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
                 ) & (hem_veto)
 
-                self.selections.add("HEMCleaning", ~hem_cleaning)
+                #self.selections.add("HEMCleaning", ~hem_cleaning)
+                self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             
