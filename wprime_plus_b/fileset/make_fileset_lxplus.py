@@ -11,7 +11,18 @@ ERAS = {
 }
 
 SITES = {
-    "2016APV": [],
+    "2016APV": [
+        "T3_US_FNALLPC",
+        "T1_US_FNAL_Disk",
+        "T2_US_Vanderbilt",
+        "T2_US_Purdue",
+        "T2_US_Nebraska",
+        "T2_DE_DESY",
+        "T2_BE_IIHE",
+        "T2_CH_CERN",
+        "T1_DE_KIT_Disk",
+        "T2_DE_RWTH",
+    ],
     "2016": [],
     "2017": [
         "T3_US_FNALLPC",
