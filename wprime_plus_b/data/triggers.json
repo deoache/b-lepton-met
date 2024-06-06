@@ -1,11 +1,30 @@
 {
+   "2016APV":{
+      "ele":{
+         "wp80iso":[
+            "Ele27_WPTight_Gsf",
+            "Photon175"
+         ],
+         "wp90iso":[
+            "Ele27_WPTight_Gsf",
+            "Photon175"
+         ]
+      },
+      "mu":{
+         "tight":[
+            "IsoMu24"
+         ]
+      }
+   },
    "2016":{
       "ele":{
          "wp80iso":[
-            "Ele27_WPTight_Gsf"
+            "Ele27_WPTight_Gsf",
+            "Photon175"
          ],
-          "wp90iso":[
-            "Ele27_WPTight_Gsf"
+         "wp90iso":[
+            "Ele27_WPTight_Gsf",
+            "Photon175"
          ]
       },
       "mu":{
