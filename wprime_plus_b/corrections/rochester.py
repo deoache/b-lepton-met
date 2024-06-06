@@ -7,6 +7,7 @@ from coffea.lookup_tools import txt_converters, rochester_lookup
 def apply_rochester_corrections(
     events: ak.Array, is_mc: bool, year: str = "2017", variation: str = "nominal"
 ):
+    # https://twiki.cern.ch/twiki/bin/viewauth/CMS/RochcorMuon
     rochester_data = txt_converters.convert_rochester_file(
         f"wprime_plus_b/data/RoccoR{year}UL.txt", loaduncs=True
     )
