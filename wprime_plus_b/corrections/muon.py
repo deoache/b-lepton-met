@@ -109,7 +109,11 @@ class MuonCorrector:
 
         # 'id' scale factors names
         id_corrections = {
-            "2016APV": {},
+            "2016APV": {
+                "loose": "NUM_LooseID_DEN_TrackerMuons",
+                "medium": "NUM_MediumID_DEN_TrackerMuons",
+                "tight": "NUM_TightID_DEN_TrackerMuons",
+            },
             "2016": {},
             "2017": {
                 "loose": "NUM_LooseID_DEN_TrackerMuons",
@@ -177,7 +181,23 @@ class MuonCorrector:
         muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
 
         iso_corrections = {
-            "2016APV": {},
+            "2016APV": {
+                "loose": {
+                    "loose": "NUM_LooseRelIso_DEN_LooseID",
+                    "medium": None,
+                    "tight": None,
+                },
+                "medium": {
+                    "loose": "NUM_LooseRelIso_DEN_MediumID",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_MediumID",
+                },
+                "tight": {
+                    "loose": "NUM_LooseRelIso_DEN_TightIDandIPCut",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_TightIDandIPCut",
+                },
+            },
             "2016": {},
             "2017": {
                 "loose": {

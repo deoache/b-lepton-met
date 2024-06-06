@@ -1,4 +1,28 @@
 {
+    "2016APV": {
+        "data": [
+            "goodVertices",
+            "globalSuperTightHalo2016Filter",
+            "HBHENoiseFilter",
+            "HBHENoiseIsoFilter",
+            "EcalDeadCellTriggerPrimitiveFilter",
+            "BadPFMuonFilter",
+            "BadPFMuonDzFilter",
+            "eeBadScFilter",
+            "ecalBadCalibFilter"
+        ],
+        "mc": [
+            "goodVertices",
+            "globalSuperTightHalo2016Filter",
+            "HBHENoiseFilter",
+            "HBHENoiseIsoFilter",
+            "EcalDeadCellTriggerPrimitiveFilter",
+            "BadPFMuonFilter",
+            "BadPFMuonDzFilter",
+            "eeBadScFilter",
+            "ecalBadCalibFilter"
+        ]
+    },
     "2016": {
         "data": [
             "goodVertices",
