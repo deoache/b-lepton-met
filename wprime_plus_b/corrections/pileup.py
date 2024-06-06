@@ -33,6 +33,7 @@ def add_pileup_weight(
         get_pog_json(json_name="pileup", year=year)
     )
     year_to_corr = {
+        "2016APV": "Collisions16_UltraLegacy_goldenJSON",
         "2016": "Collisions16_UltraLegacy_goldenJSON",
         "2017": "Collisions17_UltraLegacy_goldenJSON",
         "2018": "Collisions18_UltraLegacy_goldenJSON",
