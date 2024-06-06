@@ -36,10 +36,12 @@
    "2017":{
       "ele":{
          "wp80iso":[
-            "Ele35_WPTight_Gsf"
+            "Ele35_WPTight_Gsf",
+             "Photon175"
          ],
          "wp90iso":[
-            "Ele35_WPTight_Gsf"
+            "Ele35_WPTight_Gsf",
+             "Photon175"
          ]
       },
       "mu":{
