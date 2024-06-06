@@ -14,7 +14,7 @@ from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
 from wprime_plus_b.utils import paths
 from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
-#from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
+from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 #from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
 #from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
 #from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
@@ -42,7 +42,7 @@ def main(args):
         "ttbar": TtbarAnalysis,
         #"ztoll": ZToLLProcessor,
         #"qcd": QcdAnalysis,
-        #"btag_eff": BTagEfficiencyProcessor,
+        "btag_eff": BTagEfficiencyProcessor,
         #"trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_args = [
@@ -227,7 +227,8 @@ def main(args):
         # save args to metadata
         args_dict = args.copy()
         metadata.update(args_dict)
-        del out[sample]["metadata"]
+        if "metadata" in out[sample]:
+            del out[sample]["metadata"]
         # save output data and metadata
         with open(f"{args['output_path']}/metadata/{sample}_metadata.json", "w") as f:
             f.write(json.dumps(metadata))
