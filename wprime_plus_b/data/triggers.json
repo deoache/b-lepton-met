@@ -13,6 +13,11 @@
       "mu":{
          "tight":[
             "IsoMu24"
+         ],
+         "highpt":[
+            "Mu50",
+            "OldMu100",
+            "TkMu100"
          ]
       }
    },
@@ -30,6 +35,11 @@
       "mu":{
          "tight":[
             "IsoMu24"
+         ],
+         "highpt":[
+            "Mu50",
+            "OldMu100",
+            "TkMu100"
          ]
       }
    },

@@ -42,7 +42,7 @@ class MuonHighPtCorrector:
     weights:
         Weights object from coffea.analysis_tools
     year:
-        Year of the dataset {'2016', '2017', '2018'}
+        Year of the dataset {'2016', '2016APV', '2017', '2018'}
     variation:
         syst variation
     id_wp:
@@ -96,8 +96,8 @@ class MuonHighPtCorrector:
 
         # 'id' scale factors names
         id_corrections = {
-            "2016APV": {},
-            "2016": {},
+            "2016APV": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
+            "2016": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
             "2017": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
             "2018": {"highpt": "NUM_HighPtID_DEN_GlobalMuonProbes"},
         }
@@ -156,8 +156,16 @@ class MuonHighPtCorrector:
         muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
 
         iso_corrections = {
-            "2016APV": {},
-            "2016": {},
+            "2016APV": {
+                "loose": "NUM_probe_LooseRelTkIso_DEN_HighPtProbes",
+                "medium": None,
+                "tight": "NUM_probe_TightRelTkIso_DEN_HighPtProbes",
+            },
+            "2016": {
+                "loose": "NUM_probe_LooseRelTkIso_DEN_HighPtProbes",
+                "medium": None,
+                "tight": "NUM_probe_TightRelTkIso_DEN_HighPtProbes",
+            },
             "2017": {
                 "loose": "NUM_probe_LooseRelTkIso_DEN_HighPtProbes",
                 "medium": None,
@@ -237,10 +245,9 @@ class MuonHighPtCorrector:
         muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
 
         # scale factors keys
-
         sfs_keys = {
-            "2016APV": None,
-            "2016": None,
+            "2016APV": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
+            "2016": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
             "2017": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
             "2018": "NUM_HLT_DEN_HighPtTightRelIsoProbes",
         }
