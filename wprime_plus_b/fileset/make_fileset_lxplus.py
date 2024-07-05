@@ -34,6 +34,9 @@ SITES = {
         "T2_CH_CERN",
         "T1_DE_KIT_Disk",
         "T2_DE_RWTH",
+        "T2_BE_UCL",
+        "T1_UK_RAL_Disk",
+        "T1_FR_CCIN2P3_Disk"
     ],
     "2017": [
         "T3_US_FNALLPC",
