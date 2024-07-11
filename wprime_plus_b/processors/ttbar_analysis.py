@@ -310,9 +310,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ],
                     variation=syst_var,
                 )
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
-                tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
+                tau_corrector.add_id_weight_deeptauvse()
+                tau_corrector.add_id_weight_deeptauvsmu()
+                tau_corrector.add_id_weight_deeptauvsjet()
                 
             if syst_var == "nominal":
                 # save sum of weights before selections

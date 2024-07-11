@@ -41,7 +41,6 @@ class TauCorrector:
         taus: ak.Array,
         weights: Type[Weights],
         year: str = "2017",
-        year_mod: str = "",
         tau_vs_jet: str = "Tight",
         tau_vs_ele: str = "Tight",
         tau_vs_mu: str = "Tight",
@@ -64,7 +63,6 @@ class TauCorrector:
 
         self.weights = weights
         self.year = year
-        self.year_mod = year_mod
 
         # DeepTau working points
         self.tau_vs_jet = tau_vs_jet
@@ -82,9 +80,9 @@ class TauCorrector:
 
         # define correction set_id
         self.cset = correctionlib.CorrectionSet.from_file(
-            get_pog_json(json_name="tau", year=self.year + self.year_mod)
+            get_pog_json(json_name="tau", year=self.year)
         )
-        self.pog_year = pog_years[year + year_mod]
+        self.pog_year = pog_years[year]
         """
         Check: https://github.com/cms-tau-pog/TauFW/blob/43bc39474b689d9712107d53a953b38c3cd9d43e/PicoProducer/python/analysis/ModuleETau.py#L270 
         """
@@ -92,7 +90,7 @@ class TauCorrector:
     # e -> tau_h fake rate SFs for DeepTau2017v2p1VSe
     # eta = (0, 2.3]; genMatch = 0,1; wp = Loose, Medium, Tight, VLoose, VTight, VVLoose, VVTight; syst: down, nom, up
 
-    def add_id_weight_DeepTau2017v2p1VSe(self):
+    def add_id_weight_deeptauvse(self):
         """
         Sf is called with:
 
@@ -155,7 +153,7 @@ class TauCorrector:
     # mu -> tau_h fake rate SFs for DeepTau2017v2p1VSmu
     # eta = (0, 2.3]; genMatch = 0,2; wp = Loose, Medium, Tight, VLoose ; syst: down, nom, up
 
-    def add_id_weight_DeepTau2017v2p1VSmu(self):
+    def add_id_weight_deeptauvsmu(self):
         """
         Sf is called with:
 
@@ -216,7 +214,7 @@ class TauCorrector:
     # By default, use the pT-dependent SFs with the 'pt' flag
     # pt = (-inf, inf); dm = 0, 1, 2, 10, 11; genmatch = 0, 1, 2, 3, 4, 5, 6; wp = Loose, Medium, Tight, VTight; wp_VSe = Tight, VVLoose; syst = down, nom, up; flag = dm, pt
 
-    def add_id_weight_DeepTau2017v2p1VSjet(self, flag: str = "pt"):
+    def add_id_weight_deeptauvsjet(self, flag: str = "pt"):
         """
         https://github.com/LEAF-HQ/LEAF/blob/d22cc55594a4b16d061c25dbf7ecdec04eedbc34/Analyzer/src/TauScaleFactorApplicatorJson.cc#L28
 
