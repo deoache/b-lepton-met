@@ -398,7 +398,6 @@ class TtbarAnalysis(processor.ProcessorABC):
                 jet_pt_threshold=ttbar_bjet_config[self.channel][self.lepton_flavor][
                     "jet_pt_threshold"
                 ],
-                jet_id=ttbar_bjet_config[self.channel][self.lepton_flavor]["jet_id"],
                 jet_pileup_id=ttbar_bjet_config[self.channel][self.lepton_flavor][
                     "jet_pileup_id"
                 ],

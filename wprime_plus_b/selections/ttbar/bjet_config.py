@@ -3,13 +3,11 @@ ttbar_bjet_config = {
         "ele": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
     },
@@ -17,13 +15,11 @@ ttbar_bjet_config = {
         "ele": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
     },
@@ -31,13 +27,11 @@ ttbar_bjet_config = {
         "ele": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
         "mu": {
             "jet_pt_threshold": 20,
             "btag_working_point": "M",
-            "jet_id": 6,
             "jet_pileup_id": "T"
         },
     },

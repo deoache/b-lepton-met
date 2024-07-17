@@ -9,7 +9,6 @@ def select_good_bjets(
     year: str = "2017",
     btag_working_point: str = "M",
     jet_pt_threshold: int = 20,
-    jet_id: int = 6,
     jet_pileup_id: str = "T",
 ) -> ak.highlevel.Array:
     """
@@ -52,6 +51,12 @@ def select_good_bjets(
         "M": 6,
         "T": 7,
     }
+    jet_id = {
+        "2016APV": 7,
+        "2016": 7,
+        "2017": 6,
+        "2018": 6
+    }
     # open and load btagDeepFlavB working point
     with importlib.resources.open_text("wprime_plus_b.data", "btagWPs.json") as file:
         btag_threshold = json.load(file)["deepJet"][year][btag_working_point]
@@ -61,7 +66,7 @@ def select_good_bjets(
         (jets.pt > jet_pt_threshold)
         & (jets.pt < 50)
         & (np.abs(jets.eta) < 2.4)
-        & (jets.jetId == jet_id)
+        & (jets.jetId == jet_id[year])
         & (jets.puId == puid_wps[jet_pileup_id])
         & (jets.btagDeepFlavB > btag_threshold)
     )
@@ -69,7 +74,7 @@ def select_good_bjets(
     high_pt_jets_mask = (
         (jets.pt >= 50)
         & (np.abs(jets.eta) < 2.4)
-        & (jets.jetId == jet_id)
+        & (jets.jetId == jet_id[year])
         & (jets.btagDeepFlavB > btag_threshold)
     )
 
