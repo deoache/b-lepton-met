@@ -13,7 +13,7 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
     * [Making the input filesets for Lxplus](#Making-the-input-filesets-for-Lxplus)
 - [Submitting jobs at lxplus](#Submitting-jobs-at-lxplus)
 - [Corrections and scale factors](#Corrections-and-scale-factors)
-- [Luminosity](#luminosity)
+- [Luminosity](#Luminosity)
 
 
 ## Data/MC filesets
@@ -148,58 +148,56 @@ We use the common json format for scale factors (SF), hence the requirement to i
 
 ## Luminosity
 
-See luminosity recomendations for Run2 at https://twiki.cern.ch/twiki/bin/view/CMS/LumiRecommendationsRun2. To obtain the integrated luminosity type (on lxplus):
+To obtain the integrated luminosity we use the [Brilcal tool](https://twiki.cern.ch/twiki/bin/view/CMS/BrilcalcQuickStart). See luminosity recomendations for Run2 at https://twiki.cern.ch/twiki/bin/view/CMS/LumiRecommendationsRun2
 
 ```
-export PATH=$HOME/.local/bin:/afs/cern.ch/cms/lumi/brilconda-1.1.7/bin:$PATH
-pip uninstall brilws
-pip install --install-option="--prefix=$HOME/.local" brilws
+# connect to lxplus
+ssh <your_username>@lxplus.cern.ch
+
+# Load the environment
+source /cvmfs/cms-bril.cern.ch/cms-lumi-pog/brilws-docker/brilws-env
+
+# Run brilcalc
+brilcalc lumi -b "STABLE BEAMS" --normtag=/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb --byls -i <Goldenjson file>
 ```
 
-* SingleMuon: type
-
+* 2016
 ```
-brilcalc lumi -b "STABLE BEAMS" --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/Legacy_2017/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt --hltpath HLT_IsoMu27_v*
+brilcalc lumi -b "STABLE BEAMS" --normtag=/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb --byls -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/Legacy_2016/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt
 ```
-
-output:
 ```
-#Summary: 
-+-----------------+-------+------+--------+-------------------+------------------+
-| hltpath         | nfill | nrun | ncms   | totdelivered(/fb) | totrecorded(/fb) |
-+-----------------+-------+------+--------+-------------------+------------------+
-| HLT_IsoMu27_v10 | 13    | 36   | 8349   | 2.007255669       | 1.870333304      |
-| HLT_IsoMu27_v11 | 9     | 21   | 5908   | 1.383159994       | 1.254273727      |
-| HLT_IsoMu27_v12 | 47    | 122  | 46079  | 8.954672794       | 8.298296788      |
-| HLT_IsoMu27_v13 | 91    | 218  | 124447 | 27.543983745      | 26.259684708     |
-| HLT_IsoMu27_v14 | 2     | 13   | 4469   | 0.901025085       | 0.862255849      |
-| HLT_IsoMu27_v8  | 2     | 3    | 1775   | 0.246872270       | 0.238466292      |
-| HLT_IsoMu27_v9  | 11    | 44   | 14260  | 2.803797063       | 2.694566730      |
-+-----------------+-------+------+--------+-------------------+------------------+
-#Sum delivered : 43.840766620
-#Sum recorded : 41.477877399
+#Summary:
++-------+------+--------+--------+-------------------+------------------+
+| nfill | nrun | nls    | ncms   | totdelivered(/fb) | totrecorded(/fb) |
++-------+------+--------+--------+-------------------+------------------+
+| 144   | 393  | 234231 | 233406 | 38.184814445      | 36.313753344     |
++-------+------+--------+--------+-------------------+------------------+
 ```
 
-* SingleElectron: type
+**Note:** We created our own .txt files for 2016preVFP and 2016postVFP and we found: PreVFP: 19.501601622 /fb and PostVFP: 16.812151722 /fb
 
+* 2017
 ```
-brilcalc lumi -b "STABLE BEAMS" --normtag /cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/Legacy_2017/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt --hltpath HLT_Ele35_WPTight_Gsf_v*
+brilcalc lumi -b "STABLE BEAMS" --normtag=/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb --byls -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/Legacy_2017/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt
 ```
-output:
+```
+#Summary:
++-------+------+--------+--------+-------------------+------------------+
+| nfill | nrun | nls    | ncms   | totdelivered(/fb) | totrecorded(/fb) |
++-------+------+--------+--------+-------------------+------------------+
+| 175   | 457  | 206287 | 205294 | 44.069556521      | 41.479680528     |
++-------+------+--------+--------+-------------------+------------------+
+```
 
+* 2018
 ```
-#Summary: 
-+--------------------------+-------+------+--------+-------------------+------------------+
-| hltpath                  | nfill | nrun | ncms   | totdelivered(/fb) | totrecorded(/fb) |
-+--------------------------+-------+------+--------+-------------------+------------------+
-| HLT_Ele35_WPTight_Gsf_v1 | 2     | 3    | 1775   | 0.246872270       | 0.238466292      |
-| HLT_Ele35_WPTight_Gsf_v2 | 11    | 44   | 14260  | 2.803797063       | 2.694566730      |
-| HLT_Ele35_WPTight_Gsf_v3 | 13    | 36   | 8349   | 2.007255669       | 1.870333304      |
-| HLT_Ele35_WPTight_Gsf_v4 | 9     | 21   | 5908   | 1.383159994       | 1.254273727      |
-| HLT_Ele35_WPTight_Gsf_v5 | 20    | 66   | 22775  | 5.399580877       | 4.879405647      |
-| HLT_Ele35_WPTight_Gsf_v6 | 27    | 56   | 23304  | 3.555091917       | 3.418891141      |
-| HLT_Ele35_WPTight_Gsf_v7 | 93    | 231  | 128916 | 28.445008830      | 27.121940558     |
-+--------------------------+-------+------+--------+-------------------+------------------+
-#Sum delivered : 43.840766620
-#Sum recorded : 41.477877399
+brilcalc lumi -b "STABLE BEAMS" --normtag=/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_PHYSICS.json -u /fb --byls -i /afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions18/13TeV/Legacy_2018/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt
+```
+```
+#Summary:
++-------+------+--------+--------+-------------------+------------------+
+| nfill | nrun | nls    | ncms   | totdelivered(/fb) | totrecorded(/fb) |
++-------+------+--------+--------+-------------------+------------------+
+| 196   | 478  | 234527 | 234125 | 62.322923205      | 59.832422397     |
++-------+------+--------+--------+-------------------+------------------+
 ```
