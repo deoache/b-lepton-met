@@ -23,9 +23,9 @@ ST_t-channel_antitop_5f_InclusiveDecays:
 ST_t-channel_top_5f_InclusiveDecays:
   nsplit: 10
 ST_tW_antitop_5f_inclusiveDecays:
-  nsplit: 5
+  nsplit: 2
 ST_tW_top_5f_inclusiveDecays:
-  nsplit: 5
+  nsplit: 2
 SingleElectron:
   nsplit: 15
 SingleMuon:
