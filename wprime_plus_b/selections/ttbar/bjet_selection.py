@@ -37,6 +37,14 @@ def select_good_bjets(
 
     jet_pileup_id: https://twiki.cern.ch/twiki/bin/viewauth/CMS/PileupJetID
         Pileup ID flags for pre-UL trainings {0, 4, 6, 7}. Should be applied only to AK4 CHS jets with pT < 50 GeV
+        
+        2016:
+        0 means 000: fail all PU ID;
+        1 means 001: pass loose ID, fail medium, fail tight;
+        3 means 011: pass loose and medium ID, fail tight;
+        7 means 111: pass loose, medium, tight ID.
+        
+        2017 and 2018:
         0 means 000: fail all PU ID;
         4 means 100: pass loose ID, fail medium, fail tight;
         6 means 110: pass loose and medium ID, fail tight;
@@ -47,9 +55,26 @@ def select_good_bjets(
         An Awkward Array mask containing the selected "good" b-jets that satisfy the specified criteria.
     """
     puid_wps = {
-        "L": 4,
-        "M": 6,
-        "T": 7,
+        "2016APV": {
+            "L": 1,
+            "M": 3,
+            "T": 7,
+        },
+        "2016": {
+            "L": 1,
+            "M": 3,
+            "T": 7,
+        },
+        "2017": {
+            "L": 4,
+            "M": 6,
+            "T": 7,
+        },
+        "2018": {
+            "L": 4,
+            "M": 6,
+            "T": 7,
+        }
     }
     jet_id = {
         "2016APV": 7,
@@ -67,7 +92,7 @@ def select_good_bjets(
         & (jets.pt < 50)
         & (np.abs(jets.eta) < 2.4)
         & (jets.jetId == jet_id[year])
-        & (jets.puId == puid_wps[jet_pileup_id])
+        & (jets.puId == puid_wps[year][jet_pileup_id])
         & (jets.btagDeepFlavB > btag_threshold)
     )
 
