@@ -114,7 +114,11 @@ class MuonCorrector:
                 "medium": "NUM_MediumID_DEN_TrackerMuons",
                 "tight": "NUM_TightID_DEN_TrackerMuons",
             },
-            "2016": {},
+            "2016": {
+                "loose": "NUM_LooseID_DEN_TrackerMuons",
+                "medium": "NUM_MediumID_DEN_TrackerMuons",
+                "tight": "NUM_TightID_DEN_TrackerMuons",
+            },
             "2017": {
                 "loose": "NUM_LooseID_DEN_TrackerMuons",
                 "medium": "NUM_MediumID_DEN_TrackerMuons",
@@ -198,7 +202,23 @@ class MuonCorrector:
                     "tight": "NUM_TightRelIso_DEN_TightIDandIPCut",
                 },
             },
-            "2016": {},
+            "2016": {
+                "loose": {
+                    "loose": "NUM_LooseRelIso_DEN_LooseID",
+                    "medium": None,
+                    "tight": None,
+                },
+                "medium": {
+                    "loose": "NUM_LooseRelIso_DEN_MediumID",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_MediumID",
+                },
+                "tight": {
+                    "loose": "NUM_LooseRelIso_DEN_TightIDandIPCut",
+                    "medium": None,
+                    "tight": "NUM_TightRelIso_DEN_TightIDandIPCut",
+                },
+            },
             "2017": {
                 "loose": {
                     "loose": "NUM_LooseRelIso_DEN_LooseID",
