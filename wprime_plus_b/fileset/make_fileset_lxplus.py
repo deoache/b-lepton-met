@@ -4,7 +4,7 @@ from coffea.dataset_tools.dataset_query import DataDiscoveryCLI
 
 
 ERAS = {
-    "2016APV": ["B", "C", "D", "F"],
+    "2016APV": ["B1", "B2", "C", "D", "E", "F"],
     "2016": ["F", "G", "H"],
     "2017": ["B", "C", "D", "E", "F"],
     "2018": ["A", "B", "C", "D"],
