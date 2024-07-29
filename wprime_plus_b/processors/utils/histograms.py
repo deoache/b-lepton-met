@@ -67,12 +67,12 @@ lepton_bjet_dr_axis = hist.axis.Regular(
     name="lepton_bjet_dr",
 )
 lepton_bjet_mass_axis = hist.axis.Variable(
-    edges=[40, 75, 100, 125, 150, 175, 200, 300, 500],
+    edges=[40, 75, 100, 125, 150, 175, 200,250, 300, 400, 500],
     name="lepton_bjet_mass",
 )
 # lepton + missing energy axes
 lepton_met_mass_axis = hist.axis.Variable(
-    edges=[40, 75, 100, 125, 150, 175, 200, 300, 500, 800],
+    edges=[40, 75, 100, 125, 150, 175, 200,250, 300,400, 500, 600, 700, 800],
     name="lepton_met_mass",
 )
 lepton_met_delta_phi_axis = hist.axis.Regular(
@@ -80,7 +80,7 @@ lepton_met_delta_phi_axis = hist.axis.Regular(
 )
 # lepton + missing energy + bjet axes
 lepton_met_bjet_mass_axis = hist.axis.Variable(
-    edges=[40, 75, 100, 125, 150, 175, 200, 300, 500, 800],
+    edges=[40, 75, 100, 125, 150, 175, 200,250, 300, 400, 500, 600, 700, 800],
     name="lepton_met_bjet_mass",
 )
 
