@@ -11,10 +11,7 @@ from wprime_plus_b.utils.load_config import load_dataset_config, load_processor_
 def build_output_directories(args: dict) -> str:
     """builds output directories for data and metadata. Return output path"""
     # get processor config
-    processor_config_name = "_".join(
-        [i for i in [args["processor"], args["channel"], args["lepton_flavor"]] if i]
-    )
-    processor_config = load_processor_config(config_name=processor_config_name)
+    processor_config = load_processor_config(config_name=args["processor"])
     # get processor output path
     processor_output_path = paths.processor_path(
         processor_name=processor_config.name,
@@ -140,7 +137,7 @@ def manage_processor_args(args: dict) -> dict:
 
 def run_checker(args: dict) -> None:
     # check processor
-    available_processors = ["ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"]
+    available_processors = ["susy", "ttbar", "ztoll", "qcd", "btag_eff", "trigger_eff"]
     if args["processor"] not in available_processors:
         raise ValueError(
             f"Incorrect processor. Available processors are: {available_processors}"

@@ -13,44 +13,24 @@ from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
 from wprime_plus_b.utils import paths
-from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
+from wprime_plus_b.processors.susy import SusyAnalysis
 from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
-#from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
-#from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
-#from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
-from wprime_plus_b.selections.ttbar.electron_config import ttbar_electron_config
-from wprime_plus_b.selections.ttbar.muon_config import ttbar_muon_config
-from wprime_plus_b.selections.ttbar.tau_config import ttbar_tau_config
-from wprime_plus_b.selections.ttbar.bjet_config import ttbar_bjet_config
-from wprime_plus_b.selections.ztoll.config import (
-    ztoll_electron_selection,
-    ztoll_muon_selection,
-    ztoll_jet_selection,
-)
-from wprime_plus_b.selections.qcd.config import (
-    qcd_electron_selection,
-    qcd_muon_selection,
-    qcd_jet_selection,
-    qcd_tau_selection
-)
+from wprime_plus_b.selections.susy.electron_config import susy_electron_config
+from wprime_plus_b.selections.susy.muon_config import susy_muon_config
+from wprime_plus_b.selections.susy.muon_veto_config import susy_muon_veto_config
+from wprime_plus_b.selections.susy.tau_config import susy_tau_config
+from wprime_plus_b.selections.susy.bjet_config import susy_bjet_config
 
 
 def main(args):
     args = vars(args)
     # define processors and executors
     processors = {
-        "ttbar": TtbarAnalysis,
-        #"ztoll": ZToLLProcessor,
-        #"qcd": QcdAnalysis,
+        "susy": SusyAnalysis,
         "btag_eff": BTagEfficiencyProcessor,
-        #"trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_args = [
         "year",
-        "channel",
-        "lepton_flavor",
-        "output_type",
-        "syst",
     ]
     processor_kwargs = {k: args[k] for k in processor_args if args[k]}
     executors = {

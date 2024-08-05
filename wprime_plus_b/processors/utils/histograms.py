@@ -240,5 +240,20 @@ qcd_lepton_bjet_hist = hist.Hist(
 
 
 # -----------------------------
-# trigger efficiency histograms
+# susy histograms
 # ------------------------------
+dimuon_mass_axis = hist.axis.Regular(
+    50, 60, 120, name="dimuon_mass", label="$m_{ll}$ [GeV]"
+)
+mu1_pt_axis = hist.axis.Regular(
+    50, 30, 300, name="mu1_pt", label="$mu_{1} pT$ [GeV]"
+)
+mu2_pt_axis = hist.axis.Regular(
+    50, 30, 300, name="mu2_pt", label="$mu_{2} pT$ [GeV]"
+)
+dimuon_hist = hist.Hist(
+    dimuon_mass_axis,
+    mu1_pt_axis,
+    mu2_pt_axis,
+    hist.storage.Weight(),
+)
