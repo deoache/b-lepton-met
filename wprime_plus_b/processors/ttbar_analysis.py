@@ -469,6 +469,11 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
             
+            # stitching on DY inclusive samples
+            dy_stitching = np.ones(nevents, dtype="bool")
+            if dataset == "DYJetsToLL_inclusive":
+                dy_stitching = events.LHE.HT < 70
+            self.selections.add("dy_stitching", dy_stitching)
             
             if self.year == "2018":
                 # hem-cleaning selection
@@ -514,6 +519,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -527,6 +533,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "two_bjets",
                         "tau_veto",
@@ -542,6 +549,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -555,6 +563,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -570,6 +579,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
@@ -583,6 +593,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "trigger_match",
                         "metfilters",
                         "HEMCleaning",
+                        "dy_stitching",
                         "met_pt",
                         "one_bjet",
                         "tau_veto",
