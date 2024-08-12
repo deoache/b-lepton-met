@@ -1,3 +1,5 @@
+DYJetsToLL_inclusive:
+  nsplit: 10
 DYJetsToLL_M-50_HT-100to200:
   nsplit: 10
 DYJetsToLL_M-50_HT-1200to2500:
