@@ -75,6 +75,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             "lepton_bjet_kin": histograms.ttbar_lepton_bjet_hist,
             "lepton_met_kin": histograms.ttbar_lepton_met_hist,
             "lepton_met_bjet_kin": histograms.ttbar_lepton_met_bjet_hist,
+            "met_mass_kin": histograms.ttbar_met_mass_hist, 
         }
         # define dictionary to store analysis variables
         self.features = {}

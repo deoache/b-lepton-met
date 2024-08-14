@@ -85,7 +85,6 @@ lepton_met_bjet_mass_axis = hist.axis.Variable(
 )
 
 
-
 # --------------------------
 # ttbar analysis histograms
 # --------------------------
@@ -149,6 +148,15 @@ n_vertices_axis = hist.axis.Regular(
 ttbar_n_hist = hist.Hist(
     n_jets_axis,
     n_vertices_axis,
+    syst_axis,
+    hist.storage.Weight(),
+)
+# histograms to estimate tt
+ttbar_met_mass_hist = hist.Hist(
+    lepton_met_mass_axis,
+    lepton_bjet_mass_axis,
+    lepton_met_bjet_mass_axis,
+    ttbar_met_axis,
     syst_axis,
     hist.storage.Weight(),
 )
