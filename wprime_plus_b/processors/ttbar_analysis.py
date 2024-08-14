@@ -471,7 +471,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             
             # stitching on DY inclusive samples
             dy_stitching = np.ones(nevents, dtype="bool")
-            if dataset == "DYJetsToLL_inclusive":
+            if dataset.startswith("DYJetsToLL_inclusive"):
                 dy_stitching = events.LHE.HT < 70
             self.selections.add("dy_stitching", dy_stitching)
             
