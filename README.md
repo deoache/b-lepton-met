@@ -29,7 +29,7 @@ ssh <your_username>@lxplus.cern.ch
 voms-proxy-init --voms cms
 
 # clone the repository 
-git clone -b refactor_highpt https://github.com/deoache/wprime_plus_b.git
+git clone -b susy https://github.com/deoache/wprime_plus_b.git
 
 # move to the fileset directory
 cd wprime_plus_b/wprime_plus_b/fileset/
