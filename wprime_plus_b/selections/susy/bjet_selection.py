@@ -98,7 +98,7 @@ def select_good_bjets(
     )
     high_pt_jets_mask = (
         (jets.pt >= 50)
-        & (np.abs(jets.eta) < 2.4)
+        & (np.abs(jets.eta) < jet_abs_eta)
         & (jets.jetId == jet_id[year])
         & (jets.btagDeepFlavB > btag_threshold[btag_working_point])
     )
