@@ -134,7 +134,7 @@ def main(args):
                         )
                         
             # save ttbar and ztoll metadata
-            if args["processor"] in ["ttbar", "ztoll"]:
+            if args["processor"] in ["ttbar", "ztoll", "susy"]:
                 # save raw and weighted number of events after selection
                 if "raw_final_nevents" in output_metadata:
                     metadata.update(
