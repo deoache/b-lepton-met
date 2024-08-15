@@ -1,5 +1,6 @@
 import json
 import copy
+import vector 
 import pickle
 import numpy as np
 import awkward as ak
@@ -25,11 +26,13 @@ from wprime_plus_b.selections.susy.muon_config import susy_muon_config
 from wprime_plus_b.selections.susy.muon_veto_config import susy_muon_veto_config
 from wprime_plus_b.selections.susy.tau_config import susy_tau_config
 from wprime_plus_b.selections.susy.bjet_config import susy_bjet_config
+from wprime_plus_b.selections.susy.jet_config import susy_jet_config
 from wprime_plus_b.selections.susy.electron_selection import select_good_electrons
 from wprime_plus_b.selections.susy.muon_selection import select_good_muons
 from wprime_plus_b.selections.susy.muon_veto_selection import select_good_veto_muons
 from wprime_plus_b.selections.susy.tau_selection import select_good_taus
 from wprime_plus_b.selections.susy.bjet_selection import select_good_bjets
+from wprime_plus_b.selections.susy.jet_selection import select_good_jets
 from wprime_plus_b.processors.utils.analysis_utils import (
     delta_r_mask,
     normalize,
@@ -49,6 +52,7 @@ class SusyAnalysis(processor.ProcessorABC):
         self.hist_dict = {
             "dimuon_kin": histograms.susy_dimuon_hist,
             "met_kin": histograms.susy_met_hist,
+            "dijet_kin": histograms.susy_dijet_hist,
         }
     def process(self, events):
         # get dataset name
@@ -248,6 +252,22 @@ class SusyAnalysis(processor.ProcessorABC):
             )
             taus = events.Tau[good_taus]
 
+            # select good jets
+            good_jets = select_good_jets(
+                jets=events.Jet,
+                year=self.year,
+                jet_pt_threshold=susy_jet_config["jet_pt_threshold"],
+                jet_abs_eta=susy_jet_config["jet_abs_eta"],
+                jet_pileup_id=susy_jet_config["jet_pileup_id"],
+            )
+            good_jets = (
+                good_jets
+                & (delta_r_mask(events.Jet, electrons, threshold=0.4))
+                & (delta_r_mask(events.Jet, muons, threshold=0.4))
+                & (delta_r_mask(events.Jet, taus, threshold=0.4))
+            )
+            jets = events.Jet[good_jets]
+            
             # select good bjets
             good_bjets = select_good_bjets(
                 jets=events.Jet,
@@ -267,21 +287,53 @@ class SusyAnalysis(processor.ProcessorABC):
             #    vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             #    good_bjets = good_bjets & vetomask
             bjets = events.Jet[good_bjets]
+            
 
+            # create pair combinations with all jets (VBF selection)
+            dijets = ak.combinations(jets, 2, fields=["j1", "j2"])
+            # add dijet 4-momentum field
+            dijets["p4"] = dijets.j1 + dijets.j2
+            # impose some cuts on the dijets
+            dijets = dijets[
+                (ak.num(dijets) > 1)
+                & (np.abs(dijets.j1.eta - dijets.j2.eta) > 3.8)
+                & (dijets.j1.eta * dijets.j2.eta < 0)
+                & (dijets.p4.mass > 500)
+            ]
+            # get largest dijet mass
+            largest_dijets_mass = ak.max(dijets.p4.mass, axis=1)
+            
+            
             # create pair combinations with all muons
             dimuons = ak.combinations(muons, 2, fields=["mu1", "mu2"])
             # add dimuon 4-momentum field
             dimuons["p4"] = dimuons.mu1 + dimuons.mu2
-            # add dimuon pt to MET to simulate 0lepton state
-            dimuon_met = (dimuons.p4 + events.MET).pt
             # impose some cuts on the dimuons
-            dimuon_n = ak.num(dimuons) > 0
-            dimuon_mass = (dimuons.p4.mass > 60) & (dimuons.p4.mass < 120)
-            dimuon_charge = dimuons.mu1.charge * dimuons.mu2.charge < 0
-            dimuons_plus_met_pt = dimuon_met > 250
             dimuons = dimuons[
-                dimuon_n & dimuon_mass & dimuon_charge & dimuons_plus_met_pt
+                (ak.num(dimuons) > 0)
+                & ((dimuons.p4.mass > 60) & (dimuons.p4.mass < 120))
+                & (dimuons.mu1.charge * dimuons.mu2.charge < 0)
             ]
+            
+            # add muons pT to MET to simulate a 0-lepton final state
+            all_muons = ak.sum(muons, axis=1)
+            muons2D = ak.zip(
+                {
+                    "pt": all_muons.pt,
+                    "phi": all_muons.phi,
+                },
+                with_name="Momentum2D",
+                behavior=vector.backends.awkward.behavior,
+            )
+            met2D = ak.zip(
+                {
+                    "pt": events.MET.pt,
+                    "phi": events.MET.phi,
+                },
+                with_name="Momentum2D",
+                behavior=vector.backends.awkward.behavior,
+            )
+            zl_state_met_pt = (met2D + muons2D).pt
             # -------------------------------------------------------------
             # event selection
             # -------------------------------------------------------------
@@ -320,6 +372,8 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("metfilters", metfilters)
             # select events with at least one good vertex
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
+            
+            self.selections.add("0lstate", zl_state_met_pt > 250)
             # add number of leptons and jets
             self.selections.add("atleast_two_muons", ak.num(muons) > 1)
             self.selections.add("muon_veto", ak.num(veto_muons) == 0)
@@ -372,6 +426,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 "trigger_match",
                 "metfilters",
                 "HEMCleaning",
+                "0lstate",
                 "atleast_two_muons",
                 "muon_veto",
                 "electron_veto",
@@ -402,7 +457,8 @@ class SusyAnalysis(processor.ProcessorABC):
                 feature_map = {
                     "dimuon_mass": dimuons.p4.mass[region_selection],
                     "dimuon_pt": dimuons.p4.pt[region_selection],
-                    "met": dimuon_met[region_selection],
+                    "met": zl_state_met_pt[region_selection],
+                    "dijet_mass": largest_dijets_mass[region_selection],
                 }
                 if syst_var == "nominal":
                     # save weighted events to metadata
