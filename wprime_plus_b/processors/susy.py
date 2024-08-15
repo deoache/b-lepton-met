@@ -30,18 +30,26 @@ from wprime_plus_b.selections.susy.muon_selection import select_good_muons
 from wprime_plus_b.selections.susy.muon_veto_selection import select_good_veto_muons
 from wprime_plus_b.selections.susy.tau_selection import select_good_taus
 from wprime_plus_b.selections.susy.bjet_selection import select_good_bjets
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, trigger_match
+from wprime_plus_b.processors.utils.analysis_utils import (
+    delta_r_mask,
+    normalize,
+    trigger_match,
+)
 
 
 class SusyAnalysis(processor.ProcessorABC):
     def __init__(
         self,
         year: str = "2017",
+        output_type: str = "hist",
     ):
         self.year = year
+        self.output_type = output_type
         # initialize dictionary of hists for control regions
-        self.hist_dict = histograms.dimuon_hist
-
+        self.hist_dict = {
+            "dimuon_kin": histograms.susy_dimuon_hist,
+            "met_kin": histograms.susy_met_hist,
+        }
     def process(self, events):
         # get dataset name
         dataset = events.metadata["dataset"]
@@ -55,7 +63,6 @@ class SusyAnalysis(processor.ProcessorABC):
         output = {}
         output["metadata"] = {}
         output["metadata"].update({"raw_initial_nevents": nevents})
-
         # define systematic variations shifts
         syst_variations = ["nominal"]
         for syst_var in syst_variations:
@@ -67,16 +74,11 @@ class SusyAnalysis(processor.ProcessorABC):
                 apply_jet_corrections(events, self.year)
                 # apply energy corrections to taus (only to MC)
                 apply_tau_energy_scale_corrections(
-                    events=events, 
-                    year=self.year, 
-                    variation=syst_var
+                    events=events, year=self.year, variation=syst_var
                 )
             # apply rochester corretions to muons
             apply_rochester_corrections(
-                events=events, 
-                is_mc=self.is_mc, 
-                year=self.year,
-                variation=syst_var
+                events=events, is_mc=self.is_mc, year=self.year, variation=syst_var
             )
             # apply MET phi modulation corrections
             apply_met_phi_corrections(
@@ -93,13 +95,11 @@ class SusyAnalysis(processor.ProcessorABC):
             ) as path:
                 with open(path, "r") as handle:
                     self._triggers = json.load(handle)[self.year]
-            
             trigger_paths = self._triggers[susy_muon_config["muon_id_wp"]]
             trigger_mask = np.zeros(nevents, dtype="bool")
             for tp in trigger_paths:
                 if tp in events.HLT.fields:
                     trigger_mask = trigger_mask | events.HLT[tp]
-
             # get DeltaR matched trigger objects mask
             trigger_match_mask = np.zeros(nevents, dtype="bool")
             for trigger_path in trigger_paths:
@@ -109,7 +109,6 @@ class SusyAnalysis(processor.ProcessorABC):
                     trigger_path=trigger_path,
                 )
                 trigger_match_mask = trigger_match_mask | trig_match
-                
             # set weights container
             weights_container = Weights(len(events), storeIndividual=True)
             if self.is_mc:
@@ -153,12 +152,9 @@ class SusyAnalysis(processor.ProcessorABC):
                 )
                 # add electron reco weights
                 electron_corrector.add_reco_weight()
-                
+
                 # muon corrector
-                if (
-                    susy_muon_config["muon_id_wp"]
-                    == "highpt"
-                ):
+                if susy_muon_config["muon_id_wp"] == "highpt":
                     mu_corrector = MuonHighPtCorrector
                 else:
                     mu_corrector = MuonCorrector
@@ -168,19 +164,17 @@ class SusyAnalysis(processor.ProcessorABC):
                     year=self.year,
                     variation=syst_var,
                     id_wp=susy_muon_config["muon_id_wp"],
-                    iso_wp=susy_muon_config["muon_iso_wp"]
+                    iso_wp=susy_muon_config["muon_iso_wp"],
                 )
                 # add muon ID weights
                 muon_corrector.add_id_weight()
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add trigger weights
-
-                #muon_corrector.add_triggeriso_weight(
-                #    trigger_mask=trigger_mask,
-                #    trigger_match_mask=trigger_match_mask,
-                #)
-                
+                muon_corrector.add_triggeriso_weight(
+                    trigger_mask=trigger_mask,
+                    trigger_match_mask=trigger_match_mask,
+                )
                 # add tau weights
                 tau_corrector = TauCorrector(
                     taus=events.Tau,
@@ -202,7 +196,6 @@ class SusyAnalysis(processor.ProcessorABC):
                 output["metadata"].update({"weight_statistics": {}})
                 for weight, statistics in weights_container.weightStatistics.items():
                     output["metadata"]["weight_statistics"][weight] = statistics
-                    
             # -------------------------------------------------------------
             # object selection
             # -------------------------------------------------------------
@@ -212,7 +205,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 electron_pt_threshold=susy_electron_config["electron_pt_threshold"],
                 electron_abs_eta=susy_electron_config["electron_abs_eta"],
                 electron_id_wp=susy_electron_config["electron_id_wp"],
-                electron_iso_wp=susy_electron_config["electron_iso_wp"]
+                electron_iso_wp=susy_electron_config["electron_iso_wp"],
             )
             electrons = events.Electron[good_electrons]
 
@@ -222,18 +215,18 @@ class SusyAnalysis(processor.ProcessorABC):
                 muon_pt_threshold=susy_muon_config["muon_pt_threshold"],
                 abs_muon_eta=susy_muon_config["abs_muon_eta"],
                 muon_id_wp=susy_muon_config["muon_id_wp"],
-                muon_iso_wp=susy_muon_config["muon_iso_wp"]
+                muon_iso_wp=susy_muon_config["muon_iso_wp"],
             )
             muon_electron_dr = delta_r_mask(events.Muon, electrons, threshold=0.4)
             muons = events.Muon[good_muons & muon_electron_dr]
-            
+
             good_veto_muons = select_good_veto_muons(
                 events=events,
                 muon_pt_threshold_min=susy_muon_veto_config["muon_pt_threshold_min"],
                 muon_pt_threshold_max=susy_muon_veto_config["muon_pt_threshold_max"],
                 abs_muon_eta=susy_muon_veto_config["abs_muon_eta"],
                 muon_id_wp=susy_muon_veto_config["muon_id_wp"],
-                muon_iso_wp=susy_muon_veto_config["muon_iso_wp"]
+                muon_iso_wp=susy_muon_veto_config["muon_iso_wp"],
             )
             veto_muons = events.Muon[good_veto_muons & muon_electron_dr]
 
@@ -270,25 +263,25 @@ class SusyAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
             )
-            #if self.year in ["2016APV", "2016", "2018"]:
+            # if self.year in ["2016APV", "2016", "2018"]:
             #    vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             #    good_bjets = good_bjets & vetomask
             bjets = events.Jet[good_bjets]
-            
+
             # create pair combinations with all muons
             dimuons = ak.combinations(muons, 2, fields=["mu1", "mu2"])
             # add dimuon 4-momentum field
             dimuons["p4"] = dimuons.mu1 + dimuons.mu2
             # add dimuon pt to MET to simulate 0lepton state
-            dimuons["met_pt"] = (dimuons.p4 + events.MET).pt
-
+            dimuon_met = (dimuons.p4 + events.MET).pt
             # impose some cuts on the dimuons
             dimuon_n = ak.num(dimuons) > 0
             dimuon_mass = (dimuons.p4.mass > 60) & (dimuons.p4.mass < 120)
             dimuon_charge = dimuons.mu1.charge * dimuons.mu2.charge < 0
-            dimuons_plus_met_pt = dimuons.met_pt > 250
-            dimuons = dimuons[dimuon_n & dimuon_mass & dimuon_charge & dimuons_plus_met_pt]
-
+            dimuons_plus_met_pt = dimuon_met > 250
+            dimuons = dimuons[
+                dimuon_n & dimuon_mass & dimuon_charge & dimuons_plus_met_pt
+            ]
             # -------------------------------------------------------------
             # event selection
             # -------------------------------------------------------------
@@ -333,12 +326,13 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("electron_veto", ak.num(electrons) == 0)
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("bjet_veto", ak.num(bjets) == 0)
-            
+
             if self.year == "2018":
                 # hem-cleaning selection
                 # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
-                # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the 
+                # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the
                 # region -3 < eta <-1.3 and -1.57 < phi < -0.87 to remove fake MET
+
                 hem_veto = ak.any(
                     (
                         (bjets.eta > -3.2)
@@ -358,16 +352,19 @@ class SusyAnalysis(processor.ProcessorABC):
                     -1,
                 )
                 hem_cleaning = (
-                    ((events.run >= 319077) & (not self.is_mc))  # if data check if in Runs C or D
+                    (
+                        (events.run >= 319077) & (not self.is_mc)
+                    )  # if data check if in Runs C or D
                     # else for MC randomly cut based on lumi fraction of C&D
                     | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
                 ) & (hem_veto)
 
-                #self.selections.add("HEMCleaning", ~hem_cleaning)
+                # self.selections.add("HEMCleaning", ~hem_cleaning)
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             # define selection region
+
             region_selections = [
                 "goodvertex",
                 "lumi",
@@ -379,11 +376,11 @@ class SusyAnalysis(processor.ProcessorABC):
                 "muon_veto",
                 "electron_veto",
                 "tau_veto",
-                "bjet_veto"
+                "bjet_veto",
             ]
             self.selections.add("0lep", self.selections.all(*region_selections))
             region_selection = self.selections.all("0lep")
-            
+
             # save cutflow
             if syst_var == "nominal":
                 cut_names = region_selections
@@ -402,15 +399,11 @@ class SusyAnalysis(processor.ProcessorABC):
             nevents_after = ak.sum(region_selection)
             if nevents_after > 0:
                 # select region objects
-                region_dimuons = bjets[region_selection]
-                region_muons = muons[region_selection]
-                
                 feature_map = {
                     "dimuon_mass": dimuons.p4.mass[region_selection],
-                    "mu1_pt": dimuons.mu1.pt[region_selection],
-                    "mu2_pt": dimuons.mu2.pt[region_selection],
+                    "dimuon_pt": dimuons.p4.pt[region_selection],
+                    "met": dimuon_met[region_selection],
                 }
-
                 if syst_var == "nominal":
                     # save weighted events to metadata
                     output["metadata"].update(
@@ -424,21 +417,66 @@ class SusyAnalysis(processor.ProcessorABC):
                 # -------------------------------------------------------------
                 # histogram filling
                 # -------------------------------------------------------------
-                region_weight = weights_container.weight()[region_selection]
-                # get filling arguments
-                fill_args = {
-                    feature: normalize(feature_map[feature])
-                    for feature in feature_map
-                }
-                # fill histograms
-                hist_dict.fill(
-                    **fill_args,
-                    weight=region_weight,
-                )
-                
+                if self.output_type == "hist":
+                    # break up the histogram filling for event-wise variations and object-wise variations
+                    # apply event-wise variations only for nominal
+                    if self.is_mc and syst_var == "nominal":
+                        # get event weight systematic variations for MC samples
+                        variations = ["nominal"] + list(weights_container.variations)
+                        for variation in variations:
+                            if variation == "nominal":
+                                region_weight = weights_container.weight()[
+                                    region_selection
+                                ]
+                            else:
+                                region_weight = weights_container.weight(
+                                    modifier=variation
+                                )[region_selection]
+                            for kin in hist_dict:
+                                fill_args = {
+                                    feature: normalize(feature_map[feature])
+                                    for feature in hist_dict[kin].axes.name
+                                    if feature not in ["variation"]
+                                }
+                                hist_dict[kin].fill(
+                                    **fill_args,
+                                    variation=variation,
+                                    weight=region_weight,
+                                )
+                    elif self.is_mc and syst_var != "nominal":
+                        # object-wise variations
+                        region_weight = weights_container.weight()[region_selection]
+                        for kin in hist_dict:
+                            # get filling arguments
+                            fill_args = {
+                                feature: normalize(feature_map[feature])
+                                for feature in hist_dict[kin].axes.name[:-1]
+                                if feature not in ["variation"]
+                            }
+                            # fill histograms
+                            hist_dict[kin].fill(
+                                **fill_args,
+                                variation=syst_var,
+                                weight=region_weight,
+                            )
+                    elif not self.is_mc and syst_var == "nominal":
+                        # object-wise variations
+                        region_weight = weights_container.weight()[region_selection]
+                        for kin in hist_dict:
+                            # get filling arguments
+                            fill_args = {
+                                feature: normalize(feature_map[feature])
+                                for feature in hist_dict[kin].axes.name[:-1]
+                                if feature not in ["variation"]
+                            }
+                            # fill histograms
+                            hist_dict[kin].fill(
+                                **fill_args,
+                                variation=syst_var,
+                                weight=region_weight,
+                            )
         # define output dictionary accumulator
         output["histograms"] = hist_dict
-            
         return {dataset: output}
 
     def postprocess(self, accumulator):
