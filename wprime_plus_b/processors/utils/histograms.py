@@ -246,7 +246,13 @@ dimuon_mass_axis = hist.axis.Regular(
     50, 60, 120, name="dimuon_mass", label="$m_{\mu\mu}$ [GeV]"
 )
 dimuon_pt_axis = hist.axis.Regular(
-    80, 0, 1000, name="dimuon_pt", label="$pT_{\mu\mu} pT$ [GeV]"
+    100, 0, 1000, name="dimuon_pt", label="$pT_{\mu\mu} pT$ [GeV]"
+)
+met_axis = hist.axis.Regular(
+    100, 250, 1000, name="met", label="$p_T^{miss}$ [GeV]"
+)
+dijet_mass_axis = hist.axis.Regular(
+    100, 500, 5000, name="dijet_mass", label="$m_{jj}$ [GeV]"
 )
 susy_dimuon_hist = hist.Hist(
     dimuon_mass_axis,
@@ -254,12 +260,13 @@ susy_dimuon_hist = hist.Hist(
     syst_axis,
     hist.storage.Weight(),
 )
-
-met_axis = hist.axis.Regular(
-    50, 250, 1000, name="met", label="$p_T^{miss}$ [GeV]"
-)
 susy_met_hist = hist.Hist(
     met_axis,
+    syst_axis,
+    hist.storage.Weight(),
+)
+susy_dijet_hist = hist.Hist(
+    dijet_mass_axis,
     syst_axis,
     hist.storage.Weight(),
 )
