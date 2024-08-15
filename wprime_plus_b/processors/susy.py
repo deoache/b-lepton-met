@@ -372,8 +372,13 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("metfilters", metfilters)
             # select events with at least one good vertex
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
-            
+            # cut on MET 
             self.selections.add("0lstate", zl_state_met_pt > 250)
+            # stitching on DY inclusive samples
+            dy_stitching = np.ones(nevents, dtype="bool")
+            if dataset.startswith("DYJetsToLL_inclusive"):
+                dy_stitching = events.LHE.HT < 70
+            self.selections.add("dy_stitching", dy_stitching)
             # add number of leptons and jets
             self.selections.add("atleast_two_muons", ak.num(muons) > 1)
             self.selections.add("muon_veto", ak.num(veto_muons) == 0)
@@ -426,6 +431,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 "trigger_match",
                 "metfilters",
                 "HEMCleaning",
+                "dy_stitching",
                 "0lstate",
                 "atleast_two_muons",
                 "muon_veto",
