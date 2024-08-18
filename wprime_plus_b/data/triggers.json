@@ -1,12 +1,14 @@
 {
    "2016APV": {
        "tight":[
-           "IsoMu24"
+           "IsoMu24",
+           "IsoTkMu24"
        ]
    },
     "2016": {
        "tight":[
-           "IsoMu24"
+           "IsoMu24",
+           "IsoTkMu24"
        ]
    },
     "2017": {
@@ -14,7 +16,7 @@
            "IsoMu27"
        ]
    },
-    "2017": {
+    "2018": {
        "tight":[
            "IsoMu24"
        ]
