@@ -261,6 +261,11 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
             "filterbit": (trigobjs.filterBits & 8192) > 0,
             "id": abs(trigobjs.id) == 11
         },
+        "IsoTkMu24": {
+            "pt": trigobjs.pt > 22,
+            "filterbit": (trigobjs.filterBits & 8) > 0,
+            "id": abs(trigobjs.id) == 13
+        },
     }
     pass_pt = match_configs[trigger_path]["pt"]
     pass_id = match_configs[trigger_path]["id"]
