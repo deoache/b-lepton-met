@@ -243,16 +243,20 @@ qcd_lepton_bjet_hist = hist.Hist(
 # susy histograms
 # ------------------------------
 dimuon_mass_axis = hist.axis.Regular(
-    50, 60, 120, name="dimuon_mass", label="$m_{\mu\mu}$ [GeV]"
+    23, 60, 120, name="dimuon_mass", label="$m(\mu\mu)$ [GeV]"
 )
 dimuon_pt_axis = hist.axis.Regular(
-    100, 0, 1000, name="dimuon_pt", label="$pT_{\mu\mu} pT$ [GeV]"
+    50, 0, 1000, name="dimuon_pt", label="$p_T(\mu\mu)$ [GeV]"
 )
-met_axis = hist.axis.Regular(
-    100, 250, 1000, name="met", label="$p_T^{miss}$ [GeV]"
+met_axis = hist.axis.Variable(
+    edges=[250, 260, 270, 280, 290, 300, 320, 340, 360, 380, 400, 450, 500, 1000],
+    name="met", 
+    label="$p_T^{miss}$ [GeV]"
 )
-dijet_mass_axis = hist.axis.Regular(
-    100, 500, 5000, name="dijet_mass", label="$m_{jj}$ [GeV]"
+dijet_mass_axis = hist.axis.Variable(
+    edges=[500, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3200, 3800, 5000],
+    name="dijet_mass", 
+    label="Largest $m(jj)$ [GeV]"
 )
 susy_dimuon_hist = hist.Hist(
     dimuon_mass_axis,
