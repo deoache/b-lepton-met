@@ -2,22 +2,22 @@ DYJetsToLL_inclusive_50:
   nsplit: 10
 DYJetsToLL_inclusive_10to50:
   nsplit: 10
+DYJetsToLL_M-50_HT-70to100:
+  nsplit: 2
 DYJetsToLL_M-50_HT-100to200:
-  nsplit: 10
-DYJetsToLL_M-50_HT-1200to2500:
-  nsplit: 5
+  nsplit: 3
 DYJetsToLL_M-50_HT-200to400:
   nsplit: 5
-DYJetsToLL_M-50_HT-2500toInf:
-  nsplit: 5
 DYJetsToLL_M-50_HT-400to600:
-  nsplit: 5
+  nsplit: 2
 DYJetsToLL_M-50_HT-600to800:
-  nsplit: 5
-DYJetsToLL_M-50_HT-70to100:
-  nsplit: 10
+  nsplit: 2
 DYJetsToLL_M-50_HT-800to1200:
-  nsplit: 5
+  nsplit: 2
+DYJetsToLL_M-50_HT-1200to2500:
+  nsplit: 2
+DYJetsToLL_M-50_HT-2500toInf:
+  nsplit: 2
 GluGluHToWWToLNuQQ:
   nsplit: 1
 ST_s-channel_4f_leptonDecays:
