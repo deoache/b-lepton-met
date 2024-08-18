@@ -223,7 +223,8 @@ class SusyAnalysis(processor.ProcessorABC):
             )
             muon_electron_dr = delta_r_mask(events.Muon, electrons, threshold=0.4)
             muons = events.Muon[good_muons & muon_electron_dr]
-
+            
+            
             good_veto_muons = select_good_veto_muons(
                 events=events,
                 muon_pt_threshold_min=susy_muon_veto_config["muon_pt_threshold_min"],
@@ -233,7 +234,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 muon_iso_wp=susy_muon_veto_config["muon_iso_wp"],
             )
             veto_muons = events.Muon[good_veto_muons & muon_electron_dr]
-
+            
             # select good taus
             good_taus = select_good_taus(
                 events=events,
@@ -247,8 +248,8 @@ class SusyAnalysis(processor.ProcessorABC):
             )
             good_taus = (
                 (good_taus)
-                & (delta_r_mask(events.Tau, electrons, threshold=0.4))
-                & (delta_r_mask(events.Tau, muons, threshold=0.4))
+                & (delta_r_mask(events.Tau, electrons, threshold=0.3))
+                & (delta_r_mask(events.Tau, muons, threshold=0.3))
             )
             taus = events.Tau[good_taus]
 
@@ -288,33 +289,9 @@ class SusyAnalysis(processor.ProcessorABC):
             #    good_bjets = good_bjets & vetomask
             bjets = events.Jet[good_bjets]
             
-
-            # create pair combinations with all jets (VBF selection)
-            dijets = ak.combinations(jets, 2, fields=["j1", "j2"])
-            # add dijet 4-momentum field
-            dijets["p4"] = dijets.j1 + dijets.j2
-            # impose some cuts on the dijets
-            dijets = dijets[
-                (ak.num(dijets) > 1)
-                & (np.abs(dijets.j1.eta - dijets.j2.eta) > 3.8)
-                & (dijets.j1.eta * dijets.j2.eta < 0)
-                & (dijets.p4.mass > 500)
-            ]
-            # get largest dijet mass
-            largest_dijets_mass = ak.max(dijets.p4.mass, axis=1)
-            
-            
-            # create pair combinations with all muons
-            dimuons = ak.combinations(muons, 2, fields=["mu1", "mu2"])
-            # add dimuon 4-momentum field
-            dimuons["p4"] = dimuons.mu1 + dimuons.mu2
-            # impose some cuts on the dimuons
-            dimuons = dimuons[
-                (ak.num(dimuons) > 0)
-                & ((dimuons.p4.mass > 60) & (dimuons.p4.mass < 120))
-                & (dimuons.mu1.charge * dimuons.mu2.charge < 0)
-            ]
-            
+            # -------------------------------------------------------------
+            # compsite object selection
+            # -------------------------------------------------------------
             # add muons pT to MET to simulate a 0-lepton final state
             all_muons = ak.sum(muons, axis=1)
             muons2D = ak.zip(
@@ -334,6 +311,29 @@ class SusyAnalysis(processor.ProcessorABC):
                 behavior=vector.backends.awkward.behavior,
             )
             zl_state_met_pt = (met2D + muons2D).pt
+            # create pair combinations with all muons
+            dimuons = ak.combinations(muons, 2, fields=["mu1", "mu2"])
+            # add dimuon 4-momentum field
+            dimuons["p4"] = dimuons.mu1 + dimuons.mu2
+            # impose some cuts on the dimuons
+            dimuons = dimuons[
+                ((dimuons.p4.mass > 60) & (dimuons.p4.mass < 120))
+                & (dimuons.mu1.charge * dimuons.mu2.charge < 0)
+            ]
+            
+            # create pair combinations with all jets (VBF selection)
+            dijets = ak.combinations(jets, 2, fields=["j1", "j2"])
+            # add dijet 4-momentum field
+            dijets["p4"] = dijets.j1 + dijets.j2
+            # impose some cuts on the dijets
+            dijets = dijets[
+                (np.abs(dijets.j1.eta - dijets.j2.eta) > 3.8)
+                & (dijets.j1.eta * dijets.j2.eta < 0)
+                & (dijets.p4.mass > 500)
+            ]
+            # get largest dijet mass
+            largest_dijets_mass = ak.max(dijets.p4.mass, axis=1)
+            
             # -------------------------------------------------------------
             # event selection
             # -------------------------------------------------------------
@@ -381,6 +381,8 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("dy_stitching", dy_stitching)
             # add number of leptons and jets
             self.selections.add("atleast_two_muons", ak.num(muons) > 1)
+            self.selections.add("atleast_one_dimuon", ak.num(dimuons) > 0)
+            self.selections.add("atleast_two_jets", ak.num(jets) > 1)
             self.selections.add("muon_veto", ak.num(veto_muons) == 0)
             self.selections.add("electron_veto", ak.num(electrons) == 0)
             self.selections.add("tau_veto", ak.num(taus) == 0)
@@ -434,6 +436,8 @@ class SusyAnalysis(processor.ProcessorABC):
                 "dy_stitching",
                 "0lstate",
                 "atleast_two_muons",
+                "atleast_one_dimuon",
+                "atleast_two_jets",
                 "muon_veto",
                 "electron_veto",
                 "tau_veto",
