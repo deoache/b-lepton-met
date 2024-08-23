@@ -6,44 +6,43 @@ import pandas as pd
 import awkward as ak
 from typing import List
 from coffea import processor
+import importlib.resources
 from coffea.analysis_tools import Weights, PackedSelection
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize
-from wprime_plus_b.corrections.jec import jet_corrections
-from wprime_plus_b.corrections.met import met_phi_corrections
 from wprime_plus_b.corrections.btag import BTagCorrector
 from wprime_plus_b.corrections.pileup import add_pileup_weight
 from wprime_plus_b.corrections.l1prefiring import add_l1prefiring_weight
 from wprime_plus_b.corrections.pujetid import add_pujetid_weight
-from wprime_plus_b.corrections.lepton import (
-    ElectronCorrector,
-    MuonCorrector,
-    TauCorrector,
-)
-from wprime_plus_b.corrections.tau_energy import tau_energy_scale, met_corrected_tes
+from wprime_plus_b.corrections.electron import ElectronCorrector
+from wprime_plus_b.corrections.muon import MuonCorrector
+from wprime_plus_b.corrections.muon_highpt import MuonHighPtCorrector
+from wprime_plus_b.corrections.tau import TauCorrector
 
+from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, trigger_match
+from wprime_plus_b.corrections.jec import apply_jet_corrections
+from wprime_plus_b.corrections.met import apply_met_phi_corrections
+from wprime_plus_b.corrections.rochester import apply_rochester_corrections
+from wprime_plus_b.corrections.tau_energy import apply_tau_energy_scale_corrections
 
 class TriggerEfficiencyProcessor(processor.ProcessorABC):
     def __init__(
         self,
         year: str = "2017",
-        yearmod: str = "",
         lepton_flavor: str = "ele",
         output_type: str = "hist",
     ):
-        self._year = year
-        self._yearmod = yearmod
-        self._lepton_flavor = lepton_flavor
+        self.year = year
+        self.lepton_flavor = lepton_flavor
 
         # open triggers
         with open("wprime_plus_b/data/triggers.json", "r") as f:
-            self._triggers = json.load(f)[self._year]
+            self._triggers = json.load(f)[self.year]
         # open btagDeepFlavB
-        with open("wprime_plus_b/data/btagDeepFlavB.json", "r") as f:
-            self._btagDeepFlavB = json.load(f)[self._year]
+        with open("wprime_plus_b/data/btagWPs.json", "r") as f:
+            self._btagDeepFlavB = json.load(f)["deepJet"][self.year]["M"]
         # open met filters
         # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETOptionalFiltersRun2
         with open("wprime_plus_b/data/metfilters.json", "rb") as handle:
-            self._metfilters = json.load(handle)[self._year]
+            self._metfilters = json.load(handle)[self.year]
         # open lumi masks
         with open("wprime_plus_b/data/lumi_masks.pkl", "rb") as handle:
             self._lumi_mask = pickle.load(handle)
@@ -160,20 +159,154 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         # dictionary to store output data and metadata
         output = {}
 
-        # get triggers masks
-        trigger_mask = {}
-        for ch in ["ele", "mu"]:
-            trigger_mask[ch] = np.zeros(nevents, dtype="bool")
-            for t in self._triggers[ch]:
-                if t in events.HLT.fields:
-                    trigger_mask[ch] = trigger_mask[ch] | events.HLT[t]
-                    
-        # apply corrections to jet/met
         if self.is_mc:
-            corrected_jets, met = jet_corrections(events, self._year)
-        else:
-            corrected_jets, met = events.Jet, events.MET
+            apply_jet_corrections(events, self.year)
+
+        # apply energy corrections to taus (only to MC)
+        if self.is_mc:
+            apply_tau_energy_scale_corrections(
+                events=events, 
+                year=self.year, 
+                variation="nominal"
+            )
+        # apply rochester corretions to muons
+        apply_rochester_corrections(
+            events=events, 
+            is_mc=self.is_mc, 
+            year=self.year,
+            variation="nominal"
+        )
+        # apply MET phi modulation corrections
+        apply_met_phi_corrections(
+            events=events,
+            is_mc=self.is_mc,
+            year=self.year,
+        )
             
+        # get trigger mask
+        with importlib.resources.path(
+            "wprime_plus_b.data", "triggers.json"
+        ) as path:
+            with open(path, "r") as handle:
+                self._triggers = json.load(handle)[self.year]
+    
+        trigger_paths = {
+            "2017": {
+                "ele": ["Ele35_WPTight_Gsf", "Photon200"],
+                "mu": ["IsoMu27"]
+            }
+        }
+        def get_trigger(trigger_path):
+            trigger_mask = np.zeros(nevents, dtype="bool")
+            for tp in trigger_paths:
+                if tp in events.HLT.fields:
+                    trigger_mask = trigger_mask | events.HLT[tp]
+            return trigger_mask
+    
+        trigger_ele = get_trigger(trigger_paths[self.year]["ele"])
+        trigger_mu = get_trigger(trigger_paths[self.year]["mu"])
+        
+        trigger_match_mask = np.zeros(nevents, dtype="bool")
+        for trigger_path in trigger_paths[self.year]["mu"]:
+            trig_match = trigger_match(
+                leptons=events.Muon,
+                trigobjs=events.TrigObj,
+                trigger_path=trigger_path,
+            )
+            trigger_match_mask = trigger_match_mask | trig_match
+                
+        # set weights container
+        weights_container = Weights(len(events), storeIndividual=True)
+        if self.is_mc:
+            # add gen weigths
+            weights_container.add("genweight", events.genWeight)
+            # add l1prefiring weigths
+            add_l1prefiring_weight(events, weights_container, self.year, "nominal")
+            # add pileup weigths
+            add_pileup_weight(events, weights_container, self.year, "nominal")
+            # add pujetid weigths
+            add_pujetid_weight(
+                jets=events.Jet,
+                weights=weights_container,
+                year=self.year,
+                working_point="M",
+                variation="nominal",
+            )
+            # b-tagging corrector
+            btag_corrector = BTagCorrector(
+                jets=events.Jet,
+                weights=weights_container,
+                sf_type="comb",
+                worging_point="M",
+                tagger="deepJet",
+                year=self.year,
+                full_run=False,
+                variation="nominal",
+            )
+            # add b-tagging weights
+            btag_corrector.add_btag_weights(flavor="bc")
+            btag_corrector.add_btag_weights(flavor="light")
+            # electron corrector
+            electron_corrector = ElectronCorrector(
+                electrons=events.Electron,
+                weights=weights_container,
+                year=self.year,
+            )
+            # add electron ID weights
+            electron_corrector.add_id_weight("wp80iso" if self.lepton_flavor == "ele" else "wp90iso")
+            # add electron reco weights
+            electron_corrector.add_reco_weight()
+            # add trigger weights
+            if self.lepton_flavor == "ele":
+                """
+                electron_corrector.add_trigger_weight(
+                    trigger_mask=trigger_mask["ele"],
+                    trigger_match_mask=trigger_match_mask
+                )
+                """
+                pass
+
+            # muon corrector
+            if self.lepton_flavor == "mu":
+                mu_corrector = MuonHighPtCorrector
+            else:
+                mu_corrector = MuonCorrector
+            muon_corrector = mu_corrector(
+                muons=events.Muon,
+                weights=weights_container,
+                year=self.year,
+                variation="nominal",
+                id_wp="tight",
+                iso_wp="tight",
+            )
+            # add muon ID weights
+            muon_corrector.add_id_weight()
+            # add muon iso weights
+            muon_corrector.add_iso_weight()
+            # add trigger weights
+            if self.lepton_flavor == "ele":
+                muon_corrector.add_triggeriso_weight(
+                    trigger_mask=trigger_mu,
+                    trigger_match_mask=trigger_match_mask,
+                )
+
+            # add tau weights
+            tau_corrector = TauCorrector(
+                taus=events.Tau,
+                weights=weights_container,
+                year=self.year,
+                tau_vs_jet="Loose",
+                tau_vs_ele="VVLoose",
+                tau_vs_mu="Loose",
+                variation="nominal",
+            )
+            tau_corrector.add_id_weight_deeptauvse()
+            tau_corrector.add_id_weight_deeptauvsmu()
+            tau_corrector.add_id_weight_deeptauvsjet()
+
+        # save sum of weights before selections
+        output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
+                
         # --------------------
         # object selection
         # --------------------
@@ -187,7 +320,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             )
             & (
                 events.Electron.mvaFall17V2Iso_WP80
-                if self._lepton_flavor == "ele"
+                if self.lepton_flavor == "ele"
                 else events.Electron.mvaFall17V2Iso_WP90
             )
         )
@@ -207,32 +340,28 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             delta_r_mask(events.Muon, electrons, threshold=0.4)
         )
         muons = events.Muon[good_muons]
-        # correct and select muons
-        # apply Tau energy corrections (only to MC)
-        corrected_taus = events.Tau
-        if self.is_mc:
-            # Data does not have corrections
-            corrected_taus["pt"], corrected_taus["mass"] = tau_energy_scale(
-                events, "2017", "", "DeepTau2017v2p1", "nom"
-            )
-            # Given the tau corrections. We need to recalculate the MET.
-            # https://github.com/columnflow/columnflow/blob/16d35bb2f25f62f9110a8f1089e8dc5c62b29825/columnflow/calibration/util.py#L42
-            # https://github.com/Katsch21/hh2bbtautau/blob/e268752454a0ce0089ff08cc6c373a353be77679/hbt/calibration/tau.py#L117
-
-            met["pt"], met["phi"] = met_corrected_tes(
-                old_taus=events.Tau, new_taus=corrected_taus, met=met
-            )
-        tau_dm = corrected_taus.decayMode
+        
+        # correct and select taus
+        prong_to_modes = {
+            1: [0, 1, 2],
+            2: [5, 6, 7],
+            3: [10, 11],
+            13: [0, 1, 2, 10, 11],
+            12: [0, 1, 2, 5, 6, 7],
+            23: [5, 6, 7, 10, 11],
+        }
+        tau_dm = events.Tau.decayMode
         decay_mode_mask = ak.zeros_like(tau_dm)
-        for mode in [0, 1, 2, 10, 11]:
+        for mode in prong_to_modes[13]:
             decay_mode_mask = np.logical_or(decay_mode_mask, tau_dm == mode)
+            
         good_taus = (
-            (corrected_taus.pt > 20)
-            & (np.abs(corrected_taus.eta) < 2.3)
-            & (np.abs(corrected_taus.dz) < 0.2)
-            & (corrected_taus.idDeepTau2017v2p1VSjet > 32)
-            & (corrected_taus.idDeepTau2017v2p1VSe > 32)
-            & (corrected_taus.idDeepTau2017v2p1VSmu > 8)
+            (events.Tau.pt > 20)
+            & (np.abs(events.Tau.eta) < 2.3)
+            & (np.abs(events.Tau.dz) < 0.2)
+            & (events.Tau.idDeepTau2017v2p1VSjet > 32)
+            & (events.Tau.idDeepTau2017v2p1VSe > 32)
+            & (events.Tau.idDeepTau2017v2p1VSmu > 8)
             & (decay_mode_mask)
         )
         good_taus = (
@@ -240,144 +369,46 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             & (delta_r_mask(events.Tau, electrons, threshold=0.4))
             & (delta_r_mask(events.Tau, muons, threshold=0.4))
         )
-        taus = corrected_taus[good_taus]
+        taus = events.Tau[good_taus]
+        
         # b-jets
         # break up selection for low and high pT jets
         low_pt_jets_mask = (
-            (corrected_jets.pt > 20)
-            & (corrected_jets.pt < 50)
-            & (np.abs(corrected_jets.eta) < 2.4)
-            & (corrected_jets.jetId == 6)
-            & (corrected_jets.puId == 7)
-            & (corrected_jets.btagDeepFlavB > self._btagDeepFlavB)
+            (events.Jet.pt > 20)
+            & (events.Jet.pt < 50)
+            & (np.abs(events.Jet.eta) < 2.4)
+            & (events.Jet.jetId == 6)
+            & (events.Jet.puId == 7)
+            & (events.Jet.btagDeepFlavB > self._btagDeepFlavB)
         )
         high_pt_jets_mask = (
-            (corrected_jets.pt >= 50)
-            & (np.abs(corrected_jets.eta) < 2.4)
-            & (corrected_jets.jetId == 6)
-            & (corrected_jets.btagDeepFlavB > self._btagDeepFlavB)
+            (events.Jet.pt >= 50)
+            & (np.abs(events.Jet.eta) < 2.4)
+            & (events.Jet.jetId == 6)
+            & (events.Jet.btagDeepFlavB > self._btagDeepFlavB)
         )
         good_bjets = ak.where(
-            (corrected_jets.pt > 20) & (corrected_jets.pt < 50),
+            (events.Jet.pt > 20) & (events.Jet.pt < 50),
             low_pt_jets_mask,
             high_pt_jets_mask,
         )
         good_bjets = (
             good_bjets
-            & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
-            & (delta_r_mask(corrected_jets, muons, threshold=0.4))
+            & (delta_r_mask(events.Jet, electrons, threshold=0.4))
+            & (delta_r_mask(events.Jet, muons, threshold=0.4))
         )
-        bjets = corrected_jets[good_bjets]
+        bjets = events.Jet[good_bjets]
 
-        # apply MET phi corrections
-        met_pt, met_phi = met_phi_corrections(
-            met_pt=met.pt,
-            met_phi=met.phi,
-            npvs=events.PV.npvsGood,
-            run=events.run,
-            is_mc=self.is_mc,
-            year=self._year,
-            year_mod="",
-        )
-        met["pt"], met["phi"] = met_pt, met_phi
-
-        # --------------------
-        # event weights vector
-        # --------------------
-        weights_container = Weights(len(events), storeIndividual=True)
-        if self.is_mc:
-            # add gen weigths
-            weights_container.add("genweight", events.genWeight)
-            # add l1prefiring weigths
-            add_l1prefiring_weight(events, weights_container, self._year, "nominal")
-            # add pileup weigths
-            add_pileup_weight(events, weights_container, self._year, "", "nominal")
-            # add pujetid weigths
-            add_pujetid_weight(
-                jets=corrected_jets,
-                weights=weights_container,
-                year=self._year,
-                year_mod="",
-                working_point="M",
-                variation="nominal",
-            )
-            # b-tagging corrector
-            btag_corrector = BTagCorrector(
-                jets=corrected_jets,
-                weights=weights_container,
-                sf_type="comb",
-                worging_point="M",
-                tagger="deepJet",
-                year=self._year,
-                year_mod="",
-                full_run=False,
-                variation="nominal",
-            )
-            # add b-tagging weights
-            btag_corrector.add_btag_weights(flavor="bc")
-            # electron corrector
-            electron_corrector = ElectronCorrector(
-                electrons=events.Electron,
-                weights=weights_container,
-                year=self._year,
-                year_mod="",
-                variation="nominal",
-            )
-            # add electron ID weights
-            electron_corrector.add_id_weight(
-                id_working_point=(
-                    "wp80iso" if self._lepton_flavor == "ele" else "wp90iso"
-                )
-            )
-            # add electron reco weights
-            electron_corrector.add_reco_weight()
-
-            # muon corrector
-            muon_corrector = MuonCorrector(
-                muons=events.Muon,
-                weights=weights_container,
-                year=self._year,
-                year_mod="",
-                variation="nominal",
-                id_wp="tight",
-                iso_wp="tight",
-            )
-            # add muon ID weights
-            muon_corrector.add_id_weight()
-            # add muon iso weights
-            muon_corrector.add_iso_weight()
-
-            # add trigger weights
-            if self._lepton_flavor == "ele":
-                muon_corrector.add_triggeriso_weight(trigger_mask=trigger_mask["mu"])
-                
-            # tau corrections
-            tau_corrector = TauCorrector(
-                taus=corrected_taus,
-                weights=weights_container,
-                year=self._year,
-                year_mod=self._yearmod,
-                tau_vs_jet="Tight",
-                tau_vs_ele="Tight",
-                tau_vs_mu="Tight",
-                variation="nominal",
-            )
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSe()
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSmu()
-            tau_corrector.add_id_weight_DeepTau2017v2p1VSjet()
-            
-        # save sum of weights before selections
-        output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
-
-        # ---------------
+        met = events.MET
+        # ----------------
         # event selection
-        # ---------------
+        # ----------------
         # make a PackedSelection object to store selection masks
         self.selections = PackedSelection()
 
         # luminosity
         if not self.is_mc:
-            lumi_mask = self._lumi_mask[self._year](events.run, events.luminosityBlock)
+            lumi_mask = self._lumi_mask[self.year](events.run, events.luminosityBlock)
         else:
             lumi_mask = np.ones(len(events), dtype="bool")
         self.selections.add("lumi", lumi_mask)
@@ -390,8 +421,9 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 metfilters = metfilters & events.Flag[mf]
         self.selections.add("metfilters", metfilters)
 
-        self.selections.add("trigger_ele", trigger_mask["ele"])
-        self.selections.add("trigger_mu", trigger_mask["mu"])
+        # triggers 
+        self.selections.add("trigger_ele", trigger_ele)
+        self.selections.add("trigger_mu", trigger_mu)
         self.selections.add("atleastone_bjet", ak.num(bjets) >= 1)
         self.selections.add("one_electron", ak.num(electrons) == 1)
         self.selections.add("one_muon", ak.num(muons) == 1)
@@ -477,7 +509,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         )
         # filling histograms
         def fill(region: str):
-            selections = regions[self._lepton_flavor][region]
+            selections = regions[self.lepton_flavor][region]
             region_cut = self.selections.all(*selections)
             region_weight = weights_container.weight()[region_cut]
 
@@ -538,7 +570,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             """
             # cutflow
             cutflow_selections = []
-            for selection in regions[self._lepton_flavor][region]:
+            for selection in regions[self.lepton_flavor][region]:
                 cutflow_selections.append(selection)
                 cutflow_cut = self.selections.all(*cutflow_selections)
                 if self.is_mc:
@@ -550,7 +582,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     self.histograms["cutflow"][region][selection] = np.sum(cutflow_cut)
             """
 
-        for region in regions[self._lepton_flavor]:
+        for region in regions[self.lepton_flavor]:
             fill(region)
         output["metadata"].update({"raw_initial_nevents": nevents})
         output["histograms"] = self.histograms

@@ -17,7 +17,7 @@ from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
 from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 #from wprime_plus_b.processors.ztoll_processor import ZToLLProcessor
 #from wprime_plus_b.processors.qcd_analysis import QcdAnalysis
-#from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
+from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
 from wprime_plus_b.selections.ttbar.electron_config import ttbar_electron_config
 from wprime_plus_b.selections.ttbar.muon_config import ttbar_muon_config
 from wprime_plus_b.selections.ttbar.tau_config import ttbar_tau_config
@@ -43,7 +43,7 @@ def main(args):
         #"ztoll": ZToLLProcessor,
         #"qcd": QcdAnalysis,
         "btag_eff": BTagEfficiencyProcessor,
-        #"trigger_eff": TriggerEfficiencyProcessor,
+        "trigger_eff": TriggerEfficiencyProcessor,
     }
     processor_args = [
         "year",
