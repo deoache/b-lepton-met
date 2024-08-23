@@ -258,6 +258,12 @@ dijet_mass_axis = hist.axis.Variable(
     name="dijet_mass", 
     label="Largest $m(jj)$ [GeV]"
 )
+susy_muon_hist = hist.Hist(
+    hist.axis.Regular(50, 0, 1000, name="mu1_pt"),
+    hist.axis.Regular(50, 0, 1000, name="mu2_pt"),
+    syst_axis,
+    hist.storage.Weight(),
+)
 susy_dimuon_hist = hist.Hist(
     dimuon_mass_axis,
     dimuon_pt_axis,

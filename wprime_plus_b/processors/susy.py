@@ -53,6 +53,7 @@ class SusyAnalysis(processor.ProcessorABC):
             "dimuon_kin": histograms.susy_dimuon_hist,
             "met_kin": histograms.susy_met_hist,
             "dijet_kin": histograms.susy_dijet_hist,
+            "muon_kin": histograms.susy_muon_hist
         }
     def process(self, events):
         # get dataset name
@@ -290,7 +291,7 @@ class SusyAnalysis(processor.ProcessorABC):
             bjets = events.Jet[good_bjets]
             
             # -------------------------------------------------------------
-            # compsite object selection
+            # composite object selection
             # -------------------------------------------------------------
             # add muons pT to MET to simulate a 0-lepton final state
             all_muons = ak.sum(muons, axis=1)
@@ -469,6 +470,8 @@ class SusyAnalysis(processor.ProcessorABC):
                     "dimuon_pt": dimuons.p4.pt[region_selection],
                     "met": zl_state_met_pt[region_selection],
                     "dijet_mass": largest_dijets_mass[region_selection],
+                    "mu1_pt": dimuons.mu1.pt[region_selection],
+                    "mu2_pt": dimuons.mu1.pt[region_selection],
                 }
                 if syst_var == "nominal":
                     # save weighted events to metadata
