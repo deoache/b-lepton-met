@@ -98,7 +98,6 @@ ttbar_jet_hist = hist.Hist(
 )
 # met histogram
 ttbar_met_hist = hist.Hist(
-    ttbar_met_axis,
     met_phi_axis,
     syst_axis,
     hist.storage.Weight(),
@@ -114,24 +113,24 @@ ttbar_lepton_hist = hist.Hist(
 # lepton + bjet histogram
 ttbar_lepton_bjet_hist = hist.Hist(
     lepton_bjet_dr_axis,
-    lepton_bjet_mass_axis,
     syst_axis,
     hist.storage.Weight(),
 )
 # lepton + missing energy histogram
 ttbar_lepton_met_hist = hist.Hist(
-    lepton_met_mass_axis,
     lepton_met_delta_phi_axis,
     syst_axis,
     hist.storage.Weight(),
 )
-# lepton + missing energy + bjet histogram
-ttbar_lepton_met_bjet_hist = hist.Hist(
+# histograms for observables
+ttbar_met_mass_hist = hist.Hist(
+    lepton_met_mass_axis,
+    lepton_bjet_mass_axis,
     lepton_met_bjet_mass_axis,
+    ttbar_met_axis,
     syst_axis,
     hist.storage.Weight(),
 )
-
 # number of jets and primary vertices
 n_jets_axis = hist.axis.Regular(
     bins=15,
@@ -148,15 +147,6 @@ n_vertices_axis = hist.axis.Regular(
 ttbar_n_hist = hist.Hist(
     n_jets_axis,
     n_vertices_axis,
-    syst_axis,
-    hist.storage.Weight(),
-)
-# histograms to estimate tt
-ttbar_met_mass_hist = hist.Hist(
-    lepton_met_mass_axis,
-    lepton_bjet_mass_axis,
-    lepton_met_bjet_mass_axis,
-    ttbar_met_axis,
     syst_axis,
     hist.storage.Weight(),
 )
