@@ -328,8 +328,8 @@ class MuonCorrector:
 
         # scale factors keys
         sfs_keys = {
-            "2016APV": None,
-            "2016": None,
+            "2016APV": "NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight",
+            "2016": "NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight",
             "2017": "NUM_IsoMu27_DEN_CutBasedIdTight_and_PFIsoTight",
             "2018": "NUM_IsoMu24_DEN_CutBasedIdTight_and_PFIsoTight",
         }
