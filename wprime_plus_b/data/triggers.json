@@ -12,7 +12,8 @@
       },
       "mu":{
          "tight":[
-            "IsoMu24"
+            "IsoMu24",
+            "IsoTkMu24"
          ],
          "highpt":[
             "Mu50",
@@ -34,7 +35,8 @@
       },
       "mu":{
          "tight":[
-            "IsoMu24"
+            "IsoMu24",
+            "IsoTkMu24"
          ],
          "highpt":[
             "Mu50",
