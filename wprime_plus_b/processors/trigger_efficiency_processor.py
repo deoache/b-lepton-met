@@ -191,9 +191,21 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 self._triggers = json.load(handle)[self.year]
     
         trigger_paths = {
+            "2016APV": {
+                "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                "mu": ["IsoMu24"]
+            },
+            "2016": {
+                "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                "mu": ["IsoMu24"]
+            },
             "2017": {
                 "ele": ["Ele35_WPTight_Gsf", "Photon200"],
                 "mu": ["IsoMu27"]
+            },
+            "2018": {
+                "ele": ["Ele32_WPTight_Gsf"],
+                "mu": ["IsoMu24"]
             }
         }
         def get_trigger(trigger_path):
