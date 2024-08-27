@@ -210,7 +210,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         }
         def get_trigger(trigger_path):
             trigger_mask = np.zeros(nevents, dtype="bool")
-            for tp in trigger_paths:
+            for tp in trigger_paths[self.year][self.lepton_flavor]:
                 if tp in events.HLT.fields:
                     trigger_mask = trigger_mask | events.HLT[tp]
             return trigger_mask
@@ -585,17 +585,15 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
             for selection in regions[self.lepton_flavor][region]:
                 cutflow_selections.append(selection)
                 cutflow_cut = self.selections.all(*cutflow_selections)
-                if self.is_mc:
-                    cutflow_weight = weights.partial_weight(region_weights)
-                    self.histograms["cutflow"][region][selection] = np.sum(
-                        cutflow_weight[cutflow_cut]
-                    )
-                else:
-                    self.histograms["cutflow"][region][selection] = np.sum(cutflow_cut)
-            """
 
+                cutflow_weight = weights_container.weight()
+                print(region, selection, np.sum(cutflow_weight[cutflow_cut]))
+
+            """
+            
         for region in regions[self.lepton_flavor]:
             fill(region)
+            
         output["metadata"].update({"raw_initial_nevents": nevents})
         output["histograms"] = self.histograms
 
