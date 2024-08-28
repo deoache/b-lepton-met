@@ -291,6 +291,8 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 id_wp="tight",
                 iso_wp="tight",
             )
+            # add muon RECO weights
+            muon_corrector.add_reco_weight()
             # add muon ID weights
             muon_corrector.add_id_weight()
             # add muon iso weights
