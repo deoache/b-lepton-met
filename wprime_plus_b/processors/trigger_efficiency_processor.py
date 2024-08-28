@@ -210,7 +210,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
         }
         def get_trigger(trigger_path):
             trigger_mask = np.zeros(nevents, dtype="bool")
-            for tp in trigger_paths[self.year][self.lepton_flavor]:
+            for tp in trigger_path:
                 if tp in events.HLT.fields:
                     trigger_mask = trigger_mask | events.HLT[tp]
             return trigger_mask
@@ -318,7 +318,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
 
         # save sum of weights before selections
         output["metadata"] = {"sumw": ak.sum(weights_container.weight())}
-                
+    
         # --------------------
         # object selection
         # --------------------
