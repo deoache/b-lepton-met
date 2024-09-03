@@ -171,6 +171,8 @@ class SusyAnalysis(processor.ProcessorABC):
                     id_wp=susy_muon_config["muon_id_wp"],
                     iso_wp=susy_muon_config["muon_iso_wp"],
                 )
+                # add muon RECO weights
+                muon_corrector.add_reco_weight()
                 # add muon ID weights
                 muon_corrector.add_id_weight()
                 # add muon iso weights

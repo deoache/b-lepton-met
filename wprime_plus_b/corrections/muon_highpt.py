@@ -78,6 +78,65 @@ class MuonHighPtCorrector:
             get_pog_json(json_name="muon_highpt", year=year)
         )
         
+    def add_reco_weight(self):
+        """
+        add muon RECO scale factors to weights container
+        """
+        # get muons within SF binning
+        muon_pt_mask = self.m.pt >= 50.0
+        muon_eta_mask = np.abs(self.m.eta) < 2.4
+        in_muon_mask = muon_pt_mask & muon_eta_mask 
+        in_muons = self.m.mask[in_muon_mask]
+
+        # get muons pT and abseta (replace None values with some 'in-limit' value)
+        muon_pt = ak.fill_none(in_muons.pt, 50.0)
+        muon_eta = np.abs(ak.fill_none(in_muons.eta, 0.0))
+
+        # 'id' scale factors names
+        reco_corrections = {
+            "2016APV": "NUM_GlobalMuons_DEN_TrackerMuonProbes", 
+            "2016": "NUM_GlobalMuons_DEN_TrackerMuonProbes",
+            "2017": "NUM_GlobalMuons_DEN_TrackerMuonProbes",
+            "2018": "NUM_GlobalMuons_DEN_TrackerMuonProbes",
+        }
+        # get nominal scale factors
+        nominal_sf = unflat_sf(
+            self.cset[reco_corrections[self.year]].evaluate(
+                muon_eta, muon_pt, "nominal"
+            ),
+            in_muon_mask,
+            self.n,
+        )
+        if self.variation == "nominal":
+            # get 'up' and 'down' scale factors
+            up_sf = unflat_sf(
+                self.cset[
+                    reco_corrections[self.year]].evaluate(
+                    muon_eta, muon_pt, "systup"
+                ),
+                in_muon_mask,
+                self.n,
+            )
+            down_sf = unflat_sf(
+                self.cset[reco_corrections[self.year]].evaluate(
+                    muon_eta, muon_pt, "systdown"
+                ),
+                in_muon_mask,
+                self.n,
+            )
+            # add scale factors to weights container
+            self.weights.add(
+                name=f"muon_reco",
+                weight=nominal_sf,
+                weightUp=up_sf,
+                weightDown=down_sf,
+            )
+        else:
+            self.weights.add(
+                name=f"muon_reco",
+                weight=nominal_sf,
+            )
+        
 
     def add_id_weight(self):
         """
