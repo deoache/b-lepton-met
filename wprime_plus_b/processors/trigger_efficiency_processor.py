@@ -191,22 +191,42 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 self._triggers = json.load(handle)[self.year]
     
         trigger_paths = {
-            "2016APV": {
-                "ele": ["Ele27_WPTight_Gsf", "Photon175"],
-                "mu": ["IsoMu24"]
+            "mu": {
+                "2016APV": {
+                    "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                    "mu": ["Mu50", "OldMu100", "TkMu100"]
+                },
+                "2016": {
+                    "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                    "mu": ["Mu50", "OldMu100", "TkMu100"]
+                },
+                "2017": {
+                    "ele": ["Ele35_WPTight_Gsf", "Photon200"],
+                    "mu": ["Mu50", "OldMu100", "TkMu100"]
+                },
+                "2018": {
+                    "ele": ["Ele32_WPTight_Gsf"],
+                    "mu": ["Mu50", "OldMu100", "TkMu100"]
+                }
             },
-            "2016": {
-                "ele": ["Ele27_WPTight_Gsf", "Photon175"],
-                "mu": ["IsoMu24"]
+            "ele": {
+                "2016APV": {
+                    "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                    "mu": ["IsoMu24"]
+                },
+                "2016": {
+                    "ele": ["Ele27_WPTight_Gsf", "Photon175"],
+                    "mu": ["IsoMu24"]
+                },
+                "2017": {
+                    "ele": ["Ele35_WPTight_Gsf", "Photon200"],
+                    "mu": ["IsoMu27"]
+                },
+                "2018": {
+                    "ele": ["Ele32_WPTight_Gsf"],
+                    "mu": ["IsoMu24"]
+                }
             },
-            "2017": {
-                "ele": ["Ele35_WPTight_Gsf", "Photon200"],
-                "mu": ["IsoMu27"]
-            },
-            "2018": {
-                "ele": ["Ele32_WPTight_Gsf"],
-                "mu": ["IsoMu24"]
-            }
         }
         def get_trigger(trigger_path):
             trigger_mask = np.zeros(nevents, dtype="bool")
@@ -215,13 +235,14 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                     trigger_mask = trigger_mask | events.HLT[tp]
             return trigger_mask
     
-        trigger_ele = get_trigger(trigger_paths[self.year]["ele"])
-        trigger_mu = get_trigger(trigger_paths[self.year]["mu"])
+        trigger_ele = get_trigger(trigger_paths[self.lepton_flavor][self.year]["ele"])
+        trigger_mu = get_trigger(trigger_paths[self.lepton_flavor][self.year]["mu"])
         
         trigger_match_mask = np.zeros(nevents, dtype="bool")
-        for trigger_path in trigger_paths[self.year]["mu"]:
+        data_trigger_paths = trigger_paths[self.lepton_flavor][self.year]["mu"] if self.lepton_flavor == "ele" else trigger_paths[self.lepton_flavor][self.year]["ele"]
+        for trigger_path in data_trigger_paths:
             trig_match = trigger_match(
-                leptons=events.Muon,
+                leptons=events.Muon if self.lepton_flavor == "ele" else events.Electron,
                 trigobjs=events.TrigObj,
                 trigger_path=trigger_path,
             )
@@ -288,7 +309,7 @@ class TriggerEfficiencyProcessor(processor.ProcessorABC):
                 weights=weights_container,
                 year=self.year,
                 variation="nominal",
-                id_wp="tight",
+                id_wp="tight" if self.lepton_flavor == "ele" else "highpt",
                 iso_wp="tight",
             )
             # add muon RECO weights
