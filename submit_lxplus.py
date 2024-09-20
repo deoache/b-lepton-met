@@ -96,7 +96,8 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
 
     # submit jobs
     print(f"submitting {jobname}")
-    subprocess.run(["condor_submit", local_condor])
+    if args["submit"] == "True":
+        subprocess.run(["condor_submit", local_condor])
 
 
 def main(args):
@@ -206,6 +207,13 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
+    )
+    parser.add_argument(
+        "--submit",
+        dest="submit",
+        type=str,
+        default="True",
+        help="wheater to submit to condor or not",
     )
     args = parser.parse_args()
     main(args)
