@@ -33,7 +33,7 @@ def get_jobpath(args: dict) -> str:
         path += f'/{args["channel"]}'
     if args["lepton_flavor"]:
         path += f'/{args["lepton_flavor"]}'
-    path += f'/{args["year"] + args["yearmod"]}'
+    path += f'/{args["year"]}'
     path += f'/{args["sample"]}'
     return path
 
@@ -157,14 +157,7 @@ if __name__ == "__main__":
         dest="year",
         type=str,
         default="",
-        help="year of the data {2016, 2017, 2018} (default 2017)",
-    )
-    parser.add_argument(
-        "--yearmod",
-        dest="yearmod",
-        type=str,
-        default="",
-        help="year modifier {'', 'APV'} (default '')",
+        help="year of the data {2016APV, 2016, 2017, 2018} (default 2017)",
     )
     parser.add_argument(
         "--executor",
