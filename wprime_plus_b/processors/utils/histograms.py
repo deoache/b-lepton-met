@@ -253,12 +253,20 @@ met_axis = hist.axis.Variable(
     name="met", 
     label="$p_T^{miss}$ [GeV]"
 )
+susy_jet_hist = hist.Hist(
+    jet_pt_axis,
+    jet_eta_axis,
+    syst_axis,
+    hist.storage.Weight(),
+)
 dijet_mass_axis = hist.axis.Variable(
     edges=[500, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3200, 3800, 5000],
     name="dijet_mass", 
     label="Largest $m(jj)$ [GeV]"
 )
 susy_muon_hist = hist.Hist(
+    lepton_pt_axis,
+    lepton_eta_axis,
     hist.axis.Regular(50, 0, 1000, name="mu1_pt"),
     hist.axis.Regular(50, 0, 1000, name="mu2_pt"),
     syst_axis,

@@ -53,7 +53,8 @@ class SusyAnalysis(processor.ProcessorABC):
             "dimuon_kin": histograms.susy_dimuon_hist,
             "met_kin": histograms.susy_met_hist,
             "dijet_kin": histograms.susy_dijet_hist,
-            "muon_kin": histograms.susy_muon_hist
+            "muon_kin": histograms.susy_muon_hist,
+            "jet_kin": histograms.susy_jet_hist,
         }
     def process(self, events):
         # get dataset name
@@ -474,6 +475,10 @@ class SusyAnalysis(processor.ProcessorABC):
                     "dijet_mass": largest_dijets_mass[region_selection],
                     "mu1_pt": dimuons.mu1.pt[region_selection],
                     "mu2_pt": dimuons.mu1.pt[region_selection],
+                    "jet_pt": jets.pt[region_selection],
+                    "jet_eta": jets.eta[region_selection],
+                    "lepton_pt": muons.pt[region_selection],
+                    "lepton_eta": muons.eta[region_selection],
                 }
                 if syst_var == "nominal":
                     # save weighted events to metadata
