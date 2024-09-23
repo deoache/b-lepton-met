@@ -1,5 +1,6 @@
 import os
 import json
+import argparse
 from coffea.dataset_tools.dataset_query import DataDiscoveryCLI
 
 
@@ -22,6 +23,12 @@ SITES = {
         "T2_CH_CERN",
         "T1_DE_KIT_Disk",
         "T2_DE_RWTH",
+        "T2_BE_UCL",
+        "T1_UK_RAL_Disk",
+        "T1_FR_CCIN2P3_Disk"
+        "T2_RU_JINR",
+        "T2_UK_London_IC",
+        "T1_FR_CCIN2P3_Disk"
     ],
     "2016": [
         "T3_US_FNALLPC",
@@ -37,6 +44,9 @@ SITES = {
         "T2_BE_UCL",
         "T1_UK_RAL_Disk",
         "T1_FR_CCIN2P3_Disk"
+        "T2_RU_JINR",
+        "T2_UK_London_IC",
+        "T1_FR_CCIN2P3_Disk"
     ],
     "2017": [
         "T3_US_FNALLPC",
@@ -47,6 +57,14 @@ SITES = {
         "T2_DE_DESY",
         "T2_BE_IIHE",
         "T2_CH_CERN",
+        "T1_DE_KIT_Disk",
+        "T2_DE_RWTH",
+        "T2_BE_UCL",
+        "T1_UK_RAL_Disk",
+        "T1_FR_CCIN2P3_Disk"
+        "T2_RU_JINR",
+        "T2_UK_London_IC",
+        "T1_FR_CCIN2P3_Disk"
     ],
     "2018": [
         "T3_US_FNALLPC",
@@ -59,14 +77,23 @@ SITES = {
         "T2_CH_CERN",
         "T1_DE_KIT_Disk",
         "T2_DE_RWTH",
+        "T2_BE_UCL",
+        "T1_UK_RAL_Disk",
+        "T1_FR_CCIN2P3_Disk"
+        "T2_RU_JINR",
+        "T2_UK_London_IC",
+        "T1_FR_CCIN2P3_Disk"
     ],
 }
 
 
-def main():
+def main(args):
     with open("das_datasets.json", "r") as f:
         datasets = json.load(f)
     for year in ERAS.keys():
+        if args.year != "all":
+            if year != args.year:
+                continue
         # create a dataset_definition dict for each year
         yreco = f"{year}_UL"
         if not datasets[yreco]:
@@ -114,4 +141,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--year",
+        dest="year",
+        type=str,
+        default="all",
+        help="year of the data {2016APV, 2016, 2017, 2018, all} (default all)",
+    )
+    args = parser.parse_args()
+    main(args)
