@@ -51,6 +51,7 @@ def main(args):
         "lepton_flavor",
         "output_type",
         "syst",
+        "overflow",
     ]
     processor_kwargs = {k: args[k] for k in processor_args if args[k]}
     executors = {
@@ -343,6 +344,13 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="output path directory",
+    )
+    parser.add_argument(
+        "--overflow",
+        dest="overflow",
+        type=str,
+        default="True",
+        help="whether to include overflow hitogram's last bin {True, False}",
     )
     args = parser.parse_args()
     main(args)

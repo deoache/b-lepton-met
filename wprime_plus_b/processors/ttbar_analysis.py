@@ -28,7 +28,11 @@ from wprime_plus_b.selections.ttbar.electron_selection import select_good_electr
 from wprime_plus_b.selections.ttbar.muon_selection import select_good_muons
 from wprime_plus_b.selections.ttbar.tau_selection import select_good_taus
 from wprime_plus_b.selections.ttbar.bjet_selection import select_good_bjets
-from wprime_plus_b.processors.utils.analysis_utils import delta_r_mask, normalize, trigger_match
+from wprime_plus_b.processors.utils.analysis_utils import (
+    delta_r_mask,
+    normalize,
+    trigger_match,
+)
 
 
 class TtbarAnalysis(processor.ProcessorABC):
@@ -56,12 +60,14 @@ class TtbarAnalysis(processor.ProcessorABC):
         year: str = "2017",
         syst: str = "nominal",
         output_type: str = "hist",
+        overflow: str = "True",
     ):
         self.year = year
         self.lepton_flavor = lepton_flavor
         self.channel = channel
         self.syst = syst
         self.output_type = output_type
+        self.overflow = overflow
 
         # define region of the analysis
         self.region = f"{self.channel}_{self.lepton_flavor}"
@@ -74,7 +80,7 @@ class TtbarAnalysis(processor.ProcessorABC):
             "lepton_kin": histograms.ttbar_lepton_hist,
             "lepton_bjet_kin": histograms.ttbar_lepton_bjet_hist,
             "lepton_met_kin": histograms.ttbar_lepton_met_hist,
-            "met_mass_kin": histograms.ttbar_met_mass_hist, 
+            "met_mass_kin": histograms.ttbar_met_mass_hist,
         }
         # define dictionary to store analysis variables
         self.features = {}
@@ -127,7 +133,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(met_syst_variations)
                 syst_variations.extend(tau_syst_variations)
                 syst_variations.extend(rochester_syst_variations)
-                
+
         for syst_var in syst_variations:
             # -------------------------------------------------------------
             # object corrections
@@ -149,20 +155,15 @@ class TtbarAnalysis(processor.ProcessorABC):
                     events["MET"] = events.MET.MET_UnclusteredEnergy.up
                 elif syst_var == "UEDown":
                     events["MET"] = events.MET.MET_UnclusteredEnergy.down
-                
+
             # apply energy corrections to taus (only to MC)
             if self.is_mc:
                 apply_tau_energy_scale_corrections(
-                    events=events, 
-                    year=self.year, 
-                    variation=syst_var
+                    events=events, year=self.year, variation=syst_var
                 )
             # apply rochester corretions to muons
             apply_rochester_corrections(
-                events=events, 
-                is_mc=self.is_mc, 
-                year=self.year,
-                variation=syst_var
+                events=events, is_mc=self.is_mc, year=self.year, variation=syst_var
             )
             # apply MET phi modulation corrections
             apply_met_phi_corrections(
@@ -179,11 +180,13 @@ class TtbarAnalysis(processor.ProcessorABC):
             ) as path:
                 with open(path, "r") as handle:
                     self._triggers = json.load(handle)[self.year][self.lepton_flavor]
-            
+
             lepton_id_config = {
-                "ele": ttbar_electron_config[self.channel][self.lepton_flavor]["electron_id_wp"],
-                "mu": ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
-            } 
+                "ele": ttbar_electron_config[self.channel][self.lepton_flavor][
+                    "electron_id_wp"
+                ],
+                "mu": ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"],
+            }
             trigger_paths = self._triggers[lepton_id_config[self.lepton_flavor]]
             trigger_mask = np.zeros(nevents, dtype="bool")
             for tp in trigger_paths:
@@ -203,7 +206,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     trigger_path=trigger_path,
                 )
                 trigger_match_mask = trigger_match_mask | trig_match
-                
+
             # set weights container
             weights_container = Weights(len(events), storeIndividual=True)
             if self.is_mc:
@@ -262,7 +265,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     )
                     """
                     pass
-                
+
                 # muon corrector
                 if (
                     ttbar_muon_config[self.channel][self.lepton_flavor]["muon_id_wp"]
@@ -295,7 +298,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                         trigger_mask=trigger_mask,
                         trigger_match_mask=trigger_match_mask,
                     )
-                
+
                 # add tau weights
                 tau_corrector = TauCorrector(
                     taus=events.Tau,
@@ -315,7 +318,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 tau_corrector.add_id_weight_deeptauvse()
                 tau_corrector.add_id_weight_deeptauvsmu()
                 tau_corrector.add_id_weight_deeptauvsjet()
-                
+
             if syst_var == "nominal":
                 # save sum of weights before selections
                 output["metadata"].update({"sumw": ak.sum(weights_container.weight())})
@@ -323,7 +326,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 output["metadata"].update({"weight_statistics": {}})
                 for weight, statistics in weights_container.weightStatistics.items():
                     output["metadata"]["weight_statistics"][weight] = statistics
-                    
+
             # -------------------------------------------------------------
             # object selection
             # -------------------------------------------------------------
@@ -333,12 +336,12 @@ class TtbarAnalysis(processor.ProcessorABC):
                 electron_pt_threshold=ttbar_electron_config[self.channel][
                     self.lepton_flavor
                 ]["electron_pt_threshold"],
-                electron_id_wp=ttbar_electron_config[self.channel][
-                    self.lepton_flavor
-                ]["electron_id_wp"],
-                electron_iso_wp=ttbar_electron_config[self.channel][
-                    self.lepton_flavor
-                ]["electron_iso_wp"],
+                electron_id_wp=ttbar_electron_config[self.channel][self.lepton_flavor][
+                    "electron_id_wp"
+                ],
+                electron_iso_wp=ttbar_electron_config[self.channel][self.lepton_flavor][
+                    "electron_iso_wp"
+                ],
             )
             electrons = events.Electron[good_electrons]
 
@@ -394,9 +397,9 @@ class TtbarAnalysis(processor.ProcessorABC):
             good_bjets = select_good_bjets(
                 jets=events.Jet,
                 year=self.year,
-                btag_working_point=ttbar_bjet_config[self.channel][
-                    self.lepton_flavor
-                ]["btag_working_point"],
+                btag_working_point=ttbar_bjet_config[self.channel][self.lepton_flavor][
+                    "btag_working_point"
+                ],
                 jet_pt_threshold=ttbar_bjet_config[self.channel][self.lepton_flavor][
                     "jet_pt_threshold"
                 ],
@@ -411,9 +414,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
             )
             if self.year in ["2016APV", "2016", "2018"]:
-                vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
-                #good_bjets = good_bjets & vetomask
-                
+                vetomask = jetvetomaps_mask(
+                    jets=events.Jet, year=self.year, mapname="jetvetomap"
+                )
+                # good_bjets = good_bjets & vetomask
+
             bjets = events.Jet[good_bjets]
 
             # -------------------------------------------------------------
@@ -453,7 +458,7 @@ class TtbarAnalysis(processor.ProcessorABC):
 
             # check that there be a minimum MET greater than 50 GeV
             self.selections.add("met_pt", events.MET.pt > 50)
-            
+
             # select events with at least one good vertex
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
 
@@ -470,17 +475,17 @@ class TtbarAnalysis(processor.ProcessorABC):
             self.selections.add("tau_veto", ak.num(taus) == 0)
             self.selections.add("one_bjet", ak.num(bjets) == 1)
             self.selections.add("two_bjets", ak.num(bjets) == 2)
-            
+
             # stitching on DY inclusive samples
             dy_stitching = np.ones(nevents, dtype="bool")
             if dataset.startswith("DYJetsToLL_inclusive"):
                 dy_stitching = events.LHE.HT < 70
             self.selections.add("dy_stitching", dy_stitching)
-            
+
             if self.year == "2018":
                 # hem-cleaning selection
                 # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
-                # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the 
+                # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the
                 # region -3 < eta <-1.3 and -1.57 < phi < -0.87 to remove fake MET
                 hem_veto = ak.any(
                     (
@@ -501,16 +506,18 @@ class TtbarAnalysis(processor.ProcessorABC):
                     -1,
                 )
                 hem_cleaning = (
-                    ((events.run >= 319077) & (not self.is_mc))  # if data check if in Runs C or D
+                    (
+                        (events.run >= 319077) & (not self.is_mc)
+                    )  # if data check if in Runs C or D
                     # else for MC randomly cut based on lumi fraction of C&D
                     | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
                 ) & (hem_veto)
 
-                #self.selections.add("HEMCleaning", ~hem_cleaning)
+                # self.selections.add("HEMCleaning", ~hem_cleaning)
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
-            
+
             # define selection regions for each channel
             region_selection = {
                 "2b1l": {
@@ -633,7 +640,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 region_electrons = electrons[region_selection]
                 region_muons = muons[region_selection]
                 region_met = events.MET[region_selection]
-                
+
                 # define region leptons
                 region_leptons = (
                     region_electrons if self.lepton_flavor == "ele" else region_muons
@@ -710,11 +717,28 @@ class TtbarAnalysis(processor.ProcessorABC):
                                     modifier=variation
                                 )[region_selection]
                             for kin in hist_dict[self.region]:
+                                hist_axes_names = [
+                                    axis
+                                    for axis in hist_dict[self.region][kin].axes.name
+                                    if axis != "variation"
+                                ]
+                                hist_max_bin_edge = {
+                                    axis: hist_dict[self.region][kin]
+                                    .axes[axis]
+                                    .edges[-1]
+                                    - 0.1
+                                    for axis in hist_axes_names
+                                }
                                 fill_args = {
-                                    feature: normalize(self.features[feature])
-                                    for feature in hist_dict[self.region][
-                                        kin
-                                    ].axes.name
+                                    feature: (
+                                        np.minimum(
+                                            normalize(self.features[feature]),
+                                            hist_max_bin_edge[feature],
+                                        )
+                                        if self.overflow
+                                        else normalize(self.features[feature])
+                                    )
+                                    for feature in hist_dict[self.region][kin].axes.name
                                     if feature not in ["variation"]
                                 }
                                 hist_dict[self.region][kin].fill(
@@ -726,9 +750,26 @@ class TtbarAnalysis(processor.ProcessorABC):
                         # object-wise variations
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self.region]:
+                            hist_axes_names = [
+                                axis
+                                for axis in hist_dict[self.region][kin].axes.name
+                                if axis != "variation"
+                            ]
+                            hist_max_bin_edge = {
+                                axis: hist_dict[self.region][kin].axes[axis].edges[-1]
+                                - 0.1
+                                for axis in hist_axes_names
+                            }
                             # get filling arguments
                             fill_args = {
-                                feature: normalize(self.features[feature])
+                                feature: (
+                                    np.minimum(
+                                        normalize(self.features[feature]),
+                                        hist_max_bin_edge[feature],
+                                    )
+                                    if self.overflow
+                                    else normalize(self.features[feature])
+                                )
                                 for feature in hist_dict[self.region][kin].axes.name[
                                     :-1
                                 ]
@@ -744,9 +785,26 @@ class TtbarAnalysis(processor.ProcessorABC):
                         # object-wise variations
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self.region]:
+                            hist_axes_names = [
+                                axis
+                                for axis in hist_dict[self.region][kin].axes.name
+                                if axis != "variation"
+                            ]
+                            hist_max_bin_edge = {
+                                axis: hist_dict[self.region][kin].axes[axis].edges[-1]
+                                - 0.1
+                                for axis in hist_axes_names
+                            }
                             # get filling arguments
                             fill_args = {
-                                feature: normalize(self.features[feature])
+                                feature: (
+                                    np.minimum(
+                                        normalize(self.features[feature]),
+                                        hist_max_bin_edge[feature],
+                                    )
+                                    if self.overflow
+                                    else normalize(self.features[feature])
+                                )
                                 for feature in hist_dict[self.region][kin].axes.name[
                                     :-1
                                 ]

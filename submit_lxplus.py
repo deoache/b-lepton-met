@@ -208,5 +208,12 @@ if __name__ == "__main__":
         default="True",
         help="wheater to submit to condor or not",
     )
+    parser.add_argument(
+        "--overflow",
+        dest="overflow",
+        type=str,
+        default="True",
+        help="whether to include overflow hitogram's last bin {True, False}",
+    )
     args = parser.parse_args()
     main(args)
