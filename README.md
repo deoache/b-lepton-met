@@ -20,7 +20,7 @@ Python package for analyzing W' + b in the electron and muon channels. The analy
 
 #### Making the input filesets for Lxplus
 
-It has been observed that, in lxplus, opening files through a concrete xrootd endpoint rather than a redirector is far more robust. Use the [make_fileset_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset_lxplus.py) script to build the input filesets with xrootd endpoints:
+First, you need to include the DAS queries of the datasets that you want to build in the [das_datasets.json](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/wprime_plus_b/fileset/das_datasets.json). It has been observed that, in lxplus, opening files through a concrete xrootd endpoint rather than a redirector is far more robust. . Use the [make_fileset_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/fileset/make_fileset_lxplus.py) script to build the input filesets with xrootd endpoints:
 ```
 # connect to lxplus 
 ssh <your_username>@lxplus.cern.ch
@@ -28,7 +28,7 @@ ssh <your_username>@lxplus.cern.ch
 # then activate your proxy
 voms-proxy-init --voms cms
 
-# clone the repository 
+# clone the repository  
 git clone -b refactor_highpt https://github.com/deoache/wprime_plus_b.git
 
 # move to the fileset directory
@@ -45,11 +45,11 @@ exit
 ```
 We use the [dataset discovery tools](https://coffeateam.github.io/coffea/notebooks/dataset_discovery.html) from Coffea 2024, that's why we need to use a singularity shell in which we can use these tools.
 
-The json files containing the datasets will be saved in the `wprime_plus_b/fileset` directory. This files are the input to the [build_filesets](https://github.com/deoache/wprime_plus_b/blob/main/utils.py#L36) function that divides each dataset into `nsplit` datasets (located in the `wprime_plus_b/fileset/<facility>` folder), which are the datasets read in the execution step. The `nsplit` of each dataset are defined [here](https://github.com/deoache/wprime_plus_b/blob/main/wprime_plus_b/configs/dataset/datasets_configs.yaml).
+The json files containing the datasets will be saved at `wprime_plus_b/filese/fileset_X_UL_NANO_lxplus.json`. These filesets are the input to the [build_filesets](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/utils.py#L54) function which divides each fileset into `nsplit` filesets (located in the `wprime_plus_b/fileset/lxplus` folder), which are the filesets read in the execution step. The `nsplit` for each fileset is defined [here](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/wprime_plus_b/configs/dataset/datasets_configs.yaml).
 
 ### Submitting condor jobs at lxplus 
 
-To submit jobs at lxplus using HTCondor we use the [submit_coffeacasa.py](https://github.com/deoache/wprime_plus_b/blob/main/submit_lxplus.py) script. It will create the condor and executable files (using the [submit.sub](https://github.com/deoache/wprime_plus_b/blob/main/condor/submit.sub) and [submit.sh](https://github.com/deoache/wprime_plus_b/blob/main/condor/submit.sh) templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). 
+To submit jobs at lxplus using HTCondor we use the [submit_lxplus.py](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/submit_lxplus.py) script. It will create the condor and executable files (using the [submit.sub](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/condor/submit.sub) and [submit.sh](https://github.com/deoache/wprime_plus_b/blob/refactor_highpt/condor/submit.sh) templates) needed to submit jobs, as well as the folders containing the logs and outputs within the `/condor` folder (click [here](https://batchdocs.web.cern.ch/local/quick.html) for more info). 
 
 To see a list of arguments needed to run this script please enter the following in the terminal:
 
@@ -59,24 +59,27 @@ python3 submit_lxplus.py --help
 The output should look something like this:
 
 ```
-usage: submit_lxplus.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--yearmod YEARMOD] [--executor EXECUTOR]
-                        [--workers WORKERS] [--nfiles NFILES] [--output_type OUTPUT_TYPE] [--syst SYST] [--nsample NSAMPLE]
+usage: submit_lxplus.py [-h] [--processor PROCESSOR] [--channel CHANNEL] [--lepton_flavor LEPTON_FLAVOR] [--sample SAMPLE] [--year YEAR] [--executor EXECUTOR] [--workers WORKERS] [--nfiles NFILES]
+                        [--output_type OUTPUT_TYPE] [--syst SYST] [--nsample NSAMPLE] [--submit SUBMIT] [--flow FLOW]
 
 optional arguments:
   -h, --help            show this help message and exit
   --processor PROCESSOR
                         processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)
-  --channel CHANNEL     channel to be processed {2b1l, 1b1e1mu, 1b1l}
+  --channel CHANNEL     channel to be processed
   --lepton_flavor LEPTON_FLAVOR
-                        lepton flavor to be processed {mu, ele}
+                        lepton flavor to be processed {'mu', 'ele'}
   --sample SAMPLE       sample key to be processed
-  --year YEAR           year of the data {2016, 2016APV, 2017, 2018} (default 2017)
+  --year YEAR           year of the data {2016APV, 2016, 2017, 2018} (default 2017)
   --executor EXECUTOR   executor to be used {iterative, futures, dask} (default iterative)
   --workers WORKERS     number of workers to use with futures executor (default 4)
   --nfiles NFILES       number of .root files to be processed by sample. To run all files use -1 (default 1)
   --output_type OUTPUT_TYPE
                         type of output {hist, array}
   --syst SYST           systematic to apply {'nominal', 'jet', 'met', 'full'}
+  --nsample NSAMPLE     partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)
+  --submit SUBMIT       wheater to submit to condor or not
+  --flow FLOW           whether to include underflow/overflow to first/last bin {True, False}
 ```
 You need to have a valid grid proxy in the CMS VO. (see [here](https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideLcgAccess) for details on how to register in the CMS VO). The needed grid proxy is obtained via the usual command
 ```bash
@@ -84,7 +87,7 @@ voms-proxy-init --voms cms
 ```
 To execute a processor using some sample of a particular year type:
 ```bash
-python3 submit_lxplus.py --processor <processor> --channel <channel> --lepton_flavor <lepton_flavor> --nfiles -1 --executor futures --output_type hist --year <year> --sample <sample>
+python3 submit_lxplus.py --processor <processor> --channel <channel> --lepton_flavor <lepton_flavor> --nfiles -1 --executor futures --output_type hist --year <year> --sample <sample> --flow True
 ```
 You can watch the status of the Condor jobs typing
 ```bash
@@ -97,7 +100,7 @@ After the jobs have run, some of them may not have been executed successfully so
 ```bash
 python3 resubmit.py --processor <processor> --channel <channel> --lepton_flavor <lepton_flavor> --year <year> --output_path <output_path> --resubmit <resubmit>
 ```
-If `--resubmit True` missing jobs will be resubmitted, otherwise they'll just be printed in the screen. Make sure to set the correct `output_path` pointing to your output folder.
+If `--resubmit True` missing jobs will be resubmitted, otherwise they'll just be printed in the screen. Make sure to set the correct `output_path` pointing to your `/outs` folder.
 
 
 
