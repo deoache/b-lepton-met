@@ -118,11 +118,11 @@ if __name__ == "__main__":
         help="tag to reference output files directory",
     )
     parser.add_argument(
-        "--overflow",
-        dest="overflow",
+        "--flow",
+        dest="flow",
         type=str,
         default="True",
-        help="whether to include overflow hitogram's last bin {True, False}",
+        help="whether to include underflow/overflow to first/last bin {True, False}",
     )
     args = parser.parse_args()
     main(args)

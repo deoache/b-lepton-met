@@ -31,7 +31,7 @@ def main(args):
     }
     processor_args = [
         "year",
-        "overflow",
+        "flow",
     ]
     processor_kwargs = {k: args[k] for k in processor_args if args[k]}
     executors = {
@@ -326,11 +326,11 @@ if __name__ == "__main__":
         help="output path directory",
     )
     parser.add_argument(
-        "--overflow",
-        dest="overflow",
+        "--flow",
+        dest="flow",
         type=str,
         default="True",
-        help="whether to include overflow hitogram's last bin {True, False}",
+        help="whether to include underflow/overflow to first/last bin {True, False}",
     )
     args = parser.parse_args()
     main(args)

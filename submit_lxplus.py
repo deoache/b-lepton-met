@@ -208,11 +208,11 @@ if __name__ == "__main__":
         help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     parser.add_argument(
-        "--overflow",
-        dest="overflow",
+        "--flow",
+        dest="flow",
         type=str,
         default="True",
-        help="whether to include overflow hitogram's last bin {True, False}",
+        help="whether to include underflow/overflow to first/last bin {True, False}",
     )
     args = parser.parse_args()
     main(args)
