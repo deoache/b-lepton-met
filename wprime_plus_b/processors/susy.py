@@ -45,9 +45,11 @@ class SusyAnalysis(processor.ProcessorABC):
         self,
         year: str = "2017",
         output_type: str = "hist",
+        overflow: str = "True",
     ):
         self.year = year
         self.output_type = output_type
+        self.overflow = overflow
         # initialize dictionary of hists for control regions
         self.hist_dict = {
             "dimuon_kin": histograms.susy_dimuon_hist,
@@ -509,8 +511,27 @@ class SusyAnalysis(processor.ProcessorABC):
                                     modifier=variation
                                 )[region_selection]
                             for kin in hist_dict:
+                                hist_axes_names = [
+                                    axis
+                                    for axis in hist_dict[kin].axes.name
+                                    if axis != "variation"
+                                ]
+                                hist_max_bin_edge = {
+                                    axis: hist_dict[kin]
+                                    .axes[axis]
+                                    .edges[-1]
+                                    - 0.1
+                                    for axis in hist_axes_names
+                                }
                                 fill_args = {
-                                    feature: normalize(feature_map[feature])
+                                    feature: (
+                                        np.minimum(
+                                            normalize(feature_map[feature]),
+                                            hist_max_bin_edge[feature],
+                                        )
+                                        if self.overflow
+                                        else normalize(feature_map[feature])
+                                    )
                                     for feature in hist_dict[kin].axes.name
                                     if feature not in ["variation"]
                                 }
@@ -524,9 +545,29 @@ class SusyAnalysis(processor.ProcessorABC):
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict:
                             # get filling arguments
+                            hist_axes_names = [
+                                axis
+                                for axis in hist_dict[kin].axes.name
+                                if axis != "variation"
+                            ]
+                            hist_max_bin_edge = {
+                                axis: hist_dict[kin].axes[axis].edges[-1]
+                                - 0.1
+                                for axis in hist_axes_names
+                            }
+                            # get filling arguments
                             fill_args = {
-                                feature: normalize(feature_map[feature])
-                                for feature in hist_dict[kin].axes.name[:-1]
+                                feature: (
+                                    np.minimum(
+                                        normalize(feature_map[feature]),
+                                        hist_max_bin_edge[feature],
+                                    )
+                                    if self.overflow
+                                    else normalize(feature_map[feature])
+                                )
+                                for feature in hist_dict[kin].axes.name[
+                                    :-1
+                                ]
                                 if feature not in ["variation"]
                             }
                             # fill histograms
@@ -540,9 +581,29 @@ class SusyAnalysis(processor.ProcessorABC):
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict:
                             # get filling arguments
+                            hist_axes_names = [
+                                axis
+                                for axis in hist_dict[kin].axes.name
+                                if axis != "variation"
+                            ]
+                            hist_max_bin_edge = {
+                                axis: hist_dict[kin].axes[axis].edges[-1]
+                                - 0.1
+                                for axis in hist_axes_names
+                            }
+                            # get filling arguments
                             fill_args = {
-                                feature: normalize(feature_map[feature])
-                                for feature in hist_dict[kin].axes.name[:-1]
+                                feature: (
+                                    np.minimum(
+                                        normalize(feature_map[feature]),
+                                        hist_max_bin_edge[feature],
+                                    )
+                                    if self.overflow
+                                    else normalize(feature_map[feature])
+                                )
+                                for feature in hist_dict[kin].axes.name[
+                                    :-1
+                                ]
                                 if feature not in ["variation"]
                             }
                             # fill histograms
