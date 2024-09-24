@@ -49,8 +49,9 @@ def get_jobname(args: dict) -> str:
     return jobname
 
 
-def submit_condor(args: dict, cmd:str, flavor: str) -> None:
+def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
     """build condor and executable files, and submit condor job"""
+    print(f"creating job for {jobname}")
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
     
@@ -95,13 +96,15 @@ def submit_condor(args: dict, cmd:str, flavor: str) -> None:
     sh_template_file.close()
 
     # submit jobs
-    print(f"submitting {jobname}")
-    if args["submit"] == "True":
+    if submit:
+        print(f"submitting to condor")
         subprocess.run(["condor_submit", local_condor])
 
 
 def main(args):
     args = manage_processor_args(vars(args))
+    submit = bool(args["submit"])
+    del args["submit"]
     run_checker(args)
     # add facility and output path to args
     args["facility"] = "lxplus"
@@ -113,12 +116,12 @@ def main(args):
     # run job for each partition
     if dataset_config.nsplit == 1:
         cmd = get_command(args)
-        submit_condor(args, cmd, flavor="microcentury")
+        submit_condor(args, cmd, flavor="microcentury", submit=submit)
     else:
         for nsplit in range(1, dataset_config.nsplit + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
-            submit_condor(args, cmd, flavor="longlunch")
+            submit_condor(args, cmd, flavor="longlunch", submit=submit)
 
 
 if __name__ == "__main__":
@@ -206,7 +209,7 @@ if __name__ == "__main__":
         dest="submit",
         type=str,
         default="True",
-        help="wheater to submit to condor or not",
+        help="if True submit job to Condor. If False, it just builds datasets and condor files",
     )
     parser.add_argument(
         "--flow",
