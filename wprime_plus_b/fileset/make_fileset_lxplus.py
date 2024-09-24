@@ -104,12 +104,12 @@ def main(args):
                 for _dataset, era in zip(dataset, ERAS[year]):
                     dataset_definition[f"/{_dataset}"] = {
                         "short_name": f"{dataset_key}_{era}",
-                        "metadata": {"isMC": True},
+                        "metadata": {"isMC": False},
                     }
             else:
                 dataset_definition[f"/{dataset}"] = {
                     "short_name": dataset_key,
-                    "metadata": {"isMC": False},
+                    "metadata": {"isMC": True},
                 }
         # the dataset definition is passed to a DataDiscoveryCLI
         ddc = DataDiscoveryCLI()
