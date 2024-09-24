@@ -32,6 +32,7 @@ from wprime_plus_b.processors.utils.analysis_utils import (
     delta_r_mask,
     normalize,
     trigger_match,
+    fill_histogram
 )
 
 
@@ -51,6 +52,8 @@ class TtbarAnalysis(processor.ProcessorABC):
         systematics to apply {"nominal", "jes", "jer", "met", "tau", "rochester", "full"}
     output_type:
         output object type {'hist', 'array'}
+    flow:
+        whether to include underflow/overflow to first/last bin {True, False}
     """
 
     def __init__(
@@ -60,14 +63,14 @@ class TtbarAnalysis(processor.ProcessorABC):
         year: str = "2017",
         syst: str = "nominal",
         output_type: str = "hist",
-        overflow: str = "True",
+        flow: str = "True",
     ):
         self.year = year
         self.lepton_flavor = lepton_flavor
         self.channel = channel
         self.syst = syst
         self.output_type = output_type
-        self.overflow = overflow
+        self.flow = flow
 
         # define region of the analysis
         self.region = f"{self.channel}_{self.lepton_flavor}"
@@ -717,105 +720,38 @@ class TtbarAnalysis(processor.ProcessorABC):
                                     modifier=variation
                                 )[region_selection]
                             for kin in hist_dict[self.region]:
-                                hist_axes_names = [
-                                    axis
-                                    for axis in hist_dict[self.region][kin].axes.name
-                                    if axis != "variation"
-                                ]
-                                hist_max_bin_edge = {
-                                    axis: hist_dict[self.region][kin]
-                                    .axes[axis]
-                                    .edges[-1]
-                                    - 0.1
-                                    for axis in hist_axes_names
-                                }
-                                fill_args = {
-                                    feature: (
-                                        np.minimum(
-                                            normalize(self.features[feature]),
-                                            hist_max_bin_edge[feature],
-                                        )
-                                        if self.overflow
-                                        else normalize(self.features[feature])
-                                    )
-                                    for feature in hist_dict[self.region][kin].axes.name
-                                    if feature not in ["variation"]
-                                }
-                                hist_dict[self.region][kin].fill(
-                                    **fill_args,
+                                fill_histogram(
+                                    hist_dict=hist_dict[self.region],
+                                    kin=kin,
                                     variation=variation,
                                     weight=region_weight,
+                                    feature_map=self.features,
+                                    flow=self.flow
                                 )
                     elif self.is_mc and syst_var != "nominal":
                         # object-wise variations
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self.region]:
-                            hist_axes_names = [
-                                axis
-                                for axis in hist_dict[self.region][kin].axes.name
-                                if axis != "variation"
-                            ]
-                            hist_max_bin_edge = {
-                                axis: hist_dict[self.region][kin].axes[axis].edges[-1]
-                                - 0.1
-                                for axis in hist_axes_names
-                            }
-                            # get filling arguments
-                            fill_args = {
-                                feature: (
-                                    np.minimum(
-                                        normalize(self.features[feature]),
-                                        hist_max_bin_edge[feature],
-                                    )
-                                    if self.overflow
-                                    else normalize(self.features[feature])
+                            fill_histogram(
+                                    hist_dict=hist_dict[self.region],
+                                    kin=kin,
+                                    variation=syst_var,
+                                    weight=region_weight,
+                                    feature_map=self.features,
+                                    flow=self.flow
                                 )
-                                for feature in hist_dict[self.region][kin].axes.name[
-                                    :-1
-                                ]
-                                if feature not in ["variation"]
-                            }
-                            # fill histograms
-                            hist_dict[self.region][kin].fill(
-                                **fill_args,
-                                variation=syst_var,
-                                weight=region_weight,
-                            )
                     elif not self.is_mc and syst_var == "nominal":
                         # object-wise variations
                         region_weight = weights_container.weight()[region_selection]
                         for kin in hist_dict[self.region]:
-                            hist_axes_names = [
-                                axis
-                                for axis in hist_dict[self.region][kin].axes.name
-                                if axis != "variation"
-                            ]
-                            hist_max_bin_edge = {
-                                axis: hist_dict[self.region][kin].axes[axis].edges[-1]
-                                - 0.1
-                                for axis in hist_axes_names
-                            }
-                            # get filling arguments
-                            fill_args = {
-                                feature: (
-                                    np.minimum(
-                                        normalize(self.features[feature]),
-                                        hist_max_bin_edge[feature],
-                                    )
-                                    if self.overflow
-                                    else normalize(self.features[feature])
+                            fill_histogram(
+                                    hist_dict=hist_dict[self.region],
+                                    kin=kin,
+                                    variation=syst_var,
+                                    weight=region_weight,
+                                    feature_map=self.features,
+                                    flow=self.flow
                                 )
-                                for feature in hist_dict[self.region][kin].axes.name[
-                                    :-1
-                                ]
-                                if feature not in ["variation"]
-                            }
-                            # fill histograms
-                            hist_dict[self.region][kin].fill(
-                                **fill_args,
-                                variation=syst_var,
-                                weight=region_weight,
-                            )
                 elif self.output_type == "array":
                     array_dict = {}
                     self.add_feature(

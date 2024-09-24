@@ -276,3 +276,54 @@ def trigger_match(leptons: ak.Array, trigobjs: ak.Array, trigger_path: str):
     n_of_trigger_matches = ak.sum(pass_delta_r, axis=2)
     trig_matched_locs = n_of_trigger_matches >= 1
     return trig_matched_locs
+
+def fill_histogram(hist_dict: dict, kin: str, variation: str, weight: ak.Array, feature_map: dict, flow: str):
+    """
+    fill histograms for some sys variation and weight. 
+    If flow='True' the underflow/overflow will be added to the first/last bin
+    """
+    if flow:
+        hist_axes_names = [
+            axis
+            for axis in hist_dict[kin].axes.name
+            if axis != "variation"
+        ]
+        hist_max_bin_edge = {
+            axis: hist_dict[kin]
+            .axes[axis]
+            .edges[-1]
+            - 0.1
+            for axis in hist_axes_names
+        }
+        hist_min_bin_edge = {
+            axis: hist_dict[kin]
+            .axes[axis]
+            .edges[0]
+            for axis in hist_axes_names
+        }
+        fill_args = {
+            feature: (
+                np.maximum(
+                    np.minimum(
+                        normalize(feature_map[feature]),
+                        hist_max_bin_edge[feature],
+                    ),
+                    hist_min_bin_edge[feature]
+                )
+                if flow
+                else normalize(feature_map[feature])
+            )
+            for feature in hist_dict[kin].axes.name
+            if feature not in ["variation"]
+        }
+    else:
+        fill_args = {
+            feature: normalize(feature_map[feature])
+            for feature in hist_dict[kin].axes.name
+            if feature not in ["variation"]
+        }
+    hist_dict[kin].fill(
+        **fill_args,
+        variation=variation,
+        weight=weight,
+    )
