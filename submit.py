@@ -76,7 +76,7 @@ def main(args):
             print(f"Uploaded {Path.cwd()} succesfully")
         except OSError:
             print("Failed to upload the directory")
-        
+
     # get .json filesets for sample
     filesets = get_filesets(
         sample=args["sample"],
@@ -84,21 +84,25 @@ def main(args):
         facility=args["facility"],
     )
     for sample, fileset_path in filesets.items():
-        print(f"Processing {sample} from {fileset_path}")
+        if len(args["nsample"]) != 0:
+            samples_keys = args["nsample"].split(",")
+            if sample.split("_")[-1] not in samples_keys:
+                continue
+        print(f"Processing {sample}")
         fileset = {}
         with open(fileset_path, "r") as handle:
             data = json.load(handle)
         for root_file in data.values():
             if args["nfiles"] != -1:
                 root_file = root_file[: args["nfiles"]]
-                
+
         if sample.startswith("Signal"):
             fileset[sample] = [f"root://eoscms.cern.ch//eos/cms/" + file for file in root_file]
         elif args["facility"] == "coffea-casa":
             fileset[sample] = [f"root://xcache/" + file for file in root_file]
         else:
             fileset[sample] = root_file
-            
+
         # run processor
         t0 = time.monotonic()
         out = processor.run_uproot_job(
@@ -149,7 +153,7 @@ def main(args):
                         metadata["nevents"][r]["weighted_final_nevents"] = str(
                             output_metadata[r]["weighted_final_nevents"]
                         )
-                        
+
             # save ttbar and ztoll metadata
             if args["processor"] in ["ttbar", "ztoll"]:
                 # save raw and weighted number of events after selection
@@ -178,7 +182,7 @@ def main(args):
                     {"weight_statistics": output_metadata["weight_statistics"]}
                 )
             # save selectios to metadata
-            if args["processor"] == "ttbar": 
+            if args["processor"] == "ttbar":
                 selections = {
                     "electron_selection": ttbar_electron_config[args["channel"]][
                         args["lepton_flavor"]
@@ -201,7 +205,7 @@ def main(args):
                     "jet_selection": ztoll_jet_selection,
                 }
                 metadata.update({"selections": selections})
-            elif args["processor"] == "qcd":  
+            elif args["processor"] == "qcd":
                 region = args["channel"]
                 if region != "all":
                     selections = {
@@ -291,6 +295,13 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="number of .root files to be processed by sample. To run all files use -1 (default 1)",
+    )
+    parser.add_argument(
+        "--nsample",
+        dest="nsample",
+        type=str,
+        default="",
+        help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     parser.add_argument(
         "--chunksize",
