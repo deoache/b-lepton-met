@@ -103,7 +103,7 @@ def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
 
 def main(args):
     args = manage_processor_args(vars(args))
-    submit = bool(args["submit"])
+    submit = eval(args["submit"])
     del args["submit"]
     run_checker(args)
     # add facility and output path to args
