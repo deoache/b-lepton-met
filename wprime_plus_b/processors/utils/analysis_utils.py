@@ -288,11 +288,20 @@ def fill_histogram(hist_dict: dict, kin: str, variation: str, weight: ak.Array, 
             for axis in hist_dict[kin].axes.name
             if axis != "variation"
         ]
+        epsilons = {
+            axis: (
+                hist_dict[kin].axes[axis].edges[-1]
+                - hist_dict[kin].axes[axis].edges[-2]
+            )
+            / 4
+            for axis in hist_dict[kin].axes.name
+            if axis != "variation"
+        }
         hist_max_bin_edge = {
             axis: hist_dict[kin]
             .axes[axis]
             .edges[-1]
-            - 0.1
+            - epsilons[axis]
             for axis in hist_axes_names
         }
         hist_min_bin_edge = {
@@ -322,6 +331,7 @@ def fill_histogram(hist_dict: dict, kin: str, variation: str, weight: ak.Array, 
             for feature in hist_dict[kin].axes.name
             if feature not in ["variation"]
         }
+    
     hist_dict[kin].fill(
         **fill_args,
         variation=variation,
