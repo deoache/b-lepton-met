@@ -60,11 +60,12 @@ def build_filesets(args: dict) -> None:
     else:
         with open(f"{fileset_path}/das_datasets.json", "r") as f:
             datasets = json.load(f)[f"{args['year']}_UL"]
-
+    datasets = {args["sample"]: datasets[args["sample"]]}
+    
     # make output filesets directory
     output_directory = Path(f"{fileset_path}/{args['year']}/{args['facility']}")
     if output_directory.exists():
-        for file in output_directory.glob("*"):
+        for file in output_directory.glob(f"{args['sample']}*"):
             if file.is_file():
                 file.unlink()
     else:
