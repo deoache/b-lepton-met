@@ -51,13 +51,13 @@ def get_jobname(args: dict) -> str:
 
 def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
     """build condor and executable files, and submit condor job"""
-    print(f"creating job for {jobname}")
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
     
     # set path and jobname
     jobpath = get_jobpath(args)
     jobname = get_jobname(args)
+    print(f"creating job for {jobname}")
     
     # create logs and condor directories
     log_dir = Path(f"{str(condor_dir)}/logs/{jobpath}")
