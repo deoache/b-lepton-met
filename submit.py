@@ -84,11 +84,7 @@ def main(args):
         facility=args["facility"],
     )
     for sample, fileset_path in filesets.items():
-        if len(args["nsample"]) != 0:
-            samples_keys = args["nsample"].split(",")
-            if sample.split("_")[-1] not in samples_keys:
-                continue
-        print(f"Processing {sample}")
+        print(f"Processing {sample} from {fileset_path}")
         fileset = {}
         with open(fileset_path, "r") as handle:
             data = json.load(handle)
@@ -297,13 +293,6 @@ if __name__ == "__main__":
         help="number of .root files to be processed by sample. To run all files use -1 (default 1)",
     )
     parser.add_argument(
-        "--nsample",
-        dest="nsample",
-        type=str,
-        default="",
-        help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
-    )
-    parser.add_argument(
         "--chunksize",
         dest="chunksize",
         type=int,
@@ -330,13 +319,6 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="facility to launch jobs {coffea-casa, lxplus}",
-    )
-    parser.add_argument(
-        "--tag",
-        dest="tag",
-        type=str,
-        default="",
-        help="tag to reference output files directory",
     )
     parser.add_argument(
         "--output_path",
