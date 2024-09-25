@@ -51,13 +51,14 @@ def get_jobname(args: dict) -> str:
 
 def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
     """build condor and executable files, and submit condor job"""
-    print(f"creating job for {jobname}")
+    
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
     
     # set path and jobname
     jobpath = get_jobpath(args)
     jobname = get_jobname(args)
+    print(f"creating condor files {jobname}")
     
     # create logs and condor directories
     log_dir = Path(f"{str(condor_dir)}/logs/{jobpath}")
@@ -96,13 +97,13 @@ def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
     sh_template_file.close()
     
     if submit:
-        print(f"submitting to condor")
+        print(f"submitting condor job")
         subprocess.run(["condor_submit", local_condor])
 
 
 def main(args):
     args = manage_processor_args(vars(args))
-    submit = bool(args["submit"])
+    submit = eval(args["submit"])
     del args["submit"]
     run_checker(args)
     # add facility and output path to args
