@@ -292,22 +292,19 @@ def fill_histogram(
     """
     hist_axes = hist_dict[kin].axes
     hist_axes_names = [axis for axis in hist_axes.name if axis != "variation"]
-    epsilons = {}
-    hist_max_bin_edge = {}
-    hist_min_bin_edge = {}
     fill_args = {}
     for axis in hist_axes_names:
         if flow:
-            epsilons[axis] = (hist_axes[axis].edges[-1] - hist_axes[axis].edges[-2]) / 2
-            hist_max_bin_edge[axis] = hist_axes[axis].edges[-1] - epsilons[axis]
-            hist_min_bin_edge[axis] = hist_axes[axis].edges[0]
+            epsilon = (hist_axes[axis].edges[-1] - hist_axes[axis].edges[-2]) / 2
+            hist_max_bin_edge = hist_axes[axis].edges[-1] - epsilon
+            hist_min_bin_edge = hist_axes[axis].edges[0]
             fill_args[axis] = np.maximum(
-                np.minimum(normalize(feature_map[axis]), hist_max_bin_edge[axis]),
-                hist_min_bin_edge[axis],
+                np.minimum(normalize(feature_map[axis]), hist_max_bin_edge),
+                hist_min_bin_edge,
             )
         else:
             fill_args[axis] = normalize(feature_map[axis])
-            
+
     hist_dict[kin].fill(
         **fill_args,
         variation=variation,
