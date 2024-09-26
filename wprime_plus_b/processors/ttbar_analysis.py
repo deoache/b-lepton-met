@@ -30,7 +30,6 @@ from wprime_plus_b.selections.ttbar.tau_selection import select_good_taus
 from wprime_plus_b.selections.ttbar.bjet_selection import select_good_bjets
 from wprime_plus_b.processors.utils.analysis_utils import (
     delta_r_mask,
-    normalize,
     trigger_match,
     fill_histogram
 )
@@ -415,13 +414,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
+                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
-            if self.year in ["2016APV", "2016", "2018"]:
-                vetomask = jetvetomaps_mask(
-                    jets=events.Jet, year=self.year, mapname="jetvetomap"
-                )
-                # good_bjets = good_bjets & vetomask
-
             bjets = events.Jet[good_bjets]
 
             # -------------------------------------------------------------
