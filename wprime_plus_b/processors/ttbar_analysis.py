@@ -510,8 +510,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
                 ) & (hem_veto)
 
-                # self.selections.add("HEMCleaning", ~hem_cleaning)
-                self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
+                self.selections.add("HEMCleaning", ~hem_cleaning)
+                #self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
 
