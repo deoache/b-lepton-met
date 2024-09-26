@@ -97,7 +97,7 @@ def main(args):
                 root_file = root_file[: args["nfiles"]]
 
         if sample.startswith("Signal"):
-            fileset[sample] = [f"root://eoscms.cern.ch//eos/cms/" + file for file in root_file]
+            fileset[sample] = [f"root://xrootd-vanderbilt.sites.opensciencegrid.org:1094/" + file for file in root_file]
         elif args["facility"] == "coffea-casa":
             fileset[sample] = [f"root://xcache/" + file for file in root_file]
         else:

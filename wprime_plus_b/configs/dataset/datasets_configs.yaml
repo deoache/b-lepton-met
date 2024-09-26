@@ -71,11 +71,11 @@ SignalTau_1Tev:
 SignalTau_2Tev:
   nsplit: 1
 SignalMuon_600GeV:
-  nsplit: 1
+  nsplit: 4
 SignalMuon_1TeV:
-  nsplit: 1
-SignalMuon_2TeV:
-  nsplit: 1
+  nsplit: 15
+SignalMuon_3TeV:
+  nsplit: 5
 SignalElectron_600GeV:
   nsplit: 1
 SignalElectron_2TeV:
