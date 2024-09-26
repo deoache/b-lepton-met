@@ -243,7 +243,7 @@ qcd_lepton_bjet_hist = hist.Hist(
 # susy histograms
 # ------------------------------
 dimuon_mass_axis = hist.axis.Regular(
-    23, 60, 120, name="dimuon_mass", label="$m(\mu\mu)$ [GeV]"
+    24, 60, 120, name="dimuon_mass", label="$m(\mu\mu)$ [GeV]"
 )
 dimuon_pt_axis = hist.axis.Regular(
     50, 0, 1000, name="dimuon_pt", label="$p_T(\mu\mu)$ [GeV]"
