@@ -273,6 +273,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
+                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
             jets = events.Jet[good_jets]
             
@@ -290,10 +291,8 @@ class SusyAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
+                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
-            # if self.year in ["2016APV", "2016", "2018"]:
-            #    vetomask = jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
-            #    good_bjets = good_bjets & vetomask
             bjets = events.Jet[good_bjets]
             
             # -------------------------------------------------------------
@@ -381,15 +380,20 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("goodvertex", events.PV.npvsGood > 0)
             # cut on MET 
             self.selections.add("0lstate", zl_state_met_pt > 250)
-            # stitching on DY inclusive samples
+            # stitching on DY and W+Jets inclusive samples
             dy_stitching = np.ones(nevents, dtype="bool")
             if dataset.startswith("DYJetsToLL_inclusive"):
                 dy_stitching = events.LHE.HT < 70
+            w_stitching = np.ones(nevents, dtype="bool")
+            if dataset.startswith("WJetsToLNu_inclusive"):
+                w_stitching = events.LHE.HT < 100
+            self.selections.add("w_stitching", w_stitching)
             self.selections.add("dy_stitching", dy_stitching)
             # add number of leptons and jets
             self.selections.add("atleast_two_muons", ak.num(muons) > 1)
             self.selections.add("atleast_one_dimuon", ak.num(dimuons) > 0)
             self.selections.add("atleast_two_jets", ak.num(jets) > 1)
+            self.selections.add("atleast_one_dijet", ak.num(dijets) > 0)
             self.selections.add("muon_veto", ak.num(veto_muons) == 0)
             self.selections.add("electron_veto", ak.num(electrons) == 0)
             self.selections.add("tau_veto", ak.num(taus) == 0)
@@ -441,14 +445,16 @@ class SusyAnalysis(processor.ProcessorABC):
                 "metfilters",
                 "HEMCleaning",
                 "dy_stitching",
+                "w_stitching",
                 "0lstate",
                 "atleast_two_muons",
                 "atleast_one_dimuon",
-                "atleast_two_jets",
                 "muon_veto",
                 "electron_veto",
                 "tau_veto",
                 "bjet_veto",
+                "atleast_two_jets",
+                "atleast_one_dijet",
             ]
             self.selections.add("0lep", self.selections.all(*region_selections))
             region_selection = self.selections.all("0lep")
