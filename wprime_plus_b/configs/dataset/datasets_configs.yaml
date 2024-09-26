@@ -47,7 +47,7 @@ VBFHToWWToLNuQQ:
 WJetsToLNu_HT-100To200:
   nsplit: 10
 WJetsToLNu_HT-1200To2500:
-  nsplit: 5
+  nsplit: 3
 WJetsToLNu_HT-200To400:
   nsplit: 5
 WJetsToLNu_HT-2500ToInf:
