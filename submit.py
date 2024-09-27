@@ -64,6 +64,10 @@ def main(args):
         facility=args["facility"],
     )
     for sample, fileset_path in filesets.items():
+        if len(args["nsample"]) != 0:
+            samples_keys = args["nsample"].split(",")
+            if sample.split("_")[-1] not in samples_keys:
+                continue
         print(f"Processing {sample} from {fileset_path}")
         fileset = {}
         with open(fileset_path, "r") as handle:
@@ -320,6 +324,13 @@ if __name__ == "__main__":
         type=str,
         default="True",
         help="whether to include underflow/overflow to first/last bin {True, False}",
+    )
+    parser.add_argument(
+        "--nsample",
+        dest="nsample",
+        type=str,
+        default="",
+        help="partitions to run (--nsample 1,2,3 will only run partitions 1,2 and 3)",
     )
     args = parser.parse_args()
     main(args)
