@@ -273,7 +273,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
-                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
+                #& jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
             jets = events.Jet[good_jets]
             
@@ -291,7 +291,7 @@ class SusyAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
-                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
+                #& jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
             bjets = events.Jet[good_bjets]
             
