@@ -5,7 +5,7 @@ DYJetsToLL_M-4to50_HT-200to400:
 DYJetsToLL_M-4to50_HT-400to600:
   nsplit: 5
 DYJetsToLL_M-4to50_HT-600toInf:
-  nsplit: 6
+  nsplit: 3
 DYJetsToLL_M-4to50_HT-70to100:
   nsplit: 3
 DYJetsToLL_M-50_HT-100to200:
@@ -39,7 +39,7 @@ EWKZ2Jets_ZToNuNu:
 GluGluHToWWToLNuQQ:
   nsplit: 1
 MET:
-  nsplit: 30
+  nsplit: 15
 QCD_HT1000to1500:
   nsplit: 5
 QCD_HT100to200:
@@ -101,27 +101,27 @@ QCD_Pt-80To120_MuEnriched:
 ST_s-channel_4f_leptonDecays:
   nsplit: 2
 ST_t-channel_antitop_4f_InclusiveDecays:
-  nsplit: 7
+  nsplit: 5
 ST_t-channel_top_4f_InclusiveDecays:
-  nsplit: 20
+  nsplit: 8
 ST_tW_antitop_5f_inclusiveDecays:
-  nsplit: 5
+  nsplit: 3
 ST_tW_top_5f_inclusiveDecays:
-  nsplit: 5
+  nsplit: 3
 SingleElectron:
-  nsplit: 25
+  nsplit: 15
 SingleMuon:
-  nsplit: 44
+  nsplit: 15
 TTTo2L2Nu:
   nsplit: 8
 TTToHadronic:
-  nsplit: 20
+  nsplit: 12
 TTToSemiLeptonic:
-  nsplit: 30
+  nsplit: 12
 Tau:
-  nsplit: 19
+  nsplit: 15
 VBFHToWWTo2L2Nu:
-  nsplit: 3
+  nsplit: 1
 VBFHToWWToLNuQQ:
   nsplit: 1
 WJetsToLNu_HT-100To200:
