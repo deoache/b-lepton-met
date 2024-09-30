@@ -10,7 +10,9 @@ class Paths:
         Finds the root path as the directory two levels upwards of where this file is located.
         Prints out the detected root path.
         """
-        self.root_path = pathlib.Path(__file__).resolve().parent.parent
+        #self.root_path = pathlib.Path(__file__).resolve().parent.parent
+        user = os.environ["USER"]
+        self.root_path = pathlib.Path(f"/eos/user/{user[0]}/{user}/susy_vbf")
 
     @staticmethod
     def safe_return(path: pathlib.Path, path_type: str, mkdir: bool) -> pathlib.Path:
