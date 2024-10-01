@@ -58,6 +58,7 @@ class SusyAnalysis(processor.ProcessorABC):
             "dijet_kin": histograms.susy_dijet_hist,
             "muon_kin": histograms.susy_muon_hist,
             "jet_kin": histograms.susy_jet_hist,
+            "muon_ind_kin": histograms.susy_indmuon_hist,
         }
     def process(self, events):
         # get dataset name
@@ -390,8 +391,8 @@ class SusyAnalysis(processor.ProcessorABC):
             self.selections.add("w_stitching", w_stitching)
             self.selections.add("dy_stitching", dy_stitching)
             # add number of leptons and jets
-            self.selections.add("atleast_two_muons", ak.num(muons) > 1)
-            self.selections.add("atleast_one_dimuon", ak.num(dimuons) > 0)
+            self.selections.add("two_muons", ak.num(muons) == 2)
+            self.selections.add("one_dimuon", ak.num(dimuons) == 1)
             self.selections.add("atleast_two_jets", ak.num(jets) > 1)
             self.selections.add("atleast_one_dijet", ak.num(dijets) > 0)
             self.selections.add("muon_veto", ak.num(veto_muons) == 0)
@@ -404,7 +405,6 @@ class SusyAnalysis(processor.ProcessorABC):
                 # https://hypernews.cern.ch/HyperNews/CMS/get/JetMET/2000.html
                 # Due to the HEM issue in year 2018, we veto the events with jets and electrons in the
                 # region -3 < eta <-1.3 and -1.57 < phi < -0.87 to remove fake MET
-
                 hem_veto = ak.any(
                     (
                         (bjets.eta > -3.2)
@@ -447,8 +447,8 @@ class SusyAnalysis(processor.ProcessorABC):
                 "dy_stitching",
                 "w_stitching",
                 "0lstate",
-                "atleast_two_muons",
-                "atleast_one_dimuon",
+                "two_muons",
+                "one_dimuon",
                 "muon_veto",
                 "electron_veto",
                 "tau_veto",
@@ -483,11 +483,12 @@ class SusyAnalysis(processor.ProcessorABC):
                     "met": zl_state_met_pt[region_selection],
                     "dijet_mass": largest_dijets_mass[region_selection],
                     "mu1_pt": dimuons.mu1.pt[region_selection],
-                    "mu2_pt": dimuons.mu1.pt[region_selection],
+                    "mu2_pt": dimuons.mu2.pt[region_selection],
                     "jet_pt": jets.pt[region_selection],
                     "jet_eta": jets.eta[region_selection],
                     "lepton_pt": muons.pt[region_selection],
                     "lepton_eta": muons.eta[region_selection],
+                    "njets": ak.num(jets)[region_selection],
                 }
                 if syst_var == "nominal":
                     # save weighted events to metadata
