@@ -1,11 +1,9 @@
-import os
 import json
 import glob
 import argparse
 import subprocess
 from pathlib import Path
 
-USER = os.environ["USER"]
 
 def main(args):
     """Helper function to resubmit condor jobs"""
@@ -74,28 +72,27 @@ if __name__ == "__main__":
         "--output_path",
         dest="output_path",
         type=str,
-        default=f"/eos/user/{USER[0]}/{USER}/susy_vbf/outs",
-        help="path to the 'outs' folder",
+        help="path to the outputs folder",
     )
     parser.add_argument(
         "--processor",
         dest="processor",
         type=str,
         default="susy",
-        help="processor to be used {ttbar, ztoll, qcd, trigger_eff, btag_eff} (default ttbar)",
+        help="processor to be used",
     )
     parser.add_argument(
         "--channel",
         dest="channel",
         type=str,
-        default="2b1l",
+        default="",
         help="channel to be processed {'2b1l', '1b1e1mu', '1b1l'}",
     )
     parser.add_argument(
         "--lepton_flavor",
         dest="lepton_flavor",
         type=str,
-        default="mu",
+        default="",
         help="lepton flavor to be processed {'mu', 'ele'}",
     )
     parser.add_argument(
