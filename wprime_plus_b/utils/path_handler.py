@@ -4,15 +4,18 @@ import pathlib
 
 class Paths:
 
-    def __init__(self) -> None:
+    def __init__(self, eos: bool = True) -> None:
         """Initializes Paths instance.
 
         Finds the root path as the directory two levels upwards of where this file is located.
         Prints out the detected root path.
         """
-        #self.root_path = pathlib.Path(__file__).resolve().parent.parent
-        user = os.environ["USER"]
-        self.root_path = pathlib.Path(f"/eos/user/{user[0]}/{user}/susy_vbf")
+        if eos:
+            user = os.environ["USER"]
+            self.root_path = pathlib.Path(f"/eos/user/{user[0]}/{user}/susy_vbf")
+        else:
+            self.root_path = pathlib.Path(__file__).resolve().parent.parent
+        
 
     @staticmethod
     def safe_return(path: pathlib.Path, path_type: str, mkdir: bool) -> pathlib.Path:
@@ -46,6 +49,7 @@ class Paths:
         processor_channel: str = None,
         dataset_year: str = None,
         mkdir: bool = None,
+        label: str = None,
     ):
         processor_path = "/".join(
             [
@@ -55,6 +59,7 @@ class Paths:
                     processor_channel,
                     processor_lepton_flavour,
                     dataset_year,
+                    label
                 ]
                 if elem is not None
             ]

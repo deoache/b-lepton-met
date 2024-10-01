@@ -12,7 +12,6 @@ from utils import get_filesets
 from dask.distributed import Client
 from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-from wprime_plus_b.utils import paths
 from wprime_plus_b.processors.susy import SusyAnalysis
 from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
 from wprime_plus_b.selections.susy.electron_config import susy_electron_config

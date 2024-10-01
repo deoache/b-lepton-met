@@ -4,7 +4,7 @@ import glob
 import yaml
 from pathlib import Path
 from collections import OrderedDict
-from wprime_plus_b.utils import paths
+from wprime_plus_b.utils.path_handler import Paths
 from wprime_plus_b.utils.load_config import load_dataset_config, load_processor_config
 
 
@@ -13,12 +13,14 @@ def build_output_directories(args: dict) -> str:
     # get processor config
     processor_config = load_processor_config(config_name=args["processor"])
     # get processor output path
+    paths = Paths(eval(args["eos"]))
     processor_output_path = paths.processor_path(
         processor_name=processor_config.name,
         processor_lepton_flavour=processor_config.lepton_flavor,
         processor_channel=processor_config.channel,
         dataset_year=args["year"],
         mkdir=True,
+        label=args["label"],
     )
     return processor_output_path
 

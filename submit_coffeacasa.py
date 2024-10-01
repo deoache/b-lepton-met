@@ -9,6 +9,8 @@ def main(args):
     # add facility and output path to args
     args["facility"] = "coffea-casa"
     args["output_path"] = build_output_directories(args)
+    del args["label"]
+    del args["eos"]
     # build filesets
     build_filesets(args)
     # run command
@@ -123,6 +125,20 @@ if __name__ == "__main__":
         type=str,
         default="True",
         help="whether to include underflow/overflow to first/last bin {True, False}",
+    )
+    parser.add_argument(
+        "--label",
+        dest="label",
+        type=str,
+        default="ZJets_CR",
+        help="Tag to recognize the run",
+    )
+    parser.add_argument(
+        "--eos",
+        dest="eos",
+        type=str,
+        default="False",
+        help="if True save outputs to /eos",
     )
     args = parser.parse_args()
     main(args)
