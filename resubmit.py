@@ -16,6 +16,8 @@ def main(args):
     # get jobs done
     jobs_done = []
     out_path = f"{args.output_path}/{args.processor}"
+    if args.label:
+        out_path += f"/{args.label}"
     if args.processor not in ["btag_eff", "trigger_eff", "susy"]:
         out_path += f"/{args.channel}/{args.lepton_flavor}"
     if args.processor == "trigger_eff":
@@ -72,7 +74,15 @@ if __name__ == "__main__":
         "--output_path",
         dest="output_path",
         type=str,
-        help="path to the outputs folder",
+        #default="/eos/user/../../susy_vbf/outs"
+        help="path to the 'outs' folder",
+    )
+    parser.add_argument(
+        "--label",
+        dest="label",
+        type=str,
+        default="",
+        help="label of the run",
     )
     parser.add_argument(
         "--processor",

@@ -56,10 +56,10 @@ class Paths:
                 elem
                 for elem in [
                     processor_name,
+                    label,
                     processor_channel,
                     processor_lepton_flavour,
                     dataset_year,
-                    label
                 ]
                 if elem is not None
             ]
