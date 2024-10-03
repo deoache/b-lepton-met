@@ -82,7 +82,8 @@ SITES = {
         "T1_FR_CCIN2P3_Disk"
         "T2_RU_JINR",
         "T2_UK_London_IC",
-        "T1_FR_CCIN2P3_Disk"
+        "T1_FR_CCIN2P3_Disk",
+        "T2_EE_Estonia"
     ],
 }
 
