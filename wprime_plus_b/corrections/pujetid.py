@@ -32,9 +32,26 @@ def add_pujetid_weight(
             variations to weights container. else, add only 'nominal' weights.
     """
     puid_wps = {
-        "L": 4,
-        "M": 6,
-        "T": 7,
+        "2016APV": {
+            "L": 1,
+            "M": 3,
+            "T": 7,
+        },
+        "2016": {
+            "L": 1,
+            "M": 3,
+            "T": 7,
+        },
+        "2017": {
+            "L": 4,
+            "M": 6,
+            "T": 7,
+        },
+        "2018": {
+            "L": 4,
+            "M": 6,
+            "T": 7,
+        }
     }
     # flat jets array since correction function works only on flat arrays
     j, n = ak.flatten(jets), ak.num(jets)
@@ -42,7 +59,7 @@ def add_pujetid_weight(
     # get 'in-limits' jets
     jet_pt_mask = (j.pt > 20) & (j.pt < 50)
     jet_eta_mask = np.abs(j.eta) < 5.
-    jet_puid_mask = j.puId == puid_wps[working_point]
+    jet_puid_mask = j.puId == puid_wps[year][working_point]
     genjet_match_mask = j.genJetIdx >= 0
     in_jet_mask = jet_pt_mask & jet_eta_mask & jet_puid_mask & genjet_match_mask
     in_jets = j.mask[in_jet_mask]

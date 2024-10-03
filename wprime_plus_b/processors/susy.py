@@ -133,7 +133,7 @@ class SusyAnalysis(processor.ProcessorABC):
                     jets=events.Jet,
                     weights=weights_container,
                     year=self.year,
-                    working_point=susy_bjet_config["jet_pileup_id"],
+                    working_point=susy_jet_config[self.year]["jet_pileup_id"],
                     variation=syst_var,
                 )
                 # b-tagging corrector
@@ -265,9 +265,9 @@ class SusyAnalysis(processor.ProcessorABC):
             good_jets = select_good_jets(
                 jets=events.Jet,
                 year=self.year,
-                jet_pt_threshold=susy_jet_config["jet_pt_threshold"],
-                jet_abs_eta=susy_jet_config["jet_abs_eta"],
-                jet_pileup_id=susy_jet_config["jet_pileup_id"],
+                jet_pt_threshold=susy_jet_config[self.year]["jet_pt_threshold"],
+                jet_abs_eta=susy_jet_config[self.year]["jet_abs_eta"],
+                jet_pileup_id=susy_jet_config[self.year]["jet_pileup_id"],
             )
             good_jets = (
                 good_jets
