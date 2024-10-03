@@ -77,8 +77,8 @@ def select_good_jets(
         }
     }
     jet_id = {
-        "2016APV": 1,
-        "2016": 1,
+        "2016APV": 6,
+        "2016": 6,
         "2017": 6,
         "2018": 6
     }
@@ -96,7 +96,6 @@ def select_good_jets(
         & (np.abs(jets.eta) < jet_abs_eta)
         & (jets.jetId == jet_id[year])
     )
-
     return ak.where(
         (jets.pt > jet_pt_threshold) & (jets.pt < 50),
         low_pt_jets_mask,
