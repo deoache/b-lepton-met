@@ -242,28 +242,38 @@ qcd_lepton_bjet_hist = hist.Hist(
 # -----------------------------
 # susy histograms
 # ------------------------------
-dimuon_mass_axis = hist.axis.Regular(
+susy_dimuon_mass_axis = hist.axis.Regular(
     24, 60, 120, name="dimuon_mass", label="$m(\mu\mu)$ [GeV]"
 )
-dimuon_pt_axis = hist.axis.Regular(
+susy_dimuon_pt_axis = hist.axis.Regular(
     50, 0, 1000, name="dimuon_pt", label="$p_T(\mu\mu)$ [GeV]"
 )
-met_axis = hist.axis.Variable(
+susy_dijet_mass_axis = hist.axis.Variable(
+    edges=[500, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3200, 3800, 5000],
+    name="dijet_mass", 
+    label="Largest $m(jj)$ [GeV]"
+)
+susy_met_axis = hist.axis.Variable(
     edges=[250, 260, 270, 280, 290, 300, 320, 340, 360, 380, 400, 450, 500, 1000],
     name="met", 
     label="$p_T^{miss}$ [GeV]"
 )
+susy_jet_pt_axis = hist.axis.Variable(
+    edges=[20, 60, 90, 120, 150, 180, 210, 240, 300, 500],
+    name="jet_pt",
+)
+susy_jet_eta_axis = hist.axis.Regular(
+    bins=50,
+    start=-4.7,
+    stop=4.7,
+    name="jet_eta",
+)
 susy_jet_hist = hist.Hist(
-    jet_pt_axis,
-    jet_eta_axis,
+    susy_jet_pt_axis,
+    susy_jet_eta_axis,
     n_jets_axis,
     syst_axis,
     hist.storage.Weight(),
-)
-dijet_mass_axis = hist.axis.Variable(
-    edges=[500, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3200, 3800, 5000],
-    name="dijet_mass", 
-    label="Largest $m(jj)$ [GeV]"
 )
 susy_indmuon_hist = hist.Hist(
     hist.axis.Regular(50, 0, 1000, name="mu1_pt"),
@@ -278,18 +288,18 @@ susy_muon_hist = hist.Hist(
     hist.storage.Weight(),
 )
 susy_dimuon_hist = hist.Hist(
-    dimuon_mass_axis,
-    dimuon_pt_axis,
+    susy_dimuon_mass_axis,
+    susy_dimuon_pt_axis,
     syst_axis,
     hist.storage.Weight(),
 )
 susy_met_hist = hist.Hist(
-    met_axis,
+    susy_met_axis,
     syst_axis,
     hist.storage.Weight(),
 )
 susy_dijet_hist = hist.Hist(
-    dijet_mass_axis,
+    susy_dijet_mass_axis,
     syst_axis,
     hist.storage.Weight(),
 )
