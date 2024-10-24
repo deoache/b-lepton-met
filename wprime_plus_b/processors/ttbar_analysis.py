@@ -257,7 +257,8 @@ class TtbarAnalysis(processor.ProcessorABC):
                     ]["electron_id_wp"]
                 )
                 # add electron reco weights
-                electron_corrector.add_reco_weight()
+                electron_corrector.add_reco_weight("RecoAbove20")
+                electron_corrector.add_reco_weight("RecoBelow20")
                 # add trigger weights
                 if self.lepton_flavor == "ele":
                     """

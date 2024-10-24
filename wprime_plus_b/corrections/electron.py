@@ -173,17 +173,26 @@ class ElectronCorrector:
                 weight=nominal_sf,
             )
 
-    def add_reco_weight(self) -> None:
-        """add electron reconstruction scale factors to weights container"""
+    def add_reco_weight(self, reco: str) -> None:
+        """
+        add electron reconstruction scale factors to weights container
+        
+        reco: {RecoAbove20, RecoBelow20}
+        """
+        electron_pt_mask = {
+            "RecoAbove20": (self.e.pt > 20) & (self.e.pt < 499.999),
+            "RecoBelow20":  (self.e.pt > 10) & (self.e.pt < 20)
+        }
         # get 'in-limits' electrons
-        electron_pt_mask = (self.e.pt > 20.1) & (
-            self.e.pt < 499.999
-        )  # potential problems with pt > 500 GeV
-        in_electron_mask = electron_pt_mask
+        in_electron_mask = electron_pt_mask[reco]
         in_electrons = self.e.mask[in_electron_mask]
         
         # get electrons transverse momentum and pseudorapidity (replace None values with some 'in-limit' value)
-        electron_pt = ak.fill_none(in_electrons.pt, 20.1)
+        electrons_pt_limits = {
+            "RecoAbove20": 21,
+            "RecoBelow20": 15
+        }
+        electron_pt = ak.fill_none(in_electrons.pt, electrons_pt_limits[reco])
         electron_eta = ak.fill_none(in_electrons.eta, 0.0)
         
         # remove _UL from year
@@ -192,7 +201,7 @@ class ElectronCorrector:
         # get nominal scale factors
         nominal_sf = unflat_sf(
             self.cset["UL-Electron-ID-SF"].evaluate(
-                year, "sf", "RecoAbove20", electron_eta, electron_pt
+                year, "sf", reco, electron_eta, electron_pt
             ),
             in_electron_mask,
             self.n,
@@ -201,27 +210,27 @@ class ElectronCorrector:
             # get 'up' and 'down' scale factors
             up_sf = unflat_sf(
                 self.cset["UL-Electron-ID-SF"].evaluate(
-                    year, "sfup", "RecoAbove20", electron_eta, electron_pt
+                    year, "sfup", reco, electron_eta, electron_pt
                 ),
                 in_electron_mask,
                 self.n,
             )
             down_sf = unflat_sf(
                 self.cset["UL-Electron-ID-SF"].evaluate(
-                    year, "sfdown", "RecoAbove20", electron_eta, electron_pt
+                    year, "sfdown", reco, electron_eta, electron_pt
                 ),
                 in_electron_mask,
                 self.n,
             )
             # add scale factors to weights container
             self.weights.add(
-                name=f"electron_reco",
+                name=f"electron_{reco}",
                 weight=nominal_sf,
                 weightUp=up_sf,
                 weightDown=down_sf,
             )
         else:
             self.weights.add(
-                name=f"electron_reco",
+                name=f"electron_{reco}",
                 weight=nominal_sf,
             )
