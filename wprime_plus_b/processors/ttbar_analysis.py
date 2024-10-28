@@ -415,7 +415,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                 & (delta_r_mask(events.Jet, electrons, threshold=0.4))
                 & (delta_r_mask(events.Jet, muons, threshold=0.4))
                 & (delta_r_mask(events.Jet, taus, threshold=0.4))
-                #& jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
+                & jetvetomaps_mask(jets=events.Jet, year=self.year, mapname="jetvetomap")
             )
             bjets = events.Jet[good_bjets]
 
@@ -511,8 +511,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     | ((np.random.rand(len(events)) < 0.632) & self.is_mc)
                 ) & (hem_veto)
 
-                #self.selections.add("HEMCleaning", ~hem_cleaning)
-                self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
+                self.selections.add("HEMCleaning", ~hem_cleaning)
             else:
                 self.selections.add("HEMCleaning", np.ones(len(events), dtype="bool"))
 
