@@ -8,7 +8,6 @@ from coffea import processor
 from coffea.analysis_tools import PackedSelection, Weights
 from wprime_plus_b.processors.utils import histograms
 from wprime_plus_b.corrections.jec import apply_jet_corrections
-from wprime_plus_b.corrections.met import apply_met_phi_corrections
 from wprime_plus_b.corrections.rochester import apply_rochester_corrections
 from wprime_plus_b.corrections.tau_energy import apply_tau_energy_scale_corrections
 from wprime_plus_b.corrections.pileup import add_pileup_weight
@@ -20,6 +19,7 @@ from wprime_plus_b.corrections.muon_highpt import MuonHighPtCorrector
 from wprime_plus_b.corrections.tau import TauCorrector
 from wprime_plus_b.corrections.electron import ElectronCorrector
 from wprime_plus_b.corrections.jetvetomaps import jetvetomaps_mask
+from wprime_plus_b.corrections.met import apply_met_phi_corrections, update_met_jet_veto
 from wprime_plus_b.selections.ttbar.electron_config import ttbar_electron_config
 from wprime_plus_b.selections.ttbar.muon_config import ttbar_muon_config
 from wprime_plus_b.selections.ttbar.tau_config import ttbar_tau_config
@@ -173,6 +173,9 @@ class TtbarAnalysis(processor.ProcessorABC):
                 is_mc=self.is_mc,
                 year=self.year,
             )
+            # propagate jet_veto maps to MET
+            update_met_jet_veto(events, self.year)
+                
             # -------------------------------------------------------------
             # event SF/weights computation
             # -------------------------------------------------------------
