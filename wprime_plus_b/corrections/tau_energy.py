@@ -67,9 +67,13 @@ def apply_tau_energy_scale_corrections(
     )
     # define shifts
     shifts = {"nominal": "nom", "tau_up": "up", "tau_down": "down"}
+    if variation not in shifts:
+        shift = "nom"
+    else:
+        shift = shifts[variation]
     # get scale factor
     sf = cset["tau_energy_scale"].evaluate(
-        pt, eta, dm, genmatch, "DeepTau2017v2p1", shifts[variation]
+        pt, eta, dm, genmatch, "DeepTau2017v2p1", shift
     )
     # get new (pT, mass) values using the scale factor
     taus_new_pt = taus_filter.pt * sf

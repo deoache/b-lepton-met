@@ -69,23 +69,22 @@ def apply_rochester_corrections(
             errors = rochester.kScaleDTerror(
                 events.Muon.charge, events.Muon.pt, events.Muon.eta, events.Muon.phi
             )
-        
-    pt_shift = {
-        "nominal": events.Muon.pt * corrections,
-    }
-    if variation != "nominal":
-        pt_shift.update(
-            {
-                "rochester_up": events.Muon.pt * corrections + events.Muon.pt * errors,
-                "rochester_down": events.Muon.pt * corrections
-                - events.Muon.pt * errors,
-            }
-        )
+
+    if variation not in ["rochester_up", "rochester_down"]:
+        # apply nominal correction
+        pt_shift = events.Muon.pt * corrections
+    else:
+        # apply up/down variation
+        if variation == "rochester_up":
+            pt_shift = events.Muon.pt * corrections + events.Muon.pt * errors
+        elif variation == "rochester_down":
+            pt_shift = events.Muon.pt * corrections - events.Muon.pt * errors
+
     # get rochester pT for Muon
-    events["Muon", "pt_rochester"] = pt_shift[variation]
-    
+    events["Muon", "pt_rochester"] = pt_shift
+
     # update muon pT field
     events["Muon", "pt"] = events.Muon.pt_rochester
-    
+
     # propagate muon pT corrections to MET
     update_met(events=events, lepton="Muon")
