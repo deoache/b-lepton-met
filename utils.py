@@ -207,7 +207,7 @@ def run_checker(args: dict) -> None:
                     )
         # check systematics
         if args["output_type"] == "hist":
-            available_systs = ["nominal", "jet", "met", "tau", "rochester", "full"]
+            available_systs = ["nominal", "jes", "jer", "met", "tau", "rochester", "jerc", "lepton", "full"]
             if args["syst"] not in available_systs:
                 raise ValueError(
                     f"Incorrect syst. Available systs are: {available_systs}"

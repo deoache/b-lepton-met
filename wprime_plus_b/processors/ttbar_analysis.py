@@ -129,6 +129,13 @@ class TtbarAnalysis(processor.ProcessorABC):
                 syst_variations.extend(tau_syst_variations)
             elif self.syst == "rochester":
                 syst_variations.extend(rochester_syst_variations)
+            elif self.syst == "jerc":
+                syst_variations.extend(jes_syst_variations)
+                syst_variations.extend(jer_syst_variations)
+                syst_variations.extend(met_syst_variations)
+            elif self.syst == "lepton":
+                syst_variations.extend(rochester_syst_variations)
+                syst_variations.extend(tau_syst_variations)
             elif self.syst == "full":
                 syst_variations.extend(jes_syst_variations)
                 syst_variations.extend(jer_syst_variations)
