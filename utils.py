@@ -35,12 +35,22 @@ def get_command(args: dict) -> str:
     return cmd
 
 
-def divide_list(lst: list, n: int) -> list:
-    """Divide a list into n sublists"""
+def divide_list(lst: list, N: int) -> list:
+    """Divide a list into sublists such that each sublist has at least 20 elements."""
+    if len(lst) < N:
+        return [lst]
+
+    # Dynamically calculate the number of sublists such that each has at least 20 elements
+    n = len(lst) // N  # This gives the number of groups with at least 20 elements
+    if len(lst) % N != 0:
+        n += 1  # Increase n by 1 if there is a remainder, to accommodate extra elements
+
+    # Divide the list into 'n' sublists
     size = len(lst) // n
     remainder = len(lst) % n
     result = []
     start = 0
+
     for i in range(n):
         if i < remainder:
             end = start + size + 1
@@ -48,6 +58,7 @@ def divide_list(lst: list, n: int) -> list:
             end = start + size
         result.append(lst[start:end])
         start = end
+
     return result
 
 
@@ -57,14 +68,14 @@ def build_filesets(args: dict) -> None:
     """
     main_dir = Path.cwd()
     fileset_path = Path(f"{main_dir}/wprime_plus_b/fileset")
-    if args['sample'].startswith("Signal"):
+    if args["sample"].startswith("Signal"):
         with open(f"{fileset_path}/signal_{args['year']}.json", "r") as f:
             datasets = json.load(f)
     else:
         with open(f"{fileset_path}/das_datasets.json", "r") as f:
             datasets = json.load(f)[f"{args['year']}_UL"]
     datasets = {args["sample"]: datasets[args["sample"]]}
-    
+
     # make output filesets directory
     output_directory = Path(f"{fileset_path}/{args['year']}/{args['facility']}")
     if output_directory.exists():
@@ -74,28 +85,28 @@ def build_filesets(args: dict) -> None:
     else:
         output_directory.mkdir(parents=True)
     for sample in datasets:
-        if args['sample'].startswith("Signal"):            
+        if args["sample"].startswith("Signal"):
             json_file = f"{fileset_path}/signal_{args['year']}.json"
-        elif args['facility'] == "lxplus":
+        elif args["facility"] == "lxplus":
             json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO_lxplus.json"
         else:
             json_file = f"{fileset_path}/fileset_{args['year']}_UL_NANO.json"
-            
+
         with open(json_file, "r") as handle:
             data = json.load(handle)
         # split fileset and save filesets
         filesets = {}
+        root_files_list = divide_list(data[sample], 15)
         # load dataset config
         dataset_config = load_dataset_config(config_name=sample)
-        if dataset_config.nsplit == 1:
+        if len(root_files_list) == 1:
             filesets[sample] = f"{output_directory}/{sample}.json"
             sample_data = {sample: data[sample]}
             with open(f"{output_directory}/{sample}.json", "w") as json_file:
                 json.dump(sample_data, json_file, indent=4, sort_keys=True)
         else:
-            root_files_list = divide_list(data[sample], dataset_config.nsplit)
             keys = ".".join(
-                f"{sample}_{i}" for i in range(1, dataset_config.nsplit + 1)
+                f"{sample}_{i}" for i in range(1, len(root_files_list) + 1)
             ).split(".")
             for key, value in zip(keys, root_files_list):
                 sample_data = {}
@@ -104,6 +115,7 @@ def build_filesets(args: dict) -> None:
                 filesets[key] = f"{output_directory}/{key}.json"
                 with open(f"{output_directory}/{key}.json", "w") as json_file:
                     json.dump(sample_data, json_file, indent=4, sort_keys=True)
+    return root_files_list
 
 
 def get_filesets(sample: str, year: str, facility: str) -> dict:
@@ -156,7 +168,7 @@ def run_checker(args: dict) -> None:
     available_years = ["2016APV", "2016", "2017", "2018"]
     if args["year"] not in available_years:
         raise ValueError(f"Incorrect year. Available years are: {available_years}")
-    
+
     # check output type
     available_output_types = ["hist", "array"]
     if args["output_type"] not in available_output_types:
@@ -172,15 +184,6 @@ def run_checker(args: dict) -> None:
         raise ValueError(
             f"Incorrect sample. Available samples are: {available_samples}"
         )
-    # check nsample
-    dataset_config = load_dataset_config(config_name=args["sample"])
-    available_nsamples = [""] + [str(i) for i in range(1, dataset_config.nsplit + 1)]
-    nsamples = args["nsample"].split(",")
-    for nsample in nsamples:
-        if nsample not in available_nsamples:
-            raise ValueError(
-                f"Incorrect nsample. Available nsamples are: {available_nsamples}"
-            )
     if args["processor"] == "ttbar":
         # check channel
         available_channels = ["2b1l", "1b1e1mu", "1b1l"]
@@ -197,17 +200,27 @@ def run_checker(args: dict) -> None:
         # check Data sample
         if args["lepton_flavor"] == "mu":
             if args["sample"] == "SingleElectron":
-                    raise ValueError(
-                        "muon channel should be run with SingleElectron dataset"
-                    )
+                raise ValueError(
+                    "muon channel should be run with SingleElectron dataset"
+                )
         else:
             if args["sample"] == "SingleMuon":
-                    raise ValueError(
-                        "electron channel should be run with SingleElectron dataset"
-                    )
+                raise ValueError(
+                    "electron channel should be run with SingleElectron dataset"
+                )
         # check systematics
         if args["output_type"] == "hist":
-            available_systs = ["nominal", "jes", "jer", "met", "tau", "rochester", "jerc", "lepton", "full"]
+            available_systs = [
+                "nominal",
+                "jes",
+                "jer",
+                "met",
+                "tau",
+                "rochester",
+                "jerc",
+                "lepton",
+                "full",
+            ]
             if args["syst"] not in available_systs:
                 raise ValueError(
                     f"Incorrect syst. Available systs are: {available_systs}"

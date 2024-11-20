@@ -3,7 +3,13 @@ import argparse
 import subprocess
 from pathlib import Path
 from wprime_plus_b.utils.load_config import load_dataset_config
-from utils import get_command, run_checker, build_filesets, manage_processor_args, build_output_directories
+from utils import (
+    get_command,
+    run_checker,
+    build_filesets,
+    manage_processor_args,
+    build_output_directories,
+)
 
 
 def move_X509() -> str:
@@ -37,6 +43,7 @@ def get_jobpath(args: dict) -> str:
     path += f'/{args["sample"]}'
     return path
 
+
 def get_jobname(args: dict) -> str:
     jobname = args["processor"]
     if args["channel"]:
@@ -49,25 +56,25 @@ def get_jobname(args: dict) -> str:
     return jobname
 
 
-def submit_condor(args: dict, cmd:str, flavor: str, submit: bool) -> None:
+def submit_condor(args: dict, cmd: str, flavor: str, submit: bool) -> None:
     """build condor and executable files, and submit condor job"""
     main_dir = Path.cwd()
     condor_dir = Path(f"{main_dir}/condor")
-    
+
     # set path and jobname
     jobpath = get_jobpath(args)
     jobname = get_jobname(args)
     print(f"creating job for {jobname}")
-    
+
     # create logs and condor directories
     log_dir = Path(f"{str(condor_dir)}/logs/{jobpath}")
     if not log_dir.exists():
         log_dir.mkdir(parents=True)
     local_condor_path = Path(f"{condor_dir}/{jobpath}/")
     if not local_condor_path.exists():
-        local_condor_path.mkdir(parents=True)                        
+        local_condor_path.mkdir(parents=True)
     local_condor = f"{local_condor_path}/{jobname}.sub"
-    
+
     # make condor file
     condor_template_file = open(f"{condor_dir}/submit.sub")
     condor_file = open(local_condor, "w")
@@ -110,15 +117,15 @@ def main(args):
     args["facility"] = "lxplus"
     args["output_path"] = build_output_directories(args)
     # build filesets
-    build_filesets(args)
+    root_files_list = build_filesets(args)
     # get dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
     # run job for each partition
-    if dataset_config.nsplit == 1:
+    if len(root_files_list) == 1:
         cmd = get_command(args)
         submit_condor(args, cmd, flavor="microcentury", submit=submit)
     else:
-        for nsplit in range(1, dataset_config.nsplit + 1):
+        for nsplit in range(1, len(root_files_list) + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
             submit_condor(args, cmd, flavor="longlunch", submit=submit)
