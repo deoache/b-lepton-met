@@ -96,7 +96,7 @@ def build_filesets(args: dict) -> None:
             data = json.load(handle)
         # split fileset and save filesets
         filesets = {}
-        root_files_list = divide_list(data[sample], 15)
+        root_files_list = divide_list(data[sample], args["nroots"])
         # load dataset config
         dataset_config = load_dataset_config(config_name=sample)
         if len(root_files_list) == 1:

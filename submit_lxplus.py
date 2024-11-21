@@ -118,6 +118,7 @@ def main(args):
     args["output_path"] = build_output_directories(args)
     # build filesets
     root_files_list = build_filesets(args)
+    del args["nroots"]
     # get dataset config
     dataset_config = load_dataset_config(config_name=args["sample"])
     # run job for each partition
@@ -224,6 +225,13 @@ if __name__ == "__main__":
         type=str,
         default="True",
         help="whether to include underflow/overflow to first/last bin {True, False}",
+    )
+    parser.add_argument(
+        "--nroots",
+        dest="nroots",
+        type=int,
+        default=10,
+        help="number of root files for the datasets splits",
     )
     args = parser.parse_args()
     main(args)
