@@ -123,12 +123,12 @@ def main(args):
     # run job for each partition
     if len(root_files_list) == 1:
         cmd = get_command(args)
-        submit_condor(args, cmd, flavor="microcentury", submit=submit)
+        submit_condor(args, cmd, flavor="longlunch", submit=submit)
     else:
         for nsplit in range(1, len(root_files_list) + 1):
             args["nsample"] = nsplit
             cmd = get_command(args)
-            submit_condor(args, cmd, flavor="longlunch", submit=submit)
+            submit_condor(args, cmd, flavor="workday", submit=submit)
 
 
 if __name__ == "__main__":
