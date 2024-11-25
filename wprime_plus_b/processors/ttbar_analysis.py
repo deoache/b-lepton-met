@@ -266,11 +266,11 @@ class TtbarAnalysis(processor.ProcessorABC):
                         self.lepton_flavor
                     ]["electron_id_wp"]
                 )
-                # add electron reco weights
-                electron_corrector.add_reco_weight("RecoAbove20")
-                electron_corrector.add_reco_weight("RecoBelow20")
                 # add trigger weights
                 if self.lepton_flavor == "ele":
+                    # add electron reco weights
+                    electron_corrector.add_reco_weight("RecoAbove20")
+                    electron_corrector.add_reco_weight("RecoBelow20")
                     """
                     electron_corrector.add_trigger_weight(
                         trigger_mask=trigger_mask["ele"],
@@ -299,14 +299,14 @@ class TtbarAnalysis(processor.ProcessorABC):
                         "muon_iso_wp"
                     ],
                 )
-                # add muon RECO weights
-                muon_corrector.add_reco_weight()
                 # add muon ID weights
                 muon_corrector.add_id_weight()
                 # add muon iso weights
                 muon_corrector.add_iso_weight()
                 # add trigger weights
                 if self.lepton_flavor == "mu":
+                    # add muon RECO weights
+                    muon_corrector.add_reco_weight()
                     muon_corrector.add_triggeriso_weight(
                         trigger_mask=trigger_mask,
                         trigger_match_mask=trigger_match_mask,
