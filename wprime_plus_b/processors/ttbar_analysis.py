@@ -161,7 +161,7 @@ class TtbarAnalysis(processor.ProcessorABC):
                     events["MET"] = events.MET.JER.up
                 elif syst_var == "JERDown":
                     events["Jet"] = events.Jet.JER.down
-                    events["MET"] = events.MET.JER.up
+                    events["MET"] = events.MET.JER.down
                 elif syst_var == "UEUp":
                     events["MET"] = events.MET.MET_UnclusteredEnergy.up
                 elif syst_var == "UEDown":
