@@ -150,16 +150,18 @@ class TtbarAnalysis(processor.ProcessorABC):
             # apply JEC/JER corrections to jets (in data, the corrections are already applied)
             if self.is_mc:
                 apply_jet_corrections(events, self.year)
-                # jet JEC/JER shift
                 if syst_var == "JESUp":
                     events["Jet"] = events.Jet.JES_Total.up
+                    events["MET"] = events.MET.JES_Total.up
                 elif syst_var == "JESDown":
                     events["Jet"] = events.Jet.JES_Total.down
+                    events["MET"] = events.MET.JES_Total.down
                 elif syst_var == "JERUp":
                     events["Jet"] = events.Jet.JER.up
+                    events["MET"] = events.MET.JER.up
                 elif syst_var == "JERDown":
                     events["Jet"] = events.Jet.JER.down
-                # MET UnclusteredEnergy shift
+                    events["MET"] = events.MET.JER.up
                 elif syst_var == "UEUp":
                     events["MET"] = events.MET.MET_UnclusteredEnergy.up
                 elif syst_var == "UEDown":
