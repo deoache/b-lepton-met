@@ -42,7 +42,8 @@ def get_mc_factories():
                 "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L1FastJet_AK4PFchs.jec.txt",
                 "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L2Relative_AK4PFchs.jec.txt",
                 "JEC/MC/2016APV/Summer19UL16APV_V7_MC_L3Absolute_AK4PFchs.jec.txt",
-                "JEC/MC/2016APV/RegroupedV2_Summer19UL16APV_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2016APV/Summer19UL16APV_V7_MC_Uncertainty_AK4PFchs.junc.txt",
                 # JER
                 "JER/MC/2016APV/Summer20UL16APV_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
                 "JER/MC/2016APV/Summer20UL16APV_JRV3_MC_SF_AK4PFchs.jersf.txt",
@@ -54,7 +55,8 @@ def get_mc_factories():
                 "JEC/MC/2016/Summer19UL16_V7_MC_L1FastJet_AK4PFchs.jec.txt",
                 "JEC/MC/2016/Summer19UL16_V7_MC_L2Relative_AK4PFchs.jec.txt",
                 "JEC/MC/2016/Summer19UL16_V7_MC_L3Absolute_AK4PFchs.jec.txt",
-                "JEC/MC/2016/RegroupedV2_Summer19UL16_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2016/Summer19UL16_V7_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2016/Summer19UL16_V7_MC_Uncertainty_AK4PFchs.junc.txt",
                 # JER
                 "JER/MC/2016/Summer20UL16_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
                 "JER/MC/2016/Summer20UL16_JRV3_MC_SF_AK4PFchs.jersf.txt",
@@ -66,7 +68,8 @@ def get_mc_factories():
                 "JEC/MC/2017/Summer19UL17_V5_MC_L1FastJet_AK4PFchs.jec.txt",
                 "JEC/MC/2017/Summer19UL17_V5_MC_L2Relative_AK4PFchs.jec.txt",
                 "JEC/MC/2017/Summer19UL17_V5_MC_L3Absolute_AK4PFchs.jec.txt",
-                "JEC/MC/2017/RegroupedV2_Summer19UL17_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2017/Summer19UL17_V5_MC_Uncertainty_AK4PFchs.junc.txt",
                 # JER
                 "JER/MC/2017/Summer19UL17_JRV3_MC_PtResolution_AK4PFchs.jr.txt",
                 "JER/MC/2017/Summer19UL17_JRV3_MC_SF_AK4PFchs.jersf.txt",
@@ -78,7 +81,8 @@ def get_mc_factories():
                 "JEC/MC/2018/Summer19UL18_V5_MC_L1FastJet_AK4PFchs.jec.txt",
                 "JEC/MC/2018/Summer19UL18_V5_MC_L2Relative_AK4PFchs.jec.txt",
                 "JEC/MC/2018/Summer19UL18_V5_MC_L3Absolute_AK4PFchs.jec.txt",
-                "JEC/MC/2018/RegroupedV2_Summer19UL18_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2018/Summer19UL18_V5_MC_UncertaintySources_AK4PFchs.junc.txt",
+                "JEC/MC/2018/Summer19UL18_V5_MC_Uncertainty_AK4PFchs.junc.txt",
                 # JER
                 "JER/MC/2018/Summer19UL18_JRV2_MC_PtResolution_AK4PFchs.jr.txt",
                 "JER/MC/2018/Summer19UL18_JRV2_MC_SF_AK4PFchs.jersf.txt",
