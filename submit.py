@@ -8,6 +8,7 @@ import numpy as np
 import wprime_plus_b.utils
 from pathlib import Path
 from coffea import processor
+from coffea.util import save
 from utils import get_filesets
 from dask.distributed import Client
 from humanfriendly import format_timespan
@@ -233,13 +234,11 @@ def main(args):
         # save output data and metadata
         with open(f"{args['output_path']}/metadata/{sample}_metadata.json", "w") as f:
             f.write(json.dumps(metadata))
-        with open(f"{args['output_path']}/{sample}.pkl", "wb") as handle:
-            pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        save(out, f"{args['output_path']}/{sample}.coffea")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
         "--processor",
         dest="processor",
