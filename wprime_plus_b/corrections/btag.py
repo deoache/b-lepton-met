@@ -57,7 +57,7 @@ class BTagCorrector:
         tagger: str = "deepJet",
         year: str = "2017",
         variation: str = "nominal",
-        full_run: bool = False,
+        full_run: bool = True,
     ) -> None:
         self._sf = sf_type
         self._year = year
@@ -114,23 +114,43 @@ class BTagCorrector:
 
         if self._variation == "nominal":
             # systematics
-            syst_up = "up_correlated" if self._full_run else "up"
-            syst_down = "down_correlated" if self._full_run else "down"
+            if not self._full_run:
+                syst_up = "up"
+                syst_down = "down"
 
-            # up and down scale factors
-            jets_sf_up = self.get_scale_factors(flavor=flavor, syst=syst_up)
-            jets_sf_down = self.get_scale_factors(flavor=flavor, syst=syst_down)
+                # up and down scale factors
+                jets_sf_up = self.get_scale_factors(flavor=flavor, syst=syst_up)
+                jets_sf_down = self.get_scale_factors(flavor=flavor, syst=syst_down)
 
-            jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
-            jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
+                jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
+                jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
 
-            # add weights to Weights container
-            self._weights.add(
-                name=f"{flavor}_jets",
-                weight=jets_weight,
-                weightUp=jets_weight_up,
-                weightDown=jets_weight_down,
-            )
+                # add weights to Weights container
+                self._weights.add(
+                    name=f"{flavor}_jets",
+                    weight=jets_weight,
+                    weightUp=jets_weight_up,
+                    weightDown=jets_weight_down,
+                )
+            else:
+                for syst_var in ["correlated", "uncorrelated"]:
+                    syst_up = f"up_{syst_var}"
+                    syst_down = f"down_{syst_var}"
+
+                    # up and down scale factors
+                    jets_sf_up = self.get_scale_factors(flavor=flavor, syst=syst_up)
+                    jets_sf_down = self.get_scale_factors(flavor=flavor, syst=syst_down)
+
+                    jets_weight_up = self.get_btag_weight(eff, jets_sf_up, passbtag)
+                    jets_weight_down = self.get_btag_weight(eff, jets_sf_down, passbtag)
+
+                    # add weights to Weights container
+                    self._weights.add(
+                        name=f"{flavor}_{syst_var}_jets",
+                        weight=jets_weight,
+                        weightUp=jets_weight_up,
+                        weightDown=jets_weight_down,
+                    )
         else:
             self._weights.add(
                 name=f"{flavor}_jets",
